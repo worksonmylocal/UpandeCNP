@@ -7,7 +7,7 @@
  "field_order": [
   "section_break_vtee",
   "amended_from",
-  "bllock",
+  "block",
   "block_fertilizer_plan",
   "application_date",
   "fertilizer_product",
@@ -35,13 +35,6 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
-  },
-  {
-   "fieldname": "bllock",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Block",
-   "reqd": 1
   },
   {
    "fieldname": "block_fertilizer_plan",
@@ -115,13 +108,21 @@
    "fieldname": "notes",
    "fieldtype": "Small Text",
    "label": "Notes"
+  },
+  {
+   "fieldname": "block",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Block",
+   "options": "Farm Block",
+   "reqd": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-06-22 17:29:49.880958",
+ "modified": "2026-06-22 18:51:08.668087",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Fertilizer Application",

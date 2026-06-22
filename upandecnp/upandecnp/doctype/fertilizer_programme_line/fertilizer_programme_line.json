@@ -1,0 +1,102 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-06-22 18:12:09.964829",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_0o6z",
+  "block",
+  "fertilizer_product",
+  "application_month",
+  "yield_tier",
+  "kg_per_ha_rate",
+  "total_kg",
+  "total_kg_big_trees",
+  "total_kg_small_trees",
+  "g_per_big_tree",
+  "g_per_small_tree"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_0o6z",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "block",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Block",
+   "options": "Farm Block",
+   "reqd": 1
+  },
+  {
+   "fieldname": "fertilizer_product",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Fertilizer Product",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "application_month",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Application Month",
+   "options": "January\nFebruary\nMarch\nApril\nMay\nJune\nJuly\nAugust\nSeptember\nOctober\nNovember\nDecember",
+   "reqd": 1
+  },
+  {
+   "fieldname": "yield_tier",
+   "fieldtype": "Select",
+   "label": "Yield Tier",
+   "options": "15T\n18T\n20T\n24T"
+  },
+  {
+   "fieldname": "kg_per_ha_rate",
+   "fieldtype": "Float",
+   "label": "Rate (Kg/Ha)"
+  },
+  {
+   "fieldname": "total_kg",
+   "fieldtype": "Float",
+   "label": "Total Kg"
+  },
+  {
+   "fieldname": "total_kg_big_trees",
+   "fieldtype": "Float",
+   "label": "Total Kg Big Trees"
+  },
+  {
+   "fieldname": "total_kg_small_trees",
+   "fieldtype": "Float",
+   "label": "Total Kg Small Trees"
+  },
+  {
+   "fieldname": "g_per_big_tree",
+   "fieldtype": "Float",
+   "label": "G Per Big Tree"
+  },
+  {
+   "fieldname": "g_per_small_tree",
+   "fieldtype": "Float",
+   "label": "G Per Small Tree"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-06-22 18:49:28.085870",
+ "modified_by": "Administrator",
+ "module": "UpandeCNP",
+ "name": "Fertilizer Programme Line",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

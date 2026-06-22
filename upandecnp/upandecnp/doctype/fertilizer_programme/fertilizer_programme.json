@@ -12,7 +12,9 @@
   "crop",
   "total_area_ha",
   "leaf_analysis",
-  "status"
+  "status",
+  "block_yield_data",
+  "programme_lines"
  ],
  "fields": [
   {
@@ -63,13 +65,25 @@
    "fieldtype": "Select",
    "label": "Status",
    "options": "Draft\nSubmitted\nApproved\nActive"
+  },
+  {
+   "fieldname": "block_yield_data",
+   "fieldtype": "Table",
+   "label": "Block Yield Data",
+   "options": "Programme Block Yield"
+  },
+  {
+   "fieldname": "programme_lines",
+   "fieldtype": "Table",
+   "label": "Programme Lines",
+   "options": "Fertilizer Programme Line"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-06-22 16:36:37.854874",
+ "modified": "2026-06-22 18:57:22.559453",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Fertilizer Programme",

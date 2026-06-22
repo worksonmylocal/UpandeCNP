@@ -53,9 +53,10 @@
   },
   {
    "fieldname": "block",
-   "fieldtype": "Data",
+   "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Block",
+   "options": "Farm Block",
    "reqd": 1
   },
   {
@@ -120,7 +121,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-06-22 17:21:03.119480",
+ "modified": "2026-06-22 18:50:40.477751",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Block Fertilizer Plan",
