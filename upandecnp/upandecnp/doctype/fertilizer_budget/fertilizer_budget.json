@@ -1,0 +1,122 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-06-22 17:30:35.789547",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_4ido",
+  "amended_from",
+  "season",
+  "fertilizer_programme",
+  "total_budget_ksh",
+  "total_actual",
+  "total_variance_ksh",
+  "cost_per_ha_budget",
+  "cost_per_ha_actual",
+  "delivery_cost_budget",
+  "delivery_cost_actual",
+  "budget_lines"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_4ido",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Fertilizer Budget",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "season",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Season",
+   "reqd": 1
+  },
+  {
+   "fieldname": "fertilizer_programme",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Fertilizer Programme",
+   "options": "Fertilizer Programme",
+   "reqd": 1
+  },
+  {
+   "fieldname": "total_budget_ksh",
+   "fieldtype": "Currency",
+   "label": "Total Budget (Ksh)"
+  },
+  {
+   "fieldname": "total_actual",
+   "fieldtype": "Currency",
+   "label": "Total Actual (Ksh)"
+  },
+  {
+   "fieldname": "total_variance_ksh",
+   "fieldtype": "Currency",
+   "label": "Total Variance (Ksh)"
+  },
+  {
+   "fieldname": "cost_per_ha_budget",
+   "fieldtype": "Currency",
+   "label": "Budget Cost Per Ha (Ksh)"
+  },
+  {
+   "fieldname": "cost_per_ha_actual",
+   "fieldtype": "Currency",
+   "label": "Actual Cost Per Ha (Ksh)"
+  },
+  {
+   "fieldname": "delivery_cost_budget",
+   "fieldtype": "Currency",
+   "label": "Delivery Cost Budget (Ksh)"
+  },
+  {
+   "fieldname": "delivery_cost_actual",
+   "fieldtype": "Currency",
+   "label": "Delivery Cost Actual"
+  },
+  {
+   "fieldname": "budget_lines",
+   "fieldtype": "Table",
+   "label": "Budget Lines",
+   "options": "Fertilizer Budget Line"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-06-22 17:51:46.511551",
+ "modified_by": "Administrator",
+ "module": "UpandeCNP",
+ "name": "Fertilizer Budget",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
