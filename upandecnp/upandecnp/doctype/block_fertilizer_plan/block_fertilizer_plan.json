@@ -10,7 +10,7 @@
   "fertilizer_programme",
   "season",
   "block",
-  "fertiliizer_product",
+  "fertilizer_product",
   "application_month",
   "yield_tier",
   "application_rate_kg_ha",
@@ -57,14 +57,6 @@
    "in_list_view": 1,
    "label": "Block",
    "options": "Farm Block",
-   "reqd": 1
-  },
-  {
-   "fieldname": "fertiliizer_product",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Fertilizer Product",
-   "options": "Item",
    "reqd": 1
   },
   {
@@ -115,13 +107,21 @@
    "fieldtype": "Select",
    "label": "Status",
    "options": "Planned\nIssued\nApplied\nVerified"
+  },
+  {
+   "fieldname": "fertilizer_product",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Fertilizer Product",
+   "options": "Item",
+   "reqd": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-06-22 18:50:40.477751",
+ "modified": "2026-06-23 12:43:57.260489",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Block Fertilizer Plan",
