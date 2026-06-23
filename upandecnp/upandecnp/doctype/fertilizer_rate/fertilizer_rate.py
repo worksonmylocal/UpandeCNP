@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class NutrientRemovalFactor(Document):
+class FertilizerRate(Document):
 	pass

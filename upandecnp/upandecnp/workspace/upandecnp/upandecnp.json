@@ -1,0 +1,78 @@
+{
+ "charts": [],
+ "content": "[]",
+ "creation": "2026-06-23 10:44:18.173377",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "arrow-up-right",
+ "idx": 0,
+ "indicator_color": "",
+ "is_hidden": 0,
+ "label": "UpandeCNP",
+ "links": [],
+ "modified": "2026-06-23 10:48:08.625857",
+ "modified_by": "Administrator",
+ "module": "UpandeCNP",
+ "name": "UpandeCNP",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 15.0,
+ "shortcuts": [
+  {
+   "doc_view": "",
+   "label": "Farm Block",
+   "link_to": "Farm Block",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "",
+   "label": "Fertilizer Rate",
+   "link_to": "Fertilizer Rate",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "",
+   "label": "Leaf Analysis",
+   "link_to": "Leaf Analysis",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "",
+   "label": "Fertilizer Programme",
+   "link_to": "Fertilizer Programme",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "",
+   "label": "Block Fertilizer Plan",
+   "link_to": "Block Fertilizer Plan",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "",
+   "label": "Fertilizer Application",
+   "link_to": "Fertilizer Application",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "",
+   "label": "Fertilizer Budget",
+   "link_to": "Fertilizer Budget",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "",
+   "label": "Production Calendar",
+   "link_to": "Production Calendar",
+   "type": "DocType"
+  }
+ ],
+ "title": "UpandeCNP"
+}

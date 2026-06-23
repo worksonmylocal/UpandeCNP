@@ -1,19 +1,20 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2026-06-22 17:08:14.858561",
+ "creation": "2026-06-23 10:36:33.017027",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "section_break_9lpf",
+  "section_break_selr",
   "crop",
-  "nutrient",
-  "removal_per_tonne",
-  "source"
+  "season",
+  "fertilizer_product",
+  "yield_tier",
+  "base_rate_kg_ha"
  ],
  "fields": [
   {
-   "fieldname": "section_break_9lpf",
+   "fieldname": "section_break_selr",
    "fieldtype": "Section Break"
   },
   {
@@ -24,33 +25,42 @@
    "reqd": 1
   },
   {
-   "fieldname": "nutrient",
+   "fieldname": "season",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Season",
+   "reqd": 1
+  },
+  {
+   "fieldname": "fertilizer_product",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Fertilizer Product",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "yield_tier",
    "fieldtype": "Select",
    "in_list_view": 1,
-   "label": "Nutrient",
-   "options": "N\nP\nK\nCa\nMg\nS\nB\nZn\nMo\nMn",
+   "label": "Yield Tier",
+   "options": "15T\n18T\n20T\n24T\nAll",
    "reqd": 1
   },
   {
-   "fieldname": "removal_per_tonne",
+   "fieldname": "base_rate_kg_ha",
    "fieldtype": "Float",
-   "in_list_view": 1,
-   "label": "Removal Per Tonne (kg)",
+   "label": "Base Rate (Kg/Ha)",
    "reqd": 1
-  },
-  {
-   "fieldname": "source",
-   "fieldtype": "Small Text",
-   "label": "Source"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-06-22 17:10:52.807200",
+ "modified": "2026-06-23 10:38:40.192350",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
- "name": "Nutrient Removal Factor",
+ "name": "Fertilizer Rate",
  "owner": "Administrator",
  "permissions": [
   {

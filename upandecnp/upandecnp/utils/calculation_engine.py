@@ -8,56 +8,22 @@ YIELD_TIERS = [
     (0.0,  "15T"),
 ]
 
-PRODUCT_NUTRIENT_CONTENT = {
-    "CAN":           {"N":  0.26},
-    "TSP":           {"P":  0.20},
-    "MOP":           {"K":  0.50},
-    "K2SO4":         {"K":  0.45},
-    "Gypsum":        {"Ca": 0.23, "S": 0.18},
-    "Ag Lime":       {"Ca": 0.32},
-    "Zinc Sulphate": {"Zn": 0.36},
-    "Borax":         {"B":  0.11},
-}
-
 APPLICATION_SCHEDULE = {
-    "N": [
-        ("November", 0.20),
-        ("January",  0.40),
-        ("March",    0.40),
-    ],
-    "K_MOP": [
-        ("November", 0.20),
-        ("March",    0.40),
-    ],
-    "K_K2SO4": [
-        ("January",  0.40),
-    ],
-    "P": [
-        ("March", 1.00),
-    ],
-    "B": [
-        ("August",   0.25),
-        ("November", 0.25),
-        ("March",    0.25),
-        ("June",     0.25),
-    ],
-    "Zn": [
-        ("November", 0.50),
-        ("March",    0.50),
-    ],
-    "Gypsum": [
-        ("December", 1.00),
-    ],
-    "Lime": [
-        ("April", 1.00),
-    ],
+    "CAN":          [("November", 0.20), ("January", 0.40), ("March", 0.40)],
+    "MOP":          [("November", 0.20), ("March", 0.40)],
+    "K2SO4":        [("January", 0.40)],
+    "TSP":          [("May", 1.00)],
+    "Gypsum":       [("December", 1.00)],
+    "Ag Lime":      [("April", 1.00)],
+    "Zinc Sulphate":[("November", 0.50), ("March", 0.50)],
+    "Borax":        [("November", 0.25), ("December", 0.25), ("March", 0.25), ("June", 0.25)],
 }
 
 ROUNDING_BASE = {
     "CAN":            25,
-    "TSP":            25,
     "MOP":            25,
     "K2SO4":          25,
+    "TSP":            25,
     "Gypsum":        100,
     "Ag Lime":       100,
     "Zinc Sulphate":   5,
@@ -78,99 +44,137 @@ def round_to_base(value, base):
     return round(value / base) * base
 
 
-def get_removal_factors(crop="Hass Avocado"):
+def get_fertilizer_rates(crop, season):
+    """
+    Fetch base Kg/Ha rates from Fertilizer Rate master data.
+    Returns dict: {product: {tier: kg_ha}}
+    """
     rows = frappe.get_all(
-        "Nutrient Removal Factor",
-        filters={"crop": crop},
-        fields=["nutrient", "removal_per_tonne"],
+        "Fertilizer Rate",
+        filters={"crop": crop, "season": season},
+        fields=["fertilizer_product", "yield_tier", "base_rate_kg_ha"],
     )
-    return {r.nutrient: flt(r.removal_per_tonne) for r in rows}
+    rates = {}
+    for r in rows:
+        product = r.fertilizer_product
+        if product not in rates:
+            rates[product] = {}
+        rates[product][r.yield_tier] = flt(r.base_rate_kg_ha)
+    return rates
 
 
-def get_buildup_factors(leaf_analysis_name):
+def get_buildup_factor(leaf_analysis_name, nutrient_map):
+    """
+    Returns build-up factor per product based on leaf analysis result.
+    nutrient_map: {product: nutrient} e.g. {"CAN": "N", "MOP": "K"}
+    """
     if not leaf_analysis_name:
         return {}
+
     doc = frappe.get_doc("Leaf Analysis", leaf_analysis_name)
-    return {
+    nutrient_results = {
         row.nutrient: flt(row.build_up_factor or 1.0)
         for row in doc.nutrient_results
     }
 
+    product_factors = {}
+    for product, nutrient in nutrient_map.items():
+        product_factors[product] = nutrient_results.get(nutrient, 1.0)
+    return product_factors
 
-def calculate_programme_lines(blocks, crop="Hass Avocado"):
-    removal_factors = get_removal_factors(crop)
+
+# Maps each product to its primary nutrient for leaf analysis lookup
+PRODUCT_NUTRIENT_MAP = {
+    "CAN":           "N",
+    "MOP":           "K",
+    "K2SO4":         "K",
+    "TSP":           "P",
+    "Gypsum":        "Ca",
+    "Ag Lime":       "Ca",
+    "Zinc Sulphate": "Zn",
+    "Borax":         "B",
+}
+
+
+def calculate_programme_lines(blocks, crop="Hass Avocado", season="2025/2026"):
+    rates = get_fertilizer_rates(crop, season)
     lines = []
 
     for block in blocks:
-        block_name   = block["block"]
-        yield_t_ha   = flt(block.get("yield_t_ha", 0))
-        la_name      = block.get("leaf_analysis")
-        area_ha      = flt(block.get("area_ha", 0))
-        big_trees    = cint(block.get("big_tree_count", 0))
-        small_trees  = cint(block.get("small_tree_count", 0))
-        total_trees  = big_trees + small_trees
-        big_pct      = big_trees / total_trees if total_trees else 0.8
-        buildup      = get_buildup_factors(la_name)
-        tier         = get_yield_tier(yield_t_ha)
+        block_name  = block["block"]
+        yield_t_ha  = flt(block.get("yield_t_ha", 0))
+        la_name     = block.get("leaf_analysis")
+        area_ha     = flt(block.get("area_ha", 0))
+        big_trees   = cint(block.get("big_tree_count", 0))
+        small_trees = cint(block.get("small_tree_count", 0))
+        total_trees = big_trees + small_trees
+        big_pct     = big_trees / total_trees if total_trees else 0.8
+        tier        = get_yield_tier(yield_t_ha)
 
-        def nutrient_kg_ha(nutrient):
-            removal = removal_factors.get(nutrient, 0)
-            factor  = buildup.get(nutrient, 1.0)
-            return yield_t_ha * removal * factor
+        buildup = get_buildup_factor(la_name, PRODUCT_NUTRIENT_MAP)
 
-        def make_line(product, month, kg_ha):
-            rounded   = round_to_base(kg_ha, ROUNDING_BASE.get(product, 25))
-            total_kg  = rounded * area_ha
-            big_kg    = total_kg * big_pct
-            small_kg  = total_kg * (1 - big_pct)
-            return {
-                "block":                block_name,
-                "fertilizer_product":   product,
-                "application_month":    month,
-                "yield_tier":           tier,
-                "kg_per_ha_rate":       round(rounded, 2),
-                "total_kg":             round(total_kg, 2),
-                "total_kg_big_trees":   round(big_kg, 2),
-                "total_kg_small_trees": round(small_kg, 2),
-                "g_per_big_tree":       round((big_kg / big_trees * 1000), 1) if big_trees else 0,
-                "g_per_small_tree":     round((small_kg / small_trees * 1000), 1) if small_trees else 0,
-            }
+        for product, schedule in APPLICATION_SCHEDULE.items():
+            product_rates = rates.get(product, {})
 
-        # Nitrogen - CAN
-        n_kg_ha = nutrient_kg_ha("N") / 0.26
-        for month, fraction in APPLICATION_SCHEDULE["N"]:
-            lines.append(make_line("CAN", month, n_kg_ha * fraction))
+            # Get rate for this tier, fallback to "All" tier
+            base_rate = product_rates.get(tier) or product_rates.get("All", 0)
+            if not base_rate:
+                continue
 
-        # Potassium - MOP
-        k_kg_ha = nutrient_kg_ha("K")
-        for month, fraction in APPLICATION_SCHEDULE["K_MOP"]:
-            lines.append(make_line("MOP", month, (k_kg_ha * fraction) / 0.50))
+            # Apply build-up factor from leaf analysis
+            adjusted_rate = base_rate * buildup.get(product, 1.0)
 
-        # Potassium - K2SO4
-        for month, fraction in APPLICATION_SCHEDULE["K_K2SO4"]:
-            lines.append(make_line("K2SO4", month, (k_kg_ha * fraction) / 0.45))
+            for month, fraction in schedule:
+                monthly_rate = adjusted_rate * fraction
+                rounded_rate = round_to_base(monthly_rate, ROUNDING_BASE.get(product, 25))
+                total_kg     = rounded_rate * area_ha
+                big_kg       = total_kg * big_pct
+                small_kg     = total_kg * (1 - big_pct)
 
-        # Phosphorus - TSP
-        p_kg_ha = nutrient_kg_ha("P") / 0.20
-        for month, fraction in APPLICATION_SCHEDULE["P"]:
-            lines.append(make_line("TSP", month, p_kg_ha * fraction))
-
-        # Boron - Borax
-        b_kg_ha = nutrient_kg_ha("B") / 0.11
-        for month, fraction in APPLICATION_SCHEDULE["B"]:
-            lines.append(make_line("Borax", month, b_kg_ha * fraction))
-
-        # Zinc - Zinc Sulphate
-        zn_kg_ha = nutrient_kg_ha("Zn") / 0.36
-        for month, fraction in APPLICATION_SCHEDULE["Zn"]:
-            lines.append(make_line("Zinc Sulphate", month, zn_kg_ha * fraction))
-
-        # Gypsum
-        for month, fraction in APPLICATION_SCHEDULE["Gypsum"]:
-            lines.append(make_line("Gypsum", month, 600.0))
-
-        # Ag Lime
-        for month, fraction in APPLICATION_SCHEDULE["Lime"]:
-            lines.append(make_line("Ag Lime", month, 1000.0))
+                lines.append({
+                    "block":                block_name,
+                    "fertilizer_product":   product,
+                    "application_month":    month,
+                    "yield_tier":           tier,
+                    "kg_per_ha_rate":       round(rounded_rate, 2),
+                    "total_kg":             round(total_kg, 2),
+                    "total_kg_big_trees":   round(big_kg, 2),
+                    "total_kg_small_trees": round(small_kg, 2),
+                    "g_per_big_tree":       round(big_kg / big_trees * 1000, 1) if big_trees else 0,
+                    "g_per_small_tree":     round(small_kg / small_trees * 1000, 1) if small_trees else 0,
+                })
 
     return lines
+
+
+@frappe.whitelist()
+def run_calculation(programme_name):
+    programme = frappe.get_doc("Fertilizer Programme", programme_name)
+
+    if programme.docstatus == 1:
+        frappe.throw("Cannot recalculate a submitted programme.")
+
+    blocks = [
+        {
+            "block":            row.block,
+            "yield_t_ha":       row.actual_yield_t_ha,
+            "leaf_analysis":    row.leaf_analysis,
+            "area_ha":          row.area_ha,
+            "big_tree_count":   row.big_tree_count,
+            "small_tree_count": row.small_tree_count,
+        }
+        for row in programme.get("block_yield_data", [])
+    ]
+
+    lines = calculate_programme_lines(
+        blocks,
+        crop=programme.crop or "Hass Avocado",
+        season=programme.season or "2025/2026"
+    )
+
+    programme.set("programme_lines", [])
+    for line in lines:
+        programme.append("programme_lines", line)
+
+    programme.save()
+    return len(lines)
