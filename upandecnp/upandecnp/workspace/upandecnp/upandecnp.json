@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[]",
+ "content": "[{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Fertilizer Programme\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Block Fertilizer Plan\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Fertilizer Application\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Fertilizer Budget\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Production Calendar\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Farm Block\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Fertilizer rate\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Leaf Analysis\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":4}}]",
  "creation": "2026-06-23 10:44:18.173377",
  "custom_blocks": [],
  "docstatus": 0,
@@ -12,8 +12,48 @@
  "indicator_color": "",
  "is_hidden": 0,
  "label": "UpandeCNP",
- "links": [],
- "modified": "2026-06-23 10:48:08.625857",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Masters",
+   "link_count": 0,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Farm Block",
+   "link_count": 0,
+   "link_to": "Farm Block",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Fertilizer Rate",
+   "link_count": 0,
+   "link_to": "Fertilizer Rate",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Leaf Analysis",
+   "link_count": 0,
+   "link_to": "Leaf Analysis",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-06-23 13:15:17.429300",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "UpandeCNP",
@@ -26,51 +66,51 @@
  "sequence_id": 15.0,
  "shortcuts": [
   {
-   "doc_view": "",
-   "label": "Farm Block",
-   "link_to": "Farm Block",
-   "type": "DocType"
-  },
-  {
-   "doc_view": "",
-   "label": "Fertilizer Rate",
-   "link_to": "Fertilizer Rate",
-   "type": "DocType"
-  },
-  {
-   "doc_view": "",
-   "label": "Leaf Analysis",
-   "link_to": "Leaf Analysis",
-   "type": "DocType"
-  },
-  {
-   "doc_view": "",
+   "doc_view": "List",
    "label": "Fertilizer Programme",
    "link_to": "Fertilizer Programme",
    "type": "DocType"
   },
   {
-   "doc_view": "",
+   "doc_view": "List",
    "label": "Block Fertilizer Plan",
    "link_to": "Block Fertilizer Plan",
    "type": "DocType"
   },
   {
-   "doc_view": "",
+   "doc_view": "List",
    "label": "Fertilizer Application",
    "link_to": "Fertilizer Application",
    "type": "DocType"
   },
   {
-   "doc_view": "",
+   "doc_view": "List",
    "label": "Fertilizer Budget",
    "link_to": "Fertilizer Budget",
    "type": "DocType"
   },
   {
-   "doc_view": "",
+   "doc_view": "List",
    "label": "Production Calendar",
    "link_to": "Production Calendar",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "List",
+   "label": "Farm Block",
+   "link_to": "Farm Block",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "List",
+   "label": "Fertilizer rate",
+   "link_to": "Fertilizer Rate",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "List",
+   "label": "Leaf Analysis",
+   "link_to": "Leaf Analysis",
    "type": "DocType"
   }
  ],
