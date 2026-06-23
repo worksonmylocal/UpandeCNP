@@ -1,11 +1,3 @@
-// Copyright (c) 2026, Upande and contributors
-// For license information, please see license.txt
-
-// frappe.ui.form.on("Fertilizer Programme", {
-// 	refresh(frm) {
-
-// 	},
-// });
 frappe.ui.form.on("Fertilizer Programme", {
     refresh(frm) {
         if (frm.doc.docstatus === 0) {
@@ -31,5 +23,18 @@ frappe.ui.form.on("Fertilizer Programme", {
                 });
             }, __("Actions"));
         }
+    }
+});
+
+frappe.ui.form.on("Programme Block Yield", {
+    block(frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
+        if (!row.block) return;
+
+        frappe.db.get_doc("Farm Block", row.block).then(block => {
+            frappe.model.set_value(cdt, cdn, "area_ha", block.area_ha);
+            frappe.model.set_value(cdt, cdn, "big_tree_count", block.big_tree_count);
+            frappe.model.set_value(cdt, cdn, "small_tree_count", block.small_tree_count);
+        });
     }
 });
