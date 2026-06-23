@@ -9,14 +9,14 @@ YIELD_TIERS = [
 ]
 
 APPLICATION_SCHEDULE = {
-    "CAN":          [("November", 0.20), ("January", 0.40), ("March", 0.40)],
-    "MOP":          [("November", 0.20), ("March", 0.40)],
-    "K2SO4":        [("January", 0.40)],
-    "TSP":          [("May", 1.00)],
-    "Gypsum":       [("December", 1.00)],
-    "Ag Lime":      [("April", 1.00)],
-    "Zinc Sulphate":[("November", 0.50), ("March", 0.50)],
-    "Borax":        [("November", 0.25), ("December", 0.25), ("March", 0.25), ("June", 0.25)],
+    "CAN":           [("November", 0.20), ("January", 0.40), ("March", 0.40)],
+    "MOP":           [("November", 0.20), ("March", 0.40)],
+    "K2SO4":         [("January", 0.40)],
+    "TSP":           [("May", 1.00)],
+    "Gypsum":        [("December", 1.00)],
+    "Ag Lime":       [("April", 1.00)],
+    "Zinc Sulphate": [("November", 0.50), ("March", 0.50)],
+    "Borax":         [("November", 0.25), ("December", 0.25), ("March", 0.25), ("June", 0.25)],
 }
 
 ROUNDING_BASE = {
@@ -28,6 +28,23 @@ ROUNDING_BASE = {
     "Ag Lime":       100,
     "Zinc Sulphate":   5,
     "Borax":           5,
+}
+
+# Fixed planting density used for g/tree calculation
+PLANTS_PER_HA = 250
+
+# Small tree dose is always 25% of big tree dose
+SMALL_TREE_RATIO = 0.25
+
+PRODUCT_NUTRIENT_MAP = {
+    "CAN":           "N",
+    "MOP":           "K",
+    "K2SO4":         "K",
+    "TSP":           "P",
+    "Gypsum":        "Ca",
+    "Ag Lime":       "Ca",
+    "Zinc Sulphate": "Zn",
+    "Borax":         "B",
 }
 
 
@@ -45,10 +62,6 @@ def round_to_base(value, base):
 
 
 def get_fertilizer_rates(crop, season):
-    """
-    Fetch base Kg/Ha rates from Fertilizer Rate master data.
-    Returns dict: {product: {tier: kg_ha}}
-    """
     rows = frappe.get_all(
         "Fertilizer Rate",
         filters={"crop": crop, "season": season},
@@ -63,37 +76,14 @@ def get_fertilizer_rates(crop, season):
     return rates
 
 
-def get_buildup_factor(leaf_analysis_name, nutrient_map):
-    """
-    Returns build-up factor per product based on leaf analysis result.
-    nutrient_map: {product: nutrient} e.g. {"CAN": "N", "MOP": "K"}
-    """
+def get_buildup_factors(leaf_analysis_name):
     if not leaf_analysis_name:
         return {}
-
     doc = frappe.get_doc("Leaf Analysis", leaf_analysis_name)
-    nutrient_results = {
+    return {
         row.nutrient: flt(row.build_up_factor or 1.0)
         for row in doc.nutrient_results
     }
-
-    product_factors = {}
-    for product, nutrient in nutrient_map.items():
-        product_factors[product] = nutrient_results.get(nutrient, 1.0)
-    return product_factors
-
-
-# Maps each product to its primary nutrient for leaf analysis lookup
-PRODUCT_NUTRIENT_MAP = {
-    "CAN":           "N",
-    "MOP":           "K",
-    "K2SO4":         "K",
-    "TSP":           "P",
-    "Gypsum":        "Ca",
-    "Ag Lime":       "Ca",
-    "Zinc Sulphate": "Zn",
-    "Borax":         "B",
-}
 
 
 def calculate_programme_lines(blocks, crop="Hass Avocado", season="2025/2026"):
@@ -111,7 +101,8 @@ def calculate_programme_lines(blocks, crop="Hass Avocado", season="2025/2026"):
         big_pct     = big_trees / total_trees if total_trees else 0.8
         tier        = get_yield_tier(yield_t_ha)
 
-        buildup = get_buildup_factor(la_name, PRODUCT_NUTRIENT_MAP)
+        # Get build-up factors from leaf analysis
+        nutrient_buildup = get_buildup_factors(la_name)
 
         for product, schedule in APPLICATION_SCHEDULE.items():
             product_rates = rates.get(product, {})
@@ -121,8 +112,10 @@ def calculate_programme_lines(blocks, crop="Hass Avocado", season="2025/2026"):
             if not base_rate:
                 continue
 
-            # Apply build-up factor from leaf analysis
-            adjusted_rate = base_rate * buildup.get(product, 1.0)
+            # Apply build-up factor via nutrient map
+            nutrient = PRODUCT_NUTRIENT_MAP.get(product)
+            buildup  = nutrient_buildup.get(nutrient, 1.0) if nutrient else 1.0
+            adjusted_rate = base_rate * buildup
 
             for month, fraction in schedule:
                 monthly_rate = adjusted_rate * fraction
@@ -130,6 +123,10 @@ def calculate_programme_lines(blocks, crop="Hass Avocado", season="2025/2026"):
                 total_kg     = rounded_rate * area_ha
                 big_kg       = total_kg * big_pct
                 small_kg     = total_kg * (1 - big_pct)
+
+                # G/tree based on fixed planting density of 250 plants/Ha
+                g_per_big   = round(rounded_rate / PLANTS_PER_HA, 3)
+                g_per_small = round(g_per_big * SMALL_TREE_RATIO, 3)
 
                 lines.append({
                     "block":                block_name,
@@ -140,8 +137,8 @@ def calculate_programme_lines(blocks, crop="Hass Avocado", season="2025/2026"):
                     "total_kg":             round(total_kg, 2),
                     "total_kg_big_trees":   round(big_kg, 2),
                     "total_kg_small_trees": round(small_kg, 2),
-                    "g_per_big_tree":       round(big_kg / big_trees * 1000, 1) if big_trees else 0,
-                    "g_per_small_tree":     round(small_kg / small_trees * 1000, 1) if small_trees else 0,
+                    "g_per_big_tree":       g_per_big,
+                    "g_per_small_tree":     g_per_small,
                 })
 
     return lines

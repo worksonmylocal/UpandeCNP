@@ -10,7 +10,9 @@
   "season",
   "fertilizer_product",
   "yield_tier",
-  "base_rate_kg_ha"
+  "base_rate_kg_ha",
+  "big_tree_dose_kg",
+  "small_tree_dose_kg"
  ],
  "fields": [
   {
@@ -52,12 +54,22 @@
    "fieldtype": "Float",
    "label": "Base Rate (Kg/Ha)",
    "reqd": 1
+  },
+  {
+   "fieldname": "big_tree_dose_kg",
+   "fieldtype": "Float",
+   "label": "Big Tree Dose (Kg/tree)"
+  },
+  {
+   "fieldname": "small_tree_dose_kg",
+   "fieldtype": "Float",
+   "label": "Small Tree Dose (Kg/tree)"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-06-23 10:38:40.192350",
+ "modified": "2026-06-23 12:21:35.473755",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Fertilizer Rate",
