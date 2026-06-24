@@ -1,0 +1,75 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-06-24 13:33:13.451351",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_qpqf",
+  "nutrient",
+  "low",
+  "high",
+  "unit"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_qpqf",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "nutrient",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Nutrient",
+   "options": "N\nP\nK\nCa\nMg\nS\nMn\nB\nMo\nZn",
+   "reqd": 1
+  },
+  {
+   "fieldname": "low",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Normal Low",
+   "reqd": 1
+  },
+  {
+   "fieldname": "high",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Normal High",
+   "reqd": 1
+  },
+  {
+   "fieldname": "unit",
+   "fieldtype": "Select",
+   "label": "Unit",
+   "options": "%\nppm"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-06-24 13:34:45.276910",
+ "modified_by": "Administrator",
+ "module": "UpandeCNP",
+ "name": "Leaf Analysis Norm",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -12,7 +12,7 @@
   "unit",
   "normal_range_low",
   "normal_range_high",
-  "ststus",
+  "status",
   "build_up_factor"
  ],
  "fields": [
@@ -54,22 +54,24 @@
    "label": "Normal Range High"
   },
   {
-   "fieldname": "ststus",
-   "fieldtype": "Select",
-   "label": "Status",
-   "options": "Defficient\nAdequate\nExcess"
-  },
-  {
    "fieldname": "build_up_factor",
    "fieldtype": "Float",
-   "label": "Build Up Factor"
+   "label": "Build Up Factor",
+   "read_only": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Deficient\nAdequate\nExcess",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-06-22 16:55:43.936525",
+ "modified": "2026-06-24 14:07:32.345314",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Leaf Analysis Nutrient Result",

@@ -13,7 +13,9 @@
   "laboratory",
   "report_reference",
   "overall_assessment",
-  "nutrient_results"
+  "nutrient_results",
+  "approved_by",
+  "approval_date"
  ],
  "fields": [
   {
@@ -72,13 +74,26 @@
    "fieldtype": "Table",
    "label": "Nutrient Results",
    "options": "Leaf Analysis Nutrient Result"
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "label": "Approved By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "approval_date",
+   "fieldtype": "Date",
+   "label": "Approval Date  ",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-06-22 18:51:30.485629",
+ "modified": "2026-06-24 13:41:22.816732",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Leaf Analysis",
