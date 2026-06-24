@@ -50,6 +50,7 @@ class FertilizerProgramme(Document):
                 "status": "Planned",
             })
             plan.insert(ignore_permissions=True)
+            plan.submit()
             created += 1
 
         frappe.msgprint(f"{created} Block Fertilizer Plans created.", alert=True)
@@ -63,9 +64,10 @@ class FertilizerProgramme(Document):
             "Block Fertilizer Plan",
             filters={
                 "fertilizer_programme": self.name,
-                "docstatus": 0,
+                "docstatus": 1,
             },
             fields=["name"],
         )
         for p in plans:
-            frappe.delete_doc("Block Fertilizer Plan", p.name, ignore_permissions=True)
+            doc = frappe.get_doc("Block Fertilizer Plan", p.name)
+            doc.cancel()
