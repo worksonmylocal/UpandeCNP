@@ -165,6 +165,13 @@ app_license = "mit"
 # 		"upandecnp.tasks.monthly"
 # 	],
 # }
+scheduler_events = {
+    "daily": [
+        "upandecnp.upandecnp.utils.alerts.check_upcoming_applications",
+        "upandecnp.upandecnp.utils.alerts.check_low_stock",
+        "upandecnp.upandecnp.utils.alerts.check_missed_applications",
+    ]
+}
 
 # Testing
 # -------

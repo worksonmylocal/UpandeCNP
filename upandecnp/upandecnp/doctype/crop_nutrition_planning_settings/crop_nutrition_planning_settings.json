@@ -1,0 +1,69 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-06-30 15:32:09.444752",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_zcrd",
+  "fertilizer_warehouse",
+  "farm_manager_email",
+  "upcoming_alert_days",
+  "variance_threshold_pct"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_zcrd",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "fertilizer_warehouse",
+   "fieldtype": "Link",
+   "label": "Fertilizer Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "farm_manager_email",
+   "fieldtype": "Data",
+   "label": "Farm Manager Email"
+  },
+  {
+   "default": "14",
+   "fieldname": "upcoming_alert_days",
+   "fieldtype": "Int",
+   "label": "Alert Days Before Application"
+  },
+  {
+   "default": "15",
+   "fieldname": "variance_threshold_pct",
+   "fieldtype": "Int",
+   "label": "Variance Alert Threshold (%)"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-06-30 16:05:54.255695",
+ "modified_by": "Administrator",
+ "module": "UpandeCNP",
+ "name": "Crop Nutrition Planning Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

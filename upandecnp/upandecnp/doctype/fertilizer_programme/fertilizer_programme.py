@@ -17,6 +17,7 @@ class FertilizerProgramme(Document):
 
     def on_submit(self):
         self.create_block_fertilizer_plans()
+        self.create_material_requests()
 
     def on_cancel(self):
         self.cancel_block_fertilizer_plans()
@@ -54,6 +55,10 @@ class FertilizerProgramme(Document):
             created += 1
 
         frappe.msgprint(f"{created} Block Fertilizer Plans created.", alert=True)
+
+    def create_material_requests(self):
+        from upandecnp.upandecnp.utils.integration import create_material_requests_for_programme
+        create_material_requests_for_programme(self.name)
 
     def get_tree_count(self, block_name, size):
         field = "big_tree_count" if size == "big" else "small_tree_count"
