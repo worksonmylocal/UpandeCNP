@@ -144,6 +144,11 @@ app_license = "mit"
 # 		"on_trash": "method"
 # 	}
 # }
+doc_events = {
+    "Purchase Receipt": {
+        "on_submit": "upandecnp.upandecnp.utils.integration.update_budget_on_receipt"
+    }
+}
 
 # Scheduled Tasks
 # ---------------

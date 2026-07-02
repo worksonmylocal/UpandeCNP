@@ -94,3 +94,43 @@ def create_material_requests_for_programme(programme_name):
         alert=True,
     )
     return mr.name
+
+def is_fertilizer(item_code):
+    """Check whether an item is a fertilizer (by item group)."""
+    group = frappe.db.get_value("Item", item_code, "item_group")
+    return group in ("Fertilizer", "Crop Inputs", "Agrochemicals")
+
+
+def update_budget_on_receipt(doc, method=None):
+    """
+    Hook: called when a Purchase Receipt is submitted.
+    For each fertilizer line, update the actuals on the most recent
+    submitted Fertilizer Budget.
+    """
+    budgets = frappe.get_all(
+        "Fertilizer Budget",
+        filters={"docstatus": 1},
+        fields=["name"],
+        order_by="creation desc",
+        limit=1,
+    )
+    if not budgets:
+        return
+
+    budget = frappe.get_doc("Fertilizer Budget", budgets[0].name)
+
+    updated = False
+    for item in doc.get("items", []):
+        if is_fertilizer(item.item_code):
+            budget.update_actuals_from_receipt(
+                item_code=item.item_code,
+                received_qty=flt(item.qty),
+                received_rate=flt(item.rate),
+            )
+            updated = True
+
+    if updated:
+        frappe.msgprint(
+            f"Fertilizer Budget {budget.name} updated with received quantities.",
+            alert=True,
+        )

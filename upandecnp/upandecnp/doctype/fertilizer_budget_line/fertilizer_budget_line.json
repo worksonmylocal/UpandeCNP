@@ -47,31 +47,37 @@
    "label": "Budgeted Total Cost"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "actual_quantity_kg",
    "fieldtype": "Float",
    "label": "Actual Quantity (Kg)"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "actual_unit_price",
    "fieldtype": "Currency",
    "label": "Actual Unit Price (Ksh/Kg)"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "actual_total_cost",
    "fieldtype": "Currency",
    "label": "Actual Total Cost"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "volume_variance_kg",
    "fieldtype": "Float",
    "label": "Volume Variance (Kg)"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "price_variance_ksh",
    "fieldtype": "Currency",
    "label": "Price Variance (Ksh)"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "total_variance_ksh",
    "fieldtype": "Currency",
    "label": "Total Variance (Ksh)"
@@ -81,7 +87,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-06-22 17:50:40.206992",
+ "modified": "2026-07-02 12:44:42.401257",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Fertilizer Budget Line",
