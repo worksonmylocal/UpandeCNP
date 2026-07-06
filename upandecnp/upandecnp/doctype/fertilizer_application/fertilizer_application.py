@@ -8,6 +8,7 @@ class FertilizerApplication(Document):
     def validate(self):
         self.calculate_variance()
         self.fetch_planned_quantity()
+        self.validate_partial_reason()
 
     def on_submit(self):
         self.create_stock_entry()
@@ -17,6 +18,10 @@ class FertilizerApplication(Document):
     def on_cancel(self):
         self.cancel_stock_entry()
         self.revert_block_plan_status()
+
+    def validate_partial_reason(self):
+        if not self.applied_in_full and not self.partial_reason:
+            frappe.throw("Please give a reason why the application was not done in full.")
 
     def fetch_planned_quantity(self):
         if self.block_fertilizer_plan and not self.planned_quantity_kg:
@@ -33,7 +38,6 @@ class FertilizerApplication(Document):
         )
 
     def get_fertilizer_warehouse(self):
-        # Prefer the module settings, fall back to Stock Settings default
         warehouse = frappe.db.get_single_value(
             "Crop Nutrition Planning Settings", "fertilizer_warehouse"
         )
@@ -42,6 +46,13 @@ class FertilizerApplication(Document):
         return warehouse
 
     def create_stock_entry(self):
+        # If the store already issued stock via the Store Request, reuse it - don't double-issue
+        if self.store_request:
+            issued = frappe.db.get_value("Fertilizer Store Request", self.store_request, "stock_entry")
+            if issued:
+                self.db_set("stock_entry", issued)
+                return
+
         if self.stock_entry:
             return
 
@@ -84,24 +95,29 @@ class FertilizerApplication(Document):
         variance_ratio = abs(flt(self.variance_kg)) / flt(self.planned_quantity_kg) * 100
 
         if variance_ratio > threshold:
-            frappe.sendmail(
-                recipients=[settings.farm_manager_email],
-                subject=f"Fertilizer Application Variance Alert - {self.block}",
-                message=f"""
-                <p>Application <b>{self.name}</b> shows a variance above the {threshold}% threshold:</p>
-                <ul>
-                    <li>Block: {self.block}</li>
-                    <li>Product: {self.fertilizer_product}</li>
-                    <li>Date: {self.application_date}</li>
-                    <li>Planned: {flt(self.planned_quantity_kg):.1f} Kg</li>
-                    <li>Actual: {flt(self.actual_quantity_applied_kg):.1f} Kg</li>
-                    <li>Variance: {flt(self.variance_kg):.1f} Kg ({variance_ratio:.1f}%)</li>
-                </ul>
-                """,
-            )
+            try:
+                frappe.sendmail(
+                    recipients=[settings.farm_manager_email],
+                    subject=f"Fertilizer Application Variance Alert - {self.block}",
+                    message=f"""
+                    <p>Application <b>{self.name}</b> shows a variance above the {threshold}% threshold:</p>
+                    <ul>
+                        <li>Block: {self.block}</li>
+                        <li>Product: {self.fertilizer_product}</li>
+                        <li>Date: {self.application_date}</li>
+                        <li>Planned: {flt(self.planned_quantity_kg):.1f} Kg</li>
+                        <li>Actual: {flt(self.actual_quantity_applied_kg):.1f} Kg</li>
+                        <li>Applied in full: {"Yes" if self.applied_in_full else "No"}</li>
+                        <li>Variance: {flt(self.variance_kg):.1f} Kg ({variance_ratio:.1f}%)</li>
+                    </ul>
+                    """,
+                )
+            except Exception:
+                frappe.log_error(f"Variance alert email failed for {self.name}", "CNP Variance Alert")
 
     def cancel_stock_entry(self):
-        if self.stock_entry:
+        # Only cancel if this application created its own stock entry (not the store request's)
+        if self.stock_entry and not self.store_request:
             se = frappe.get_doc("Stock Entry", self.stock_entry)
             if se.docstatus == 1:
                 se.cancel()
@@ -112,5 +128,5 @@ class FertilizerApplication(Document):
                 "Block Fertilizer Plan",
                 self.block_fertilizer_plan,
                 "status",
-                "Planned"
+                "Issued"
             )

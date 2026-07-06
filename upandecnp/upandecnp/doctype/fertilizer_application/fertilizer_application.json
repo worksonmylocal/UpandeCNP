@@ -20,7 +20,11 @@
   "operator",
   "supervisor",
   "stock_entry",
-  "notes"
+  "notes",
+  "store_request",
+  "applied_in_full",
+  "partial_reason",
+  "applied_by"
  ],
  "fields": [
   {
@@ -117,13 +121,40 @@
    "label": "Block",
    "options": "Farm Block",
    "reqd": 1
+  },
+  {
+   "fieldname": "store_request",
+   "fieldtype": "Link",
+   "label": "Store Request",
+   "options": "Fertilizer Store Request",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "applied_in_full",
+   "fieldtype": "Check",
+   "label": "Applied In Full",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:!doc.applied_in_full",
+   "fieldname": "partial_reason",
+   "fieldtype": "Small Text",
+   "label": "Partial Reason"
+  },
+  {
+   "fieldname": "applied_by",
+   "fieldtype": "Link",
+   "label": "Applied By",
+   "options": "Employee",
+   "reqd": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-07-02 12:56:55.648459",
+ "modified": "2026-07-06 18:24:29.983638",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Fertilizer Application",
