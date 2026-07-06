@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "format:FR-{fertilizer_product}-{yield_tier}-{season}",
  "creation": "2026-06-23 10:36:33.017027",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -69,10 +70,11 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-06-23 12:21:35.473755",
+ "modified": "2026-07-06 17:15:35.128382",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Fertilizer Rate",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {

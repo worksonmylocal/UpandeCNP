@@ -3,20 +3,21 @@ from frappe.utils import flt, cint
 
 YIELD_TIERS = [
     (22.0, "24T"),
-    (19.0, "20T"),
-    (16.0, "18T"),
+    (18.5, "20T"),
+    (14.0, "18T"),
     (0.0,  "15T"),
 ]
 
+# Fallback schedule, used only when a programme has no linked Production Calendar
 APPLICATION_SCHEDULE = {
     "CAN":           [("November", 0.20), ("January", 0.40), ("March", 0.40)],
     "MOP":           [("November", 0.20), ("March", 0.40)],
     "K2SO4":         [("January", 0.40)],
     "TSP":           [("May", 1.00)],
     "Gypsum":        [("December", 1.00)],
-    "Ag Lime":       [("April", 1.00)],
+    "Ag Lime":       [("May", 1.00)],
     "Zinc Sulphate": [("November", 0.50), ("March", 0.50)],
-    "Borax":         [("November", 0.25), ("December", 0.25), ("March", 0.25), ("June", 0.25)],
+    "Borax":         [("November", 0.25), ("January", 0.25), ("March", 0.25), ("June", 0.25)],
 }
 
 ROUNDING_BASE = {
@@ -76,6 +77,24 @@ def get_fertilizer_rates(crop, season):
     return rates
 
 
+def get_schedule_from_calendar(calendar_name):
+    """
+    Read the fertilizer application schedule from a Production Calendar.
+    Returns: {product: [(month, fraction), ...]}
+    Returns None if no calendar given, so the caller can fall back to default.
+    """
+    if not calendar_name:
+        return None
+
+    calendar = frappe.get_doc("Production Calendar", calendar_name)
+    schedule = {}
+    for row in calendar.get("fertilizer_schedule", []):
+        product = row.fertilizer_product
+        fraction = flt(row.percentage) / 100.0
+        schedule.setdefault(product, []).append((row.application_month, fraction))
+    return schedule or None
+
+
 def get_buildup_factors(leaf_analysis_name):
     if not leaf_analysis_name:
         return {}
@@ -86,8 +105,12 @@ def get_buildup_factors(leaf_analysis_name):
     }
 
 
-def calculate_programme_lines(blocks, crop="Hass Avocado", season="2025/2026"):
+def calculate_programme_lines(blocks, crop="Hass Avocado", season="2025/2026", calendar_name=None):
     rates = get_fertilizer_rates(crop, season)
+
+    # Use the farm's calendar schedule if available, else fall back to default
+    schedule_map = get_schedule_from_calendar(calendar_name) or APPLICATION_SCHEDULE
+
     lines = []
 
     for block in blocks:
@@ -104,7 +127,7 @@ def calculate_programme_lines(blocks, crop="Hass Avocado", season="2025/2026"):
         # Get build-up factors from leaf analysis
         nutrient_buildup = get_buildup_factors(la_name)
 
-        for product, schedule in APPLICATION_SCHEDULE.items():
+        for product, schedule in schedule_map.items():
             product_rates = rates.get(product, {})
 
             # Get rate for this tier, fallback to "All" tier
@@ -166,7 +189,8 @@ def run_calculation(programme_name):
     lines = calculate_programme_lines(
         blocks,
         crop=programme.crop or "Hass Avocado",
-        season=programme.season or "2025/2026"
+        season=programme.season or "2025/2026",
+        calendar_name=programme.get("production_calendar"),
     )
 
     programme.set("programme_lines", [])

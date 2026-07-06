@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "format:PC-{orchard}-{season}",
  "creation": "2026-06-22 17:52:28.217201",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -9,7 +10,8 @@
   "season",
   "orchard",
   "season_notes",
-  "calendar_events"
+  "calendar_events",
+  "fertilizer_schedule"
  ],
  "fields": [
   {
@@ -38,15 +40,22 @@
    "fieldtype": "Table",
    "label": "Calendar Events",
    "options": "Production Calendar Event"
+  },
+  {
+   "fieldname": "fertilizer_schedule",
+   "fieldtype": "Table",
+   "label": "Fertilizer Schedule",
+   "options": "Fertilizer Schedule"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-06-22 17:58:07.144014",
+ "modified": "2026-07-03 14:30:14.103195",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Production Calendar",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {

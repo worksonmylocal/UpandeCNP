@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "format:FA-{####}",
  "creation": "2026-06-22 17:21:41.812245",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -122,10 +123,11 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-06-22 18:51:08.668087",
+ "modified": "2026-07-02 12:56:55.648459",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Fertilizer Application",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {

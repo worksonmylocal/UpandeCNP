@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "format:FP-{season}-{####}",
  "creation": "2026-06-22 16:33:15.370184",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -10,8 +11,7 @@
   "season",
   "orchard",
   "crop",
-  "total_area_ha",
-  "leaf_analysis",
+  "production_calendar",
   "status",
   "block_yield_data",
   "programme_lines"
@@ -51,16 +51,6 @@
    "label": "Crop"
   },
   {
-   "fieldname": "total_area_ha",
-   "fieldtype": "Float",
-   "label": "Total Area (Ha)"
-  },
-  {
-   "fieldname": "leaf_analysis",
-   "fieldtype": "Data",
-   "label": "Leaf Analysis"
-  },
-  {
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
@@ -77,16 +67,24 @@
    "fieldtype": "Table",
    "label": "Programme Lines",
    "options": "Fertilizer Programme Line"
+  },
+  {
+   "fieldname": "production_calendar",
+   "fieldtype": "Link",
+   "label": "Production Calendar",
+   "options": "Production Calendar",
+   "reqd": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-06-22 18:57:22.559453",
+ "modified": "2026-07-03 14:24:45.708739",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Fertilizer Programme",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {

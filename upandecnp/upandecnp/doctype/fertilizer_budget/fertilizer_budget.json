@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "format:FB-{season}",
  "creation": "2026-06-22 17:30:35.789547",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -97,10 +98,11 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-07-02 12:45:58.043505",
+ "modified": "2026-07-02 12:57:53.439040",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Fertilizer Budget",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
