@@ -119,3 +119,244 @@ def get_issued_request_for_plan(block_fertilizer_plan):
 @frappe.whitelist(allow_guest=False)
 def get_token():
     return frappe.sessions.get_csrf_token()
+
+
+# ---------------------------------------------------------------------------
+# Dashboard API
+# ---------------------------------------------------------------------------
+
+@frappe.whitelist()
+def get_seasons():
+    """Return the list of seasons that have programmes, plus 'All'."""
+    seasons = frappe.get_all("Fertilizer Programme", filters={"docstatus": 1},
+                             fields=["season"], distinct=True)
+    return ["All Seasons"] + sorted(set(s.season for s in seasons))
+
+
+@frappe.whitelist()
+def get_dashboard_summary(season=None):
+    """Return headline numbers for the dashboard."""
+    plan_filter = {"docstatus": 1}
+    if season and season != "All Seasons":
+        plan_filter["season"] = season
+
+    plans = frappe.get_all("Block Fertilizer Plan", filters=plan_filter,
+                           fields=["name", "status", "total_kg_required", "block"])
+
+    total_plans = len(plans)
+    applied = sum(1 for p in plans if p.status == "Applied")
+    issued = sum(1 for p in plans if p.status == "Issued")
+    planned = sum(1 for p in plans if p.status == "Planned")
+    total_kg = sum(flt(p.total_kg_required) for p in plans)
+
+    blocks = len(set(p.block for p in plans))
+
+    # Pending store requests
+    pending_requests = frappe.db.count("Fertilizer Store Request", {"status": "Requested"})
+
+    pct_applied = round(applied / total_plans * 100, 1) if total_plans else 0
+
+    return {
+        "total_plans": total_plans,
+        "applied": applied,
+        "issued": issued,
+        "planned": planned,
+        "total_kg": round(total_kg, 0),
+        "blocks": blocks,
+        "pending_requests": pending_requests,
+        "pct_applied": pct_applied,
+    }
+
+
+@frappe.whitelist()
+def get_monthly_breakdown(season=None):
+    """Return quantity and cost per month across the programme."""
+    prog_filter = {"docstatus": 1}
+    if season and season != "All Seasons":
+        prog_filter["season"] = season
+
+    programmes = frappe.get_all("Fertilizer Programme", filters=prog_filter, fields=["name"])
+
+    month_order = ["January","February","March","April","May","June",
+                   "July","August","September","October","November","December"]
+    monthly = {m: {"qty": 0, "cost": 0} for m in month_order}
+
+    price_cache = {}
+    def price(prod):
+        if prod not in price_cache:
+            price_cache[prod] = flt(frappe.db.get_value("Item Price",
+                {"item_code": prod, "buying": 1}, "price_list_rate"))
+        return price_cache[prod]
+
+    for prog in programmes:
+        doc = frappe.get_doc("Fertilizer Programme", prog.name)
+        for line in doc.get("programme_lines", []):
+            m = line.application_month
+            if m in monthly:
+                monthly[m]["qty"] += flt(line.total_kg)
+                monthly[m]["cost"] += flt(line.total_kg) * price(line.fertilizer_product)
+
+    return [
+        {"month": m[:3], "qty": round(monthly[m]["qty"], 0), "cost": round(monthly[m]["cost"], 0)}
+        for m in month_order if monthly[m]["qty"] > 0
+    ]
+
+
+@frappe.whitelist()
+def get_product_breakdown(season=None):
+    """Return total quantity per product."""
+    prog_filter = {"docstatus": 1}
+    if season and season != "All Seasons":
+        prog_filter["season"] = season
+
+    programmes = frappe.get_all("Fertilizer Programme", filters=prog_filter, fields=["name"])
+    products = {}
+    for prog in programmes:
+        doc = frappe.get_doc("Fertilizer Programme", prog.name)
+        for line in doc.get("programme_lines", []):
+            products[line.fertilizer_product] = products.get(line.fertilizer_product, 0) + flt(line.total_kg)
+
+    return [{"product": p, "qty": round(q, 0)} for p, q in
+            sorted(products.items(), key=lambda x: x[1], reverse=True)]
+
+
+@frappe.whitelist()
+def get_recent_activity():
+    """Return the last 8 fertilizer applications."""
+    apps = frappe.get_all("Fertilizer Application", filters={"docstatus": 1},
+        fields=["block", "fertilizer_product", "actual_quantity_applied_kg",
+                "application_date", "applied_by", "applied_in_full"],
+        order_by="creation desc", limit=8)
+    return apps
+
+
+@frappe.whitelist()
+def get_stock_levels():
+    """Return current stock for each fertilizer item."""
+    warehouse = frappe.db.get_single_value("Crop Nutrition Planning Settings", "fertilizer_warehouse")
+    items = ["CAN", "MOP", "K2SO4", "TSP", "Gypsum", "Ag Lime", "Zinc Sulphate", "Borax"]
+    result = []
+    for item in items:
+        filters = {"item_code": item}
+        if warehouse:
+            filters["warehouse"] = warehouse
+        qty = flt(frappe.db.get_value("Bin", filters, "actual_qty"))
+        result.append({"product": item, "qty": round(qty, 0)})
+    return result
+
+# ---------------------------------------------------------------------------
+# Dashboard - extended panels
+# ---------------------------------------------------------------------------
+
+@frappe.whitelist()
+def get_budget_summary(season=None):
+    """Budget vs actual spend and cost per hectare."""
+    filters = {"docstatus": 1}
+    if season and season != "All Seasons":
+        filters["season"] = season
+
+    budgets = frappe.get_all("Fertilizer Budget", filters=filters,
+        fields=["name", "total_budget_ksh", "total_actual_ksh",
+                "cost_per_ha_budget", "cost_per_ha_actual"])
+
+    total_budget = sum(flt(b.total_budget_ksh) for b in budgets)
+    total_actual = sum(flt(b.total_actual_ksh) for b in budgets)
+    # Average cost/ha across budgets (simple mean where set)
+    cph_budget = [flt(b.cost_per_ha_budget) for b in budgets if b.cost_per_ha_budget]
+    cph_actual = [flt(b.cost_per_ha_actual) for b in budgets if b.cost_per_ha_actual]
+
+    return {
+        "total_budget": round(total_budget, 0),
+        "total_actual": round(total_actual, 0),
+        "variance": round(total_actual - total_budget, 0),
+        "pct_spent": round(total_actual / total_budget * 100, 1) if total_budget else 0,
+        "cost_per_ha_budget": round(sum(cph_budget)/len(cph_budget), 0) if cph_budget else 0,
+        "cost_per_ha_actual": round(sum(cph_actual)/len(cph_actual), 0) if cph_actual else 0,
+    }
+
+
+@frappe.whitelist()
+def get_upcoming_and_overdue():
+    """Plans due in the next 30 days, and overdue plans (month passed, not applied)."""
+    from frappe.utils import today, getdate, date_diff
+
+    months = ["January","February","March","April","May","June",
+              "July","August","September","October","November","December"]
+    today_date = getdate(today())
+
+    plans = frappe.get_all("Block Fertilizer Plan",
+        filters={"docstatus": 1, "status": ["in", ["Planned", "Issued"]]},
+        fields=["block", "fertilizer_product", "application_month", "total_kg_required", "status"])
+
+    upcoming, overdue = [], []
+    for p in plans:
+        if p.application_month not in months:
+            continue
+        idx = months.index(p.application_month) + 1
+        # Next occurrence
+        year = today_date.year if idx >= today_date.month else today_date.year + 1
+        due = getdate(f"{year}-{idx:02d}-01")
+        days = date_diff(due, today_date)
+        if 0 <= days <= 30:
+            upcoming.append({**p, "days": days})
+        # Overdue: month earlier this year, still pending
+        past_year = today_date.year if idx < today_date.month else today_date.year - 1
+        past_end = getdate(f"{past_year}-{idx:02d}-28")
+        if today_date > past_end and days > 60:  # its window has clearly passed
+            overdue.append(p)
+
+    upcoming.sort(key=lambda x: x["days"])
+    return {"upcoming": upcoming[:10], "overdue": overdue[:10]}
+
+
+@frappe.whitelist()
+def get_leaf_deficiency_grid(season=None):
+    """Grid of blocks x nutrients showing status (Deficient/Adequate/Excess)."""
+    filters = {"docstatus": 1}
+    if season and season != "All Seasons":
+        filters["season"] = season
+
+    analyses = frappe.get_all("Leaf Analysis", filters=filters, fields=["name", "block"])
+
+    nutrients = ["N", "P", "K", "Ca", "Mg", "S", "Zn", "B"]
+    grid = []
+    for a in analyses:
+        doc = frappe.get_doc("Leaf Analysis", a.name)
+        row = {"block": a.block, "cells": {}}
+        for r in doc.get("nutrient_results", []):
+            if r.nutrient in nutrients:
+                row["cells"][r.nutrient] = r.status or "—"
+        grid.append(row)
+
+    return {"nutrients": nutrients, "grid": grid}
+
+
+@frappe.whitelist()
+def get_stock_coverage(season=None):
+    """Stock on hand vs remaining requirement per product."""
+    prog_filter = {"docstatus": 1}
+    if season and season != "All Seasons":
+        prog_filter["season"] = season
+
+    programmes = frappe.get_all("Fertilizer Programme", filters=prog_filter, fields=["name"])
+    required = {}
+    for prog in programmes:
+        doc = frappe.get_doc("Fertilizer Programme", prog.name)
+        for line in doc.get("programme_lines", []):
+            required[line.fertilizer_product] = required.get(line.fertilizer_product, 0) + flt(line.total_kg)
+
+    warehouse = frappe.db.get_single_value("Crop Nutrition Planning Settings", "fertilizer_warehouse")
+    result = []
+    for product, need in required.items():
+        filters = {"item_code": product}
+        if warehouse:
+            filters["warehouse"] = warehouse
+        stock = flt(frappe.db.get_value("Bin", filters, "actual_qty"))
+        result.append({
+            "product": product,
+            "need": round(need, 0),
+            "stock": round(stock, 0),
+            "covered": stock >= need,
+            "shortfall": round(max(need - stock, 0), 0),
+        })
+    return sorted(result, key=lambda x: x["shortfall"], reverse=True)
