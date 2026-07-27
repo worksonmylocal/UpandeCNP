@@ -31,11 +31,11 @@ class FertilizerBudget(Document):
         self.total_budget_ksh = round(
             sum(flt(l.budgeted_total_cost) for l in self.get("budget_lines", [])), 2
         )
-        self.total_actual_ksh = round(
+        self.total_actual = round(
             sum(flt(l.actual_total_cost) for l in self.get("budget_lines", [])), 2
         )
         self.total_variance_ksh = round(
-            self.total_actual_ksh - self.total_budget_ksh, 2
+            self.total_actual - self.total_budget_ksh, 2
         )
 
         # Get total area from linked programme
@@ -46,7 +46,7 @@ class FertilizerBudget(Document):
         ) or 1
 
         self.cost_per_ha_budget = round(self.total_budget_ksh / area, 2)
-        self.cost_per_ha_actual = round(self.total_actual_ksh / area, 2)
+        self.cost_per_ha_actual = round(self.total_actual / area, 2)
 
     @frappe.whitelist()
     def fetch_from_programme(self):
@@ -106,12 +106,12 @@ class FertilizerBudget(Document):
                 break
 
         # Recalculate grand totals
-        self.total_actual_ksh = round(
+        self.total_actual = round(
             sum(flt(l.actual_total_cost) for l in self.get("budget_lines", [])), 2
         )
-        self.total_variance_ksh = round(self.total_actual_ksh - flt(self.total_budget_ksh), 2)
+        self.total_variance_ksh = round(self.total_actual - flt(self.total_budget_ksh), 2)
         area = frappe.db.get_value("Fertilizer Programme", self.fertilizer_programme, "total_area_ha") or 1
-        self.cost_per_ha_actual = round(self.total_actual_ksh / area, 2)
+        self.cost_per_ha_actual = round(self.total_actual / area, 2)
 
         # Persist changes on the submitted document
         self.save(ignore_permissions=True)

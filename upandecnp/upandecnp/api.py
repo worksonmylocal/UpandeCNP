@@ -256,11 +256,11 @@ def get_budget_summary(season=None):
         filters["season"] = season
 
     budgets = frappe.get_all("Fertilizer Budget", filters=filters,
-        fields=["name", "total_budget_ksh", "total_actual_ksh",
+        fields=["name", "total_budget_ksh", "total_actual",
                 "cost_per_ha_budget", "cost_per_ha_actual"])
 
     total_budget = sum(flt(b.total_budget_ksh) for b in budgets)
-    total_actual = sum(flt(b.total_actual_ksh) for b in budgets)
+    total_actual = sum(flt(b.total_actual) for b in budgets)
     # Average cost/ha across budgets (simple mean where set)
     cph_budget = [flt(b.cost_per_ha_budget) for b in budgets if b.cost_per_ha_budget]
     cph_actual = [flt(b.cost_per_ha_actual) for b in budgets if b.cost_per_ha_actual]
@@ -360,3 +360,120 @@ def get_stock_coverage(season=None):
             "shortfall": round(max(need - stock, 0), 0),
         })
     return sorted(result, key=lambda x: x["shortfall"], reverse=True)
+
+# ---------------------------------------------------------------------------
+# Managerial dashboard
+# ---------------------------------------------------------------------------
+
+@frappe.whitelist()
+def get_manager_kpis(season=None):
+    """Headline KPIs for the managerial dashboard."""
+    plan_filter = {"docstatus": 1}
+    if season and season != "All Seasons":
+        plan_filter["season"] = season
+
+    plans = frappe.get_all("Block Fertilizer Plan", filters=plan_filter,
+                           fields=["status", "block", "total_kg_required"])
+    total = len(plans)
+    applied = sum(1 for p in plans if p.status == "Applied")
+    pct_complete = round(applied / total * 100, 1) if total else 0
+
+    # Budget
+    bfilter = {"docstatus": 1}
+    if season and season != "All Seasons":
+        bfilter["season"] = season
+    budgets = frappe.get_all("Fertilizer Budget", filters=bfilter,
+        fields=["total_budget_ksh", "total_actual", "cost_per_ha_actual", "cost_per_ha_budget"])
+    total_budget = sum(flt(b.total_budget_ksh) for b in budgets)
+    total_actual = sum(flt(b.total_actual) for b in budgets)
+    cph = [flt(b.cost_per_ha_actual) for b in budgets if b.cost_per_ha_actual]
+    cph_b = [flt(b.cost_per_ha_budget) for b in budgets if b.cost_per_ha_budget]
+
+    # Overdue count (reuse logic)
+    overdue = len(get_upcoming_and_overdue().get("overdue", []))
+
+    # Pending requests
+    pending = frappe.db.count("Fertilizer Store Request", {"status": "Requested"})
+
+    return {
+        "total_budget": round(total_budget, 0),
+        "total_actual": round(total_actual, 0),
+        "variance": round(total_actual - total_budget, 0),
+        "variance_pct": round((total_actual - total_budget) / total_budget * 100, 1) if total_budget else 0,
+        "cost_per_ha": round(sum(cph)/len(cph), 0) if cph else 0,
+        "cost_per_ha_budget": round(sum(cph_b)/len(cph_b), 0) if cph_b else 0,
+        "pct_complete": pct_complete,
+        "blocks": len(set(p.block for p in plans)),
+        "overdue": overdue,
+        "pending_requests": pending,
+    }
+
+
+@frappe.whitelist()
+def get_yield_tier_distribution(season=None):
+    """How many blocks fall in each yield tier."""
+    prog_filter = {"docstatus": 1}
+    if season and season != "All Seasons":
+        prog_filter["season"] = season
+    programmes = frappe.get_all("Fertilizer Programme", filters=prog_filter, fields=["name"])
+
+    tiers = {}
+    for prog in programmes:
+        doc = frappe.get_doc("Fertilizer Programme", prog.name)
+        for row in doc.get("block_yield_data", []):
+            # Recompute tier from yield
+            y = flt(row.actual_yield_t_ha)
+            if y >= 22: tier = "24T"
+            elif y >= 18.5: tier = "20T"
+            elif y >= 14: tier = "18T"
+            else: tier = "15T"
+            tiers[tier] = tiers.get(tier, 0) + 1
+
+    order = ["15T", "18T", "20T", "24T"]
+    return [{"tier": t, "count": tiers.get(t, 0)} for t in order]
+
+
+@frappe.whitelist()
+def get_application_pace(season=None):
+    """Month-by-month: planned applications vs actually applied."""
+    months = ["January","February","March","April","May","June",
+              "July","August","September","October","November","December"]
+
+    plan_filter = {"docstatus": 1}
+    if season and season != "All Seasons":
+        plan_filter["season"] = season
+
+    plans = frappe.get_all("Block Fertilizer Plan", filters=plan_filter,
+                           fields=["application_month", "status"])
+
+    planned = {m: 0 for m in months}
+    applied = {m: 0 for m in months}
+    for p in plans:
+        if p.application_month in planned:
+            planned[p.application_month] += 1
+            if p.status == "Applied":
+                applied[p.application_month] += 1
+
+    return [
+        {"month": m[:3], "planned": planned[m], "applied": applied[m]}
+        for m in months if planned[m] > 0
+    ]
+
+
+@frappe.whitelist()
+def get_leaf_deficiency_summary(season=None):
+    """Count of blocks deficient per nutrient."""
+    filters = {"docstatus": 1}
+    if season and season != "All Seasons":
+        filters["season"] = season
+    analyses = frappe.get_all("Leaf Analysis", filters=filters, fields=["name"])
+
+    nutrients = ["N", "P", "K", "Ca", "Mg", "S", "Zn", "B"]
+    deficient = {n: 0 for n in nutrients}
+    for a in analyses:
+        doc = frappe.get_doc("Leaf Analysis", a.name)
+        for r in doc.get("nutrient_results", []):
+            if r.nutrient in deficient and r.status == "Deficient":
+                deficient[r.nutrient] += 1
+
+    return [{"nutrient": n, "count": deficient[n]} for n in nutrients if deficient[n] > 0]

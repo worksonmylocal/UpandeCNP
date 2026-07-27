@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Fertilizer Programme\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Block Fertilizer Plan\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Fertilizer Application\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Fertilizer Budget\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Production Calendar\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Farm Block\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Fertilizer rate\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Leaf Analysis\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":4}}]",
+ "content": "[{\"type\": \"header\", \"data\": {\"text\": \"<span class='h4'><b>At a Glance</b></span>\", \"col\": 12}}, {\"type\": \"number_card\", \"data\": {\"number_card_name\": \"Blocks Planned\", \"col\": 3}}, {\"type\": \"number_card\", \"data\": {\"number_card_name\": \"Issued (Awaiting Apply)\", \"col\": 3}}, {\"type\": \"number_card\", \"data\": {\"number_card_name\": \"Applications Done\", \"col\": 3}}, {\"type\": \"number_card\", \"data\": {\"number_card_name\": \"Pending Store Requests\", \"col\": 3}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class='h4'><b>Managerial</b></span>\", \"col\": 12}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\\ud83d\\udcc8 Manager Dashboard\", \"col\": 3}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class='h4'><b>Field &amp; Overview</b></span>\", \"col\": 12}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\\ud83d\\udcca Dashboard\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\\ud83d\\udcf1 Field Page\", \"col\": 3}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class='h4'><b>Planning</b></span>\", \"col\": 12}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Fertilizer Programme\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Block Fertilizer Plan\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Production Calendar\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Fertilizer Budget\", \"col\": 3}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class='h4'><b>Field Execution</b></span>\", \"col\": 12}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Fertilizer Store Request\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Fertilizer Application\", \"col\": 3}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class='h4'><b>Master Data</b></span>\", \"col\": 12}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Farm Block\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Fertilizer rate\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Leaf Analysis\", \"col\": 3}}]",
  "creation": "2026-06-23 10:44:18.173377",
  "custom_blocks": [],
  "docstatus": 0,
@@ -53,11 +53,28 @@
    "type": "Link"
   }
  ],
- "modified": "2026-06-23 13:15:17.429300",
+ "modified": "2026-07-07 18:35:54.482120",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "UpandeCNP",
- "number_cards": [],
+ "number_cards": [
+  {
+   "label": "Blocks Planned",
+   "number_card_name": "Blocks Planned"
+  },
+  {
+   "label": "Issued (Awaiting Apply)",
+   "number_card_name": "Issued (Awaiting Apply)"
+  },
+  {
+   "label": "Applications Done",
+   "number_card_name": "Applications Done"
+  },
+  {
+   "label": "Pending Store Requests",
+   "number_card_name": "Pending Store Requests"
+  }
+ ],
  "owner": "Administrator",
  "parent_page": "",
  "public": 1,
@@ -112,6 +129,30 @@
    "label": "Leaf Analysis",
    "link_to": "Leaf Analysis",
    "type": "DocType"
+  },
+  {
+   "doc_view": "List",
+   "label": "Fertilizer Store Request",
+   "link_to": "Fertilizer Store Request",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "",
+   "label": "\ud83d\udcca Dashboard",
+   "type": "URL",
+   "url": "/dashboard"
+  },
+  {
+   "doc_view": "",
+   "label": "\ud83d\udcf1 Field Page",
+   "type": "URL",
+   "url": "/field"
+  },
+  {
+   "doc_view": "",
+   "label": "\ud83d\udcc8 Manager Dashboard",
+   "type": "URL",
+   "url": "/manager"
   }
  ],
  "title": "UpandeCNP"

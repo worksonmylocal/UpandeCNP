@@ -1,0 +1,224 @@
+{% extends "templates/web.html" %}
+
+{% block title %}Manager Dashboard{% endblock %}
+
+{% block head_include %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+    body { background: #0f1e17; }
+    .mgr { max-width: 1240px; margin: 0 auto; padding: 20px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #e8f0ec; }
+    .mgr-header { display: flex; justify-content: space-between; align-items: center;
+        flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
+    .mgr-header h1 { font-size: 26px; margin: 0; color: #fff; }
+    .mgr-header select { padding: 10px 14px; font-size: 15px; border-radius: 10px;
+        border: 1px solid #2f4a3d; background: #16281f; color: #e8f0ec; }
+    /* KPI strip */
+    .kpi-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr));
+        gap: 14px; margin-bottom: 26px; }
+    .kpi { background: linear-gradient(135deg,#183026,#1f4030); border-radius: 16px;
+        padding: 18px; border: 1px solid #2a4a3a; }
+    .kpi .v { font-size: 26px; font-weight: 700; color: #fff; line-height: 1.1; }
+    .kpi .l { font-size: 12px; color: #9dbaab; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .kpi.good .v { color: #4ade80; } .kpi.bad .v { color: #f87171; } .kpi.warn .v { color: #fbbf24; }
+    .section-title { font-size: 14px; text-transform: uppercase; letter-spacing: 1px;
+        color: #7fa891; margin: 26px 0 14px; font-weight: 700; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
+    .panel { background: #16281f; border-radius: 16px; padding: 20px; border: 1px solid #24402f; }
+    .panel h3 { margin: 0 0 16px; font-size: 15px; color: #cfe3d8; }
+    .big-num { font-size: 40px; font-weight: 800; color: #fff; }
+    .sub { color: #9dbaab; font-size: 13px; }
+    .bar-track { background: #0f1e17; border-radius: 20px; height: 30px; overflow: hidden; margin-top: 10px; }
+    .bar-fill { height: 100%; display: flex; align-items: center; justify-content: center;
+        font-size: 13px; font-weight: 700; color: #06231a; transition: width 0.7s; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; color: #dbe8e1; }
+    th { text-align: left; color: #7fa891; padding: 7px 6px; font-size: 12px; border-bottom: 1px solid #24402f; }
+    td { padding: 8px 6px; border-bottom: 1px solid #1c3327; }
+    .spinner { text-align: center; padding: 30px; color: #5f7d6e; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="mgr">
+    <div class="mgr-header">
+        <h1>📊 Manager Dashboard</h1>
+        <select id="season-select" onchange="loadAll()"></select>
+    </div>
+
+    <div class="kpi-strip" id="kpi-strip"><div class="spinner">Loading…</div></div>
+
+    <div class="section-title">💰 Financial</div>
+    <div class="grid">
+        <div class="panel">
+            <h3>Budget vs Actual</h3>
+            <div id="budget-panel"><div class="spinner">Loading…</div></div>
+        </div>
+        <div class="panel">
+            <h3>Cost per Hectare</h3>
+            <div id="cph-panel"><div class="spinner">Loading…</div></div>
+        </div>
+    </div>
+
+    <div class="section-title">📈 Execution</div>
+    <div class="grid">
+        <div class="panel"><h3>Application Pace (Planned vs Applied)</h3><canvas id="pace-chart" height="200"></canvas></div>
+        <div class="panel">
+            <h3>Season Progress</h3>
+            <div id="progress-panel"><div class="spinner">Loading…</div></div>
+        </div>
+    </div>
+
+    <div class="section-title">🍃 Agronomic</div>
+    <div class="grid">
+        <div class="panel"><h3>Yield Tier Distribution</h3><canvas id="tier-chart" height="200"></canvas></div>
+        <div class="panel"><h3>Blocks Deficient by Nutrient</h3><canvas id="leaf-chart" height="200"></canvas></div>
+    </div>
+
+    <div class="section-title">🔄 Throughput</div>
+    <div class="grid">
+        <div class="panel">
+            <h3>Stock Coverage vs Need</h3>
+            <div id="coverage-panel"><div class="spinner">Loading…</div></div>
+        </div>
+        <div class="panel">
+            <h3>⚠️ Needs Attention</h3>
+            <div id="attention-panel"><div class="spinner">Loading…</div></div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function call(method, args) {
+    const res = await fetch("/api/method/upandecnp.upandecnp.api." + method, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        credentials: "same-origin", body: JSON.stringify(args || {}),
+    });
+    return (await res.json()).message;
+}
+
+let paceChart, tierChart, leafChart;
+function season() { return document.getElementById("season-select").value; }
+
+async function loadSeasons() {
+    const seasons = await call("get_seasons", {});
+    document.getElementById("season-select").innerHTML =
+        seasons.map(s => `<option value="${s}">${s}</option>`).join("");
+    loadAll();
+}
+
+async function loadAll() {
+    loadKpis(); loadBudget(); loadCph(); loadPace();
+    loadProgress(); loadTiers(); loadLeaf(); loadCoverage(); loadAttention();
+}
+
+async function loadKpis() {
+    const k = await call("get_manager_kpis", { season: season() });
+    const varClass = k.variance > 0 ? "bad" : "good";
+    const varSign = k.variance > 0 ? "+" : "";
+    document.getElementById("kpi-strip").innerHTML = `
+        <div class="kpi"><div class="v">Ksh ${(k.total_actual/1000).toFixed(0)}k</div><div class="l">Actual Spend</div></div>
+        <div class="kpi"><div class="v">Ksh ${k.cost_per_ha.toLocaleString()}</div><div class="l">Cost / Hectare</div></div>
+        <div class="kpi ${k.pct_complete >= 50 ? 'good':'warn'}"><div class="v">${k.pct_complete}%</div><div class="l">Season Complete</div></div>
+        <div class="kpi"><div class="v">${k.blocks}</div><div class="l">Blocks</div></div>
+        <div class="kpi ${k.overdue > 0 ? 'bad':'good'}"><div class="v">${k.overdue}</div><div class="l">Overdue</div></div>
+        <div class="kpi ${k.variance > 0 ? 'bad':'good'}"><div class="v">${varSign}${k.variance_pct}%</div><div class="l">Budget Variance</div></div>
+    `;
+}
+
+async function loadBudget() {
+    const b = await call("get_budget_summary", { season: season() });
+    const pct = Math.min(b.pct_spent, 100);
+    const color = b.pct_spent > 100 ? "#f87171" : "#4ade80";
+    document.getElementById("budget-panel").innerHTML = `
+        <div class="big-num">Ksh ${b.total_actual.toLocaleString()}</div>
+        <div class="sub">of Ksh ${b.total_budget.toLocaleString()} budgeted</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}">${b.pct_spent}%</div></div>
+    `;
+}
+
+async function loadCph() {
+    const b = await call("get_budget_summary", { season: season() });
+    document.getElementById("cph-panel").innerHTML = `
+        <div class="big-num">Ksh ${b.cost_per_ha_actual.toLocaleString()}</div>
+        <div class="sub">actual per hectare · budgeted Ksh ${b.cost_per_ha_budget.toLocaleString()}</div>
+    `;
+}
+
+async function loadPace() {
+    const d = await call("get_application_pace", { season: season() });
+    if (paceChart) paceChart.destroy();
+    paceChart = new Chart(document.getElementById("pace-chart"), {
+        type: "bar",
+        data: { labels: d.map(x => x.month), datasets: [
+            { label: "Planned", data: d.map(x => x.planned), backgroundColor: "#2f6b4f" },
+            { label: "Applied", data: d.map(x => x.applied), backgroundColor: "#4ade80" },
+        ]},
+        options: { plugins: { legend: { labels: { color: "#cfe3d8" } } },
+            scales: { x: { ticks: { color: "#9dbaab" } }, y: { ticks: { color: "#9dbaab" }, beginAtZero: true } } }
+    });
+}
+
+async function loadProgress() {
+    const k = await call("get_manager_kpis", { season: season() });
+    document.getElementById("progress-panel").innerHTML = `
+        <div class="big-num">${k.pct_complete}%</div>
+        <div class="sub">of planned applications completed</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${k.pct_complete}%;background:#4ade80">${k.pct_complete}%</div></div>
+        <div class="sub" style="margin-top:12px;">${k.pending_requests} store requests awaiting approval</div>
+    `;
+}
+
+async function loadTiers() {
+    const d = await call("get_yield_tier_distribution", { season: season() });
+    if (tierChart) tierChart.destroy();
+    tierChart = new Chart(document.getElementById("tier-chart"), {
+        type: "bar",
+        data: { labels: d.map(x => x.tier), datasets: [{ data: d.map(x => x.count),
+            backgroundColor: ["#f87171","#fbbf24","#4ade80","#22d3ee"] }] },
+        options: { plugins: { legend: { display: false } },
+            scales: { x: { ticks: { color: "#9dbaab" } }, y: { ticks: { color: "#9dbaab" }, beginAtZero: true } } }
+    });
+}
+
+async function loadLeaf() {
+    const d = await call("get_leaf_deficiency_summary", { season: season() });
+    if (leafChart) leafChart.destroy();
+    if (!d.length) { document.getElementById("leaf-chart").parentElement.querySelector("canvas").style.display="none"; return; }
+    leafChart = new Chart(document.getElementById("leaf-chart"), {
+        type: "bar",
+        data: { labels: d.map(x => x.nutrient), datasets: [{ label: "Blocks deficient",
+            data: d.map(x => x.count), backgroundColor: "#f87171" }] },
+        options: { plugins: { legend: { display: false } },
+            scales: { x: { ticks: { color: "#9dbaab" } }, y: { ticks: { color: "#9dbaab" }, beginAtZero: true } } }
+    });
+}
+
+async function loadCoverage() {
+    const data = await call("get_stock_coverage", { season: season() });
+    if (!data.length) { document.getElementById("coverage-panel").innerHTML = '<div class="spinner">No data.</div>'; return; }
+    document.getElementById("coverage-panel").innerHTML = `<table>
+        <tr><th>Product</th><th>Need</th><th>Stock</th><th>Status</th></tr>
+        ${data.map(d => `<tr><td>${d.product}</td><td>${d.need.toLocaleString()}</td>
+            <td>${d.stock.toLocaleString()}</td>
+            <td>${d.covered ? '<span style="color:#4ade80">✓ Covered</span>'
+                : '<span style="color:#f87171">Short '+d.shortfall.toLocaleString()+'</span>'}</td></tr>`).join("")}
+    </table>`;
+}
+
+async function loadAttention() {
+    const d = await call("get_upcoming_and_overdue", {});
+    const od = d.overdue || [], up = d.upcoming || [];
+    let html = "";
+    if (od.length) html += `<div style="color:#f87171;font-weight:600;margin-bottom:8px;">🚨 ${od.length} overdue</div>
+        <table>${od.slice(0,5).map(o => `<tr><td>${o.block}</td><td>${o.fertilizer_product}</td><td>${o.application_month}</td></tr>`).join("")}</table>`;
+    if (up.length) html += `<div style="color:#fbbf24;font-weight:600;margin:12px 0 8px;">⏳ ${up.length} due soon</div>
+        <table>${up.slice(0,5).map(u => `<tr><td>${u.block}</td><td>${u.fertilizer_product}</td><td>${u.days}d</td></tr>`).join("")}</table>`;
+    if (!html) html = '<div class="spinner">✅ All clear.</div>';
+    document.getElementById("attention-panel").innerHTML = html;
+}
+
+window.addEventListener("load", () => setTimeout(loadSeasons, 150));
+</script>
+{% endblock %}

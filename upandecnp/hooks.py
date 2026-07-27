@@ -84,7 +84,7 @@ app_license = "mit"
 
 # before_install = "upandecnp.install.before_install"
 # after_install = "upandecnp.install.after_install"
-
+after_install = "upandecnp.upandecnp.install.after_install"
 # Uninstallation
 # ------------
 
@@ -259,3 +259,8 @@ scheduler_events = {
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
 
+fixtures = [
+    {"dt": "Workflow", "filters": [["name", "=", "Fertilizer Store Request Workflow"]]},
+    {"dt": "Workflow State", "filters": [["name", "in", ["Requested", "Approved", "Issued", "Rejected"]]]},
+    {"dt": "Workflow Action Master", "filters": [["name", "in", ["Approve", "Reject", "Issue"]]]},
+]

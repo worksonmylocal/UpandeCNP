@@ -1,0 +1,242 @@
+{% extends "templates/web.html" %}
+
+{% block title %}Field Fertilizer{% endblock %}
+
+{% block head_include %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+    body { background: #f4f6f5; }
+    .field-app { max-width: 480px; margin: 0 auto; padding: 16px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .field-header { background: #1F6E43; color: #fff; padding: 20px 16px;
+        border-radius: 14px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .field-header h1 { font-size: 20px; margin: 0 0 4px; }
+    .field-header p { margin: 0; opacity: 0.9; font-size: 13px; }
+    .card { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 12px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    .card h3 { margin: 0 0 6px; font-size: 16px; color: #1a1a1a; }
+    .card .meta { font-size: 13px; color: #666; margin-bottom: 12px; }
+    .btn-big { display: block; width: 100%; padding: 16px; font-size: 16px; font-weight: 600;
+        border: none; border-radius: 12px; cursor: pointer; margin-top: 8px; }
+    .btn-green { background: #1F6E43; color: #fff; }
+    .btn-amber { background: #C9822A; color: #fff; }
+    .btn-grey  { background: #e6e8e7; color: #333; }
+    .status-pill { display: inline-block; font-size: 11px; font-weight: 600;
+        padding: 3px 10px; border-radius: 20px; margin-bottom: 8px; }
+    .pill-planned { background: #FEF0D9; color: #9A6206; }
+    .pill-issued  { background: #DDEBFF; color: #1B4B8A; }
+    .field-input { width: 100%; padding: 14px; font-size: 16px; border: 1px solid #ccc;
+        border-radius: 10px; margin: 8px 0; box-sizing: border-box; }
+    .toggle-row { display: flex; align-items: center; gap: 10px; margin: 12px 0; }
+    .toggle-row input { width: 22px; height: 22px; }
+    .toggle-row label { font-size: 15px; }
+    .back-link { color: #1F6E43; font-weight: 600; cursor: pointer; display: inline-block; margin-bottom: 12px; }
+    .empty { text-align: center; color: #888; padding: 30px 0; }
+    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+        background: #1a1a1a; color: #fff; padding: 12px 20px; border-radius: 10px;
+        font-size: 14px; z-index: 999; opacity: 0; transition: opacity 0.3s; max-width: 90%; text-align:center; }
+    .toast.show { opacity: 1; }
+    .spinner { text-align:center; padding: 30px; color:#888; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="field-app">
+    <div class="field-header">
+        <h1>🌱 Field Fertilizer</h1>
+        <p>Request from store &amp; record applications</p>
+    </div>
+
+    <div id="view-blocks">
+        <div id="blocks-list"><div class="spinner">Loading your blocks…</div></div>
+    </div>
+
+    <div id="view-plans" style="display:none;">
+        <span class="back-link" onclick="showBlocks()">← Back to blocks</span>
+        <div id="plans-title" class="card" style="background:#1F6E43;color:#fff;"></div>
+        <div id="plans-list"></div>
+    </div>
+
+    <div id="view-action" style="display:none;">
+        <span class="back-link" onclick="backToPlans()">← Back</span>
+        <div id="action-content" class="card"></div>
+    </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+async function call(method, args) {
+    const res = await fetch("/api/method/upandecnp.upandecnp.api." + method, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify(args || {}),
+    });
+    const data = await res.json();
+    return { message: data.message };
+}
+
+let currentBlock = null;
+let currentPlan = null;
+
+function toast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg; t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 2800);
+}
+
+function showBlocks() {
+    document.getElementById("view-blocks").style.display = "block";
+    document.getElementById("view-plans").style.display = "none";
+    document.getElementById("view-action").style.display = "none";
+}
+function backToPlans() {
+    document.getElementById("view-action").style.display = "none";
+    document.getElementById("view-plans").style.display = "block";
+    if (currentBlock) openBlock(currentBlock);
+}
+
+function loadBlocks() {
+    call("get_blocks_with_pending_work", {}).then(r => {
+        const list = document.getElementById("blocks-list");
+        const blocks = r.message || [];
+        if (!blocks.length) { list.innerHTML = '<div class="empty">No pending work. All caught up! 🎉</div>'; return; }
+        list.innerHTML = blocks.map(b => `
+            <div class="card">
+                <h3>${b}</h3>
+                <button class="btn-big btn-green" onclick="openBlock('${b}')">View pending work</button>
+            </div>`).join("");
+    }).catch(() => {
+        document.getElementById("blocks-list").innerHTML = '<div class="empty">Could not load. Please refresh.</div>';
+    });
+}
+
+function openBlock(block) {
+    currentBlock = block;
+    document.getElementById("plans-title").innerHTML = "<h3 style='color:#fff;margin:0;'>" + block + "</h3>";
+    document.getElementById("view-blocks").style.display = "none";
+    document.getElementById("view-action").style.display = "none";
+    document.getElementById("view-plans").style.display = "block";
+    document.getElementById("plans-list").innerHTML = '<div class="spinner">Loading…</div>';
+    call("get_pending_plans_for_block", { block }).then(r => {
+        const plans = r.message || [];
+        const list = document.getElementById("plans-list");
+        if (!plans.length) { list.innerHTML = '<div class="empty">Nothing pending for this block.</div>'; return; }
+        list.innerHTML = plans.map(p => {
+            let pill, btn;
+            if (p.status === "Issued") {
+                pill = '<span class="status-pill pill-issued">Issued — ready to apply</span>';
+                btn = `<button class="btn-big btn-amber" onclick='openRecord(${JSON.stringify(p)})'>Record application</button>`;
+            } else if (p.request_status === "Requested") {
+                pill = '<span class="status-pill pill-planned">Requested — awaiting storekeeper</span>';
+                btn = `<button class="btn-big btn-grey" onclick='showStatus(${JSON.stringify(p)})'>Show status</button>`;
+            } else if (p.request_status === "Approved") {
+                pill = '<span class="status-pill pill-issued">Approved — awaiting issue</span>';
+                btn = `<button class="btn-big btn-grey" onclick='showStatus(${JSON.stringify(p)})'>Show status</button>`;
+            } else if (p.request_status === "Rejected") {
+                pill = '<span class="status-pill" style="background:#FDE2E2;color:#A12020;">Rejected</span>';
+                btn = `<button class="btn-big btn-green" onclick='openRequest(${JSON.stringify(p)})'>Request again</button>`;
+            } else {
+                pill = '<span class="status-pill pill-planned">Planned</span>';
+                btn = `<button class="btn-big btn-green" onclick='openRequest(${JSON.stringify(p)})'>Request from store</button>`;
+            }
+            return `<div class="card">
+                ${pill}
+                <h3>${p.fertilizer_product}</h3>
+                <div class="meta">${p.application_month} · ${p.total_kg_required} Kg planned</div>
+                ${btn}
+            </div>`;
+        }).join("");
+    });
+}
+
+function showStatus(plan) {
+    const labels = {
+        "Requested": "⏳ Requested — waiting for the storekeeper to review.",
+        "Approved":  "✅ Approved — waiting for the store to issue the fertilizer.",
+        "Rejected":  "❌ Rejected by the storekeeper.",
+        "Issued":    "📦 Issued — ready to collect and apply.",
+    };
+    toast(labels[plan.request_status] || ("Status: " + plan.request_status));
+}
+
+function openRequest(plan) {
+    currentPlan = plan;
+    document.getElementById("view-plans").style.display = "none";
+    document.getElementById("view-action").style.display = "block";
+    document.getElementById("action-content").innerHTML = `
+        <h3>Request ${plan.fertilizer_product}</h3>
+        <div class="meta">${currentBlock} · ${plan.application_month}</div>
+        <label>Quantity to request (Kg)</label>
+        <input class="field-input" id="req-qty" type="number" value="${plan.total_kg_required}">
+        <button class="btn-big btn-green" onclick="submitRequest()">Send request to store</button>
+    `;
+}
+
+function submitRequest() {
+    const qty = document.getElementById("req-qty").value;
+    call("create_store_request", { block_fertilizer_plan: currentPlan.name, quantity: qty })
+        .then(r => {
+            if (r.message && r.message.name) {
+                toast("Request sent: " + r.message.name);
+                openBlock(currentBlock);
+            } else {
+                toast("Could not send request");
+            }
+        });
+}
+
+function openRecord(plan) {
+    currentPlan = plan;
+    document.getElementById("view-plans").style.display = "none";
+    document.getElementById("view-action").style.display = "block";
+    document.getElementById("action-content").innerHTML = `
+        <h3>Record ${plan.fertilizer_product}</h3>
+        <div class="meta">${currentBlock} · ${plan.application_month} · ${plan.total_kg_required} Kg planned</div>
+        <label>Actual quantity applied (Kg)</label>
+        <input class="field-input" id="act-qty" type="number" value="${plan.total_kg_required}">
+        <div class="toggle-row">
+            <input type="checkbox" id="in-full" checked onchange="toggleReason()">
+            <label for="in-full">Applied in full</label>
+        </div>
+        <div id="reason-box" style="display:none;">
+            <label>Reason it was not done in full</label>
+            <input class="field-input" id="reason" type="text" placeholder="e.g. ran out of stock">
+        </div>
+        <button class="btn-big btn-amber" onclick="submitRecord()">Submit application</button>
+    `;
+}
+
+function toggleReason() {
+    const full = document.getElementById("in-full").checked;
+    document.getElementById("reason-box").style.display = full ? "none" : "block";
+}
+
+function submitRecord() {
+    const qty = document.getElementById("act-qty").value;
+    const full = document.getElementById("in-full").checked;
+    const reason = full ? "" : (document.getElementById("reason").value || "");
+    if (!full && !reason) { toast("Please give a reason"); return; }
+
+    call("get_issued_request_for_plan", { block_fertilizer_plan: currentPlan.name }).then(sr => {
+        call("record_application", {
+            block_fertilizer_plan: currentPlan.name,
+            actual_quantity: qty,
+            applied_in_full: full ? 1 : 0,
+            partial_reason: reason,
+            store_request: sr.message || null,
+        }).then(r => {
+            if (r.message && r.message.name) {
+                toast("Application recorded: " + r.message.name);
+                openBlock(currentBlock);
+            } else {
+                toast("Could not record");
+            }
+        });
+    });
+}
+
+window.addEventListener("load", () => setTimeout(loadBlocks, 150));
+</script>
+{% endblock %}

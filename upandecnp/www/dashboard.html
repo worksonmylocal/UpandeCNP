@@ -1,0 +1,281 @@
+{% extends "templates/web.html" %}
+
+{% block title %}Crop Nutrition Dashboard{% endblock %}
+
+{% block head_include %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+    body { background: #eef1f0; }
+    .dash { max-width: 1200px; margin: 0 auto; padding: 16px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .dash-header { display: flex; justify-content: space-between; align-items: center;
+        flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+    .dash-header h1 { font-size: 24px; color: #1F6E43; margin: 0; }
+    .dash-header select { padding: 10px 14px; font-size: 15px; border-radius: 10px;
+        border: 1px solid #cbd5d0; background: #fff; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 14px; margin-bottom: 20px; }
+    .metric { background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        border-left: 5px solid #1F6E43; }
+    .metric .value { font-size: 30px; font-weight: 700; color: #1a1a1a; line-height: 1; }
+    .metric .label { font-size: 13px; color: #777; margin-top: 6px; }
+    .metric.amber { border-left-color: #C9822A; }
+    .metric.blue  { border-left-color: #2C6BB3; }
+    .metric.purple{ border-left-color: #7A4FB5; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+    .panel { background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .panel h3 { margin: 0 0 16px; font-size: 16px; color: #1a1a1a; }
+    .progress-wrap { background: #eef1f0; border-radius: 20px; height: 28px; overflow: hidden; margin-top: 8px; }
+    .progress-bar { height: 100%; background: linear-gradient(90deg,#1F6E43,#3DA96A);
+        color: #fff; font-size: 13px; font-weight: 600; display: flex; align-items: center;
+        justify-content: center; transition: width 0.6s; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { text-align: left; color: #888; font-weight: 600; padding: 8px 6px; border-bottom: 2px solid #eef1f0; font-size: 12px; }
+    td { padding: 9px 6px; border-bottom: 1px solid #f2f4f3; }
+    .badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+    .badge-full { background: #DDF3E4; color: #1F6E43; }
+    .badge-part { background: #FDE9D2; color: #9A6206; }
+    .spinner { text-align: center; padding: 40px; color: #999; }
+    .stock-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .stock-name { width: 110px; font-size: 13px; }
+    .stock-bar-wrap { flex: 1; background: #eef1f0; border-radius: 10px; height: 18px; overflow: hidden; }
+    .stock-bar { height: 100%; background: #2C6BB3; }
+    .stock-val { width: 70px; text-align: right; font-size: 13px; font-weight: 600; }
+    /* Budget */
+    .budget-row { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+    .budget-metric { flex: 1; min-width: 130px; }
+    .budget-metric .v { font-size: 24px; font-weight: 700; }
+    .budget-metric .l { font-size: 12px; color: #888; }
+    .over { color: #D14C4C; } .under { color: #1F6E43; }
+    /* Coverage */
+    .cov-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .cov-name { width: 110px; font-size: 13px; }
+    .cov-bar-wrap { flex: 1; background: #eef1f0; border-radius: 10px; height: 20px; overflow: hidden; position: relative; }
+    .cov-bar { height: 100%; }
+    .cov-val { width: 150px; text-align: right; font-size: 12px; }
+    /* Leaf grid */
+    .leaf-table td, .leaf-table th { text-align: center; padding: 8px 10px; }
+    .leaf-cell { border-radius: 6px; font-size: 11px; font-weight: 600; padding: 4px 8px; }
+    .def { background: #FDE2E2; color: #A12020; }
+    .adq { background: #DDF3E4; color: #1F6E43; }
+    .exc { background: #FEF0D9; color: #9A6206; }
+    .na  { background: #f0f0f0; color: #aaa; }
+    .pill-days { background:#DDEBFF; color:#1B4B8A; font-size:11px; padding:2px 8px; border-radius:10px; font-weight:600; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="dash">
+    <div class="dash-header">
+        <h1>🌱 Crop Nutrition Dashboard</h1>
+        <select id="season-select" onchange="loadAll()"></select>
+    </div>
+
+    <div class="cards" id="metrics"><div class="spinner">Loading…</div></div>
+
+    <div class="panel" style="margin-bottom:20px;">
+        <h3>Season Progress — Applications Completed</h3>
+        <div class="progress-wrap"><div class="progress-bar" id="progress-bar" style="width:0%">0%</div></div>
+    </div>
+
+    <div class="grid">
+        <div class="panel"><h3>Monthly Fertilizer Requirement (Kg)</h3><canvas id="monthly-chart" height="200"></canvas></div>
+        <div class="panel"><h3>Requirement by Product (Kg)</h3><canvas id="product-chart" height="200"></canvas></div>
+    </div>
+
+    <div class="panel" style="margin-bottom:20px;">
+        <h3>Budget vs Actual Spend</h3>
+        <div id="budget-panel"><div class="spinner">Loading…</div></div>
+    </div>
+
+    <div class="grid">
+        <div class="panel">
+            <h3>⏳ Upcoming Applications (next 30 days)</h3>
+            <div id="upcoming-list"><div class="spinner">Loading…</div></div>
+        </div>
+        <div class="panel">
+            <h3>🚨 Overdue Applications</h3>
+            <div id="overdue-list"><div class="spinner">Loading…</div></div>
+        </div>
+    </div>
+
+    <div class="panel" style="margin-bottom:20px;">
+        <h3>Stock Coverage vs Season Need</h3>
+        <div id="coverage-list"><div class="spinner">Loading…</div></div>
+    </div>
+
+    <div class="panel" style="margin-bottom:20px;">
+        <h3>🍃 Leaf Nutrient Status by Block</h3>
+        <div id="leaf-grid" style="overflow-x:auto;"><div class="spinner">Loading…</div></div>
+    </div>
+
+    <div class="grid">
+        <div class="panel">
+            <h3>Current Stock Levels</h3>
+            <div id="stock-list"><div class="spinner">Loading…</div></div>
+        </div>
+        <div class="panel">
+            <h3>Recent Field Activity</h3>
+            <div id="activity-list"><div class="spinner">Loading…</div></div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function call(method, args) {
+    const res = await fetch("/api/method/upandecnp.upandecnp.api." + method, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify(args || {}),
+    });
+    const data = await res.json();
+    return data.message;
+}
+
+let monthlyChart, productChart;
+
+async function loadSeasons() {
+    const seasons = await call("get_seasons", {});
+    const sel = document.getElementById("season-select");
+    sel.innerHTML = seasons.map(s => `<option value="${s}">${s}</option>`).join("");
+    loadAll();
+}
+function season() { return document.getElementById("season-select").value; }
+
+async function loadAll() {
+    loadMetrics(); loadMonthly(); loadProducts();
+    loadStock(); loadActivity(); loadBudget();
+    loadUpcomingOverdue(); loadCoverage(); loadLeafGrid();
+}
+
+async function loadMetrics() {
+    const m = await call("get_dashboard_summary", { season: season() });
+    document.getElementById("metrics").innerHTML = `
+        <div class="metric"><div class="value">${m.blocks}</div><div class="label">Blocks in Programme</div></div>
+        <div class="metric blue"><div class="value">${m.total_kg.toLocaleString()}</div><div class="label">Total Kg Planned</div></div>
+        <div class="metric"><div class="value">${m.applied}</div><div class="label">Applications Done</div></div>
+        <div class="metric amber"><div class="value">${m.issued}</div><div class="label">Issued, Awaiting Apply</div></div>
+        <div class="metric purple"><div class="value">${m.planned}</div><div class="label">Still Planned</div></div>
+        <div class="metric amber"><div class="value">${m.pending_requests}</div><div class="label">Pending Store Requests</div></div>
+    `;
+    const bar = document.getElementById("progress-bar");
+    bar.style.width = m.pct_applied + "%"; bar.textContent = m.pct_applied + "%";
+}
+
+async function loadMonthly() {
+    const data = await call("get_monthly_breakdown", { season: season() });
+    const ctx = document.getElementById("monthly-chart");
+    if (monthlyChart) monthlyChart.destroy();
+    monthlyChart = new Chart(ctx, { type: "bar",
+        data: { labels: data.map(d => d.month),
+            datasets: [{ label: "Kg", data: data.map(d => d.qty), backgroundColor: "#1F6E43", borderRadius: 6 }] },
+        options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } } });
+}
+
+async function loadProducts() {
+    const data = await call("get_product_breakdown", { season: season() });
+    const ctx = document.getElementById("product-chart");
+    if (productChart) productChart.destroy();
+    const colors = ["#1F6E43","#2C6BB3","#C9822A","#7A4FB5","#3DA96A","#D14C4C","#E0A82E","#4A9BD1"];
+    productChart = new Chart(ctx, { type: "doughnut",
+        data: { labels: data.map(d => d.product),
+            datasets: [{ data: data.map(d => d.qty), backgroundColor: colors }] },
+        options: { plugins: { legend: { position: "right", labels: { boxWidth: 14, font: { size: 12 } } } } } });
+}
+
+async function loadStock() {
+    const data = await call("get_stock_levels", {});
+    const max = Math.max(...data.map(d => d.qty), 1);
+    document.getElementById("stock-list").innerHTML = data.map(d => `
+        <div class="stock-row">
+            <div class="stock-name">${d.product}</div>
+            <div class="stock-bar-wrap"><div class="stock-bar" style="width:${(d.qty/max*100)}%"></div></div>
+            <div class="stock-val">${d.qty.toLocaleString()}</div>
+        </div>`).join("");
+}
+
+async function loadActivity() {
+    const data = await call("get_recent_activity", {});
+    if (!data.length) { document.getElementById("activity-list").innerHTML = '<div class="spinner">No applications yet.</div>'; return; }
+    document.getElementById("activity-list").innerHTML = `
+        <table>
+            <tr><th>Date</th><th>Block</th><th>Product</th><th>Kg</th><th>Status</th></tr>
+            ${data.map(a => `<tr>
+                <td>${a.application_date || ""}</td><td>${a.block}</td><td>${a.fertilizer_product}</td>
+                <td>${a.actual_quantity_applied_kg}</td>
+                <td>${a.applied_in_full ? '<span class="badge badge-full">Full</span>' : '<span class="badge badge-part">Partial</span>'}</td>
+            </tr>`).join("")}
+        </table>`;
+}
+
+async function loadBudget() {
+    const b = await call("get_budget_summary", { season: season() });
+    const varClass = b.variance > 0 ? "over" : "under";
+    const varSign = b.variance > 0 ? "+" : "";
+    document.getElementById("budget-panel").innerHTML = `
+        <div class="budget-row">
+            <div class="budget-metric"><div class="v">Ksh ${b.total_budget.toLocaleString()}</div><div class="l">Budgeted</div></div>
+            <div class="budget-metric"><div class="v">Ksh ${b.total_actual.toLocaleString()}</div><div class="l">Actual so far</div></div>
+            <div class="budget-metric"><div class="v ${varClass}">${varSign}Ksh ${b.variance.toLocaleString()}</div><div class="l">Variance</div></div>
+            <div class="budget-metric"><div class="v">Ksh ${b.cost_per_ha_budget.toLocaleString()}</div><div class="l">Budget Cost / Ha</div></div>
+            <div class="budget-metric"><div class="v">Ksh ${b.cost_per_ha_actual.toLocaleString()}</div><div class="l">Actual Cost / Ha</div></div>
+        </div>
+        <div class="progress-wrap" style="margin-top:16px;">
+            <div class="progress-bar" style="width:${Math.min(b.pct_spent,100)}%;background:${b.pct_spent>100?'#D14C4C':'linear-gradient(90deg,#2C6BB3,#4A9BD1)'}">${b.pct_spent}% spent</div>
+        </div>`;
+}
+
+async function loadUpcomingOverdue() {
+    const d = await call("get_upcoming_and_overdue", {});
+    const up = d.upcoming || [], od = d.overdue || [];
+    document.getElementById("upcoming-list").innerHTML = up.length ? `
+        <table><tr><th>Block</th><th>Product</th><th>Month</th><th>Due in</th></tr>
+        ${up.map(u => `<tr><td>${u.block}</td><td>${u.fertilizer_product}</td><td>${u.application_month}</td>
+            <td><span class="pill-days">${u.days}d</span></td></tr>`).join("")}</table>`
+        : '<div class="spinner">Nothing due soon.</div>';
+    document.getElementById("overdue-list").innerHTML = od.length ? `
+        <table><tr><th>Block</th><th>Product</th><th>Month</th></tr>
+        ${od.map(o => `<tr><td>${o.block}</td><td>${o.fertilizer_product}</td><td>${o.application_month}</td></tr>`).join("")}</table>`
+        : '<div class="spinner">✅ Nothing overdue.</div>';
+}
+
+async function loadCoverage() {
+    const data = await call("get_stock_coverage", { season: season() });
+    if (!data.length) { document.getElementById("coverage-list").innerHTML = '<div class="spinner">No requirement data.</div>'; return; }
+    const max = Math.max(...data.map(d => Math.max(d.need, d.stock)), 1);
+    document.getElementById("coverage-list").innerHTML = data.map(d => {
+        const color = d.covered ? "#3DA96A" : "#D14C4C";
+        const label = d.covered ? `${d.stock.toLocaleString()} / ${d.need.toLocaleString()} ✓`
+            : `${d.stock.toLocaleString()} / ${d.need.toLocaleString()} (short ${d.shortfall.toLocaleString()})`;
+        return `<div class="cov-row">
+            <div class="cov-name">${d.product}</div>
+            <div class="cov-bar-wrap"><div class="cov-bar" style="width:${(d.stock/max*100)}%;background:${color}"></div></div>
+            <div class="cov-val">${label}</div>
+        </div>`;
+    }).join("");
+}
+
+async function loadLeafGrid() {
+    const d = await call("get_leaf_deficiency_grid", { season: season() });
+    if (!d.grid.length) { document.getElementById("leaf-grid").innerHTML = '<div class="spinner">No leaf analysis data.</div>'; return; }
+    const cls = s => s === "Deficient" ? "def" : s === "Adequate" ? "adq" : s === "Excess" ? "exc" : "na";
+    const short = s => s === "Deficient" ? "Low" : s === "Adequate" ? "OK" : s === "Excess" ? "High" : "—";
+    document.getElementById("leaf-grid").innerHTML = `
+        <table class="leaf-table">
+            <tr><th>Block</th>${d.nutrients.map(n => `<th>${n}</th>`).join("")}</tr>
+            ${d.grid.map(r => `<tr>
+                <td style="text-align:left;font-weight:600;">${r.block}</td>
+                ${d.nutrients.map(n => {
+                    const s = r.cells[n] || "—";
+                    return `<td><span class="leaf-cell ${cls(s)}">${short(s)}</span></td>`;
+                }).join("")}
+            </tr>`).join("")}
+        </table>`;
+}
+
+window.addEventListener("load", () => setTimeout(loadSeasons, 150));
+</script>
+{% endblock %}
