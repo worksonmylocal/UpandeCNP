@@ -477,3 +477,101 @@ def get_leaf_deficiency_summary(season=None):
                 deficient[r.nutrient] += 1
 
     return [{"nutrient": n, "count": deficient[n]} for n in nutrients if deficient[n] > 0]
+
+# ---------------------------------------------------------------------------
+# Kaitet integration - sync Farm Blocks from Warehouse
+# ---------------------------------------------------------------------------
+
+import json
+import re
+
+
+def _get_tree_count(warehouse_name):
+    """Extract tree_count from a warehouse's geojson properties."""
+    raw = frappe.db.get_value("Warehouse", warehouse_name, "custom_raw_geojson")
+    if not raw:
+        return None
+    try:
+        data = json.loads(raw)
+        for feature in data.get("features", []):
+            props = feature.get("properties", {})
+            if props.get("block") == warehouse_name and "tree_count" in props:
+                return props["tree_count"]
+        for feature in data.get("features", []):
+            props = feature.get("properties", {})
+            if "tree_count" in props:
+                return props["tree_count"]
+    except Exception:
+        return None
+    return None
+
+
+@frappe.whitelist()
+def sync_blocks_from_warehouse(farm=None):
+    """
+    Sync Farm Block records from Kaitet's Warehouse master.
+    If `farm` is given, only syncs blocks under that custom_farm value.
+    Otherwise syncs all farms.
+    Always overwrites area_ha and big_tree_count from the warehouse.
+    """
+    filters = {"warehouse_type": "Block", "is_group": 0}
+    if farm:
+        filters["custom_farm"] = farm
+
+    warehouses = frappe.get_all("Warehouse", filters=filters,
+        fields=["name", "warehouse_name", "custom_area_ha", "custom_farm"],
+        order_by="name")
+
+    created, updated, errors = 0, 0, []
+
+    for w in warehouses:
+        try:
+            area = w.custom_area_ha or 0
+            trees = _get_tree_count(w.name) or 0
+            orchard = w.warehouse_name.split(" BLK ")[0].strip() if " BLK " in w.warehouse_name else w.warehouse_name
+            match = re.search(r"BLK\s+(\d+)", w.warehouse_name)
+            block_number = match.group(1) if match else "0"
+
+            existing = frappe.db.exists("Farm Block", {"block_name": w.warehouse_name})
+
+            if existing:
+                doc = frappe.get_doc("Farm Block", existing)
+                doc.area_ha = area
+                doc.big_tree_count = trees
+                doc.location = w.custom_farm or orchard
+                doc.save(ignore_permissions=True)
+                updated += 1
+            else:
+                doc = frappe.get_doc({
+                    "doctype": "Farm Block",
+                    "block_name": w.warehouse_name,
+                    "block_number": block_number,
+                    "location": w.custom_farm or orchard,
+                    "area_ha": area,
+                    "big_tree_count": trees,
+                    "small_tree_count": 0,
+                    "variety": "Hass",
+                })
+                doc.insert(ignore_permissions=True)
+                created += 1
+        except Exception as e:
+            errors.append(f"{w.name}: {str(e)}")
+
+    frappe.db.commit()
+    return {
+        "created": created,
+        "updated": updated,
+        "errors": errors,
+        "total_processed": len(warehouses),
+    }
+
+
+@frappe.whitelist()
+def get_available_farms():
+    """Return the list of distinct custom_farm values on Block warehouses, for the sync dialog."""
+    farms = frappe.db.sql("""
+        SELECT DISTINCT custom_farm FROM `tabWarehouse`
+        WHERE warehouse_type = 'Block' AND custom_farm IS NOT NULL AND custom_farm != ''
+        ORDER BY custom_farm
+    """, as_dict=True)
+    return [f.custom_farm for f in farms]
