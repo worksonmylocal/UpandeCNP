@@ -148,8 +148,11 @@ def calculate_programme_lines(blocks, crop="Hass Avocado", season="2025/2026", c
                 small_kg     = total_kg * (1 - big_pct)
 
                 # G/tree based on fixed planting density of 250 plants/Ha
-                g_per_big   = round(rounded_rate / PLANTS_PER_HA, 3)
-                g_per_small = round(g_per_big * SMALL_TREE_RATIO, 3)
+                # G/tree: use the block's actual tree density if known, else fall back to PLANTS_PER_HA.
+                # rounded_rate is Kg/Ha, so divide by trees/Ha then convert Kg -> g (x1000).
+                trees_per_ha = (total_trees / area_ha) if (total_trees and area_ha) else PLANTS_PER_HA
+                g_per_big   = round((rounded_rate / trees_per_ha) * 1000, 1)
+                g_per_small = round(g_per_big * SMALL_TREE_RATIO, 1)
 
                 lines.append({
                     "block":                block_name,
