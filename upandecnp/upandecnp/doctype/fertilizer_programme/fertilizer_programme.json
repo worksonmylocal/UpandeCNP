@@ -9,12 +9,17 @@
   "section_break_afqj",
   "amended_from",
   "season",
-  "orchard",
+  "farm",
   "crop",
   "production_calendar",
+  "potassium_source",
   "status",
+  "section_break_byd",
   "block_yield_data",
-  "programme_lines"
+  "section_break_lines",
+  "programme_lines",
+  "section_break_k",
+  "potassium_candidates"
  ],
  "fields": [
   {
@@ -39,16 +44,20 @@
    "reqd": 1
   },
   {
-   "fieldname": "orchard",
-   "fieldtype": "Data",
+   "fieldname": "farm",
+   "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Orchard",
+   "label": "Farm",
+   "options": "Farm",
    "reqd": 1
   },
   {
    "fieldname": "crop",
-   "fieldtype": "Data",
-   "label": "Crop"
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Crop",
+   "options": "Crop",
+   "reqd": 1
   },
   {
    "fieldname": "status",
@@ -57,16 +66,41 @@
    "options": "Draft\nSubmitted\nApproved\nActive"
   },
   {
+   "fieldname": "potassium_source",
+   "fieldtype": "Link",
+   "label": "Potassium Source",
+   "options": "Item",
+   "description": "Which of the crop's alternative potassium products (e.g. MOP vs K2SO4) actually feeds into the plan. Both are always computed for comparison."
+  },
+  {
+   "fieldname": "section_break_byd",
+   "fieldtype": "Section Break",
+   "label": "Block Yield Data"
+  },
+  {
    "fieldname": "block_yield_data",
    "fieldtype": "Table",
-   "label": "Block Yield Data",
    "options": "Programme Block Yield"
+  },
+  {
+   "fieldname": "section_break_lines",
+   "fieldtype": "Section Break",
+   "label": "Programme Lines"
   },
   {
    "fieldname": "programme_lines",
    "fieldtype": "Table",
-   "label": "Programme Lines",
    "options": "Fertilizer Programme Line"
+  },
+  {
+   "fieldname": "section_break_k",
+   "fieldtype": "Section Break",
+   "label": "Potassium Source Comparison"
+  },
+  {
+   "fieldname": "potassium_candidates",
+   "fieldtype": "Table",
+   "options": "Fertilizer Programme Potassium Candidate"
   },
   {
    "fieldname": "production_calendar",
@@ -80,7 +114,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-07-03 14:24:45.708739",
+ "modified": "2026-08-10 09:00:00.000000",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Fertilizer Programme",

@@ -22,6 +22,8 @@ def get_columns():
 
 def get_data(filters):
     conditions = {"docstatus": 1}
+    if filters.get("farm"):
+        conditions["farm"] = filters["farm"]
     if filters.get("season"):
         conditions["season"] = filters["season"]
     if filters.get("block"):

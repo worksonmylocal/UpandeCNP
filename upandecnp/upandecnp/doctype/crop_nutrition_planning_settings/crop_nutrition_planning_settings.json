@@ -6,8 +6,6 @@
  "engine": "InnoDB",
  "field_order": [
   "section_break_zcrd",
-  "fertilizer_warehouse",
-  "farm_manager_email",
   "upcoming_alert_days",
   "variance_threshold_pct"
  ],
@@ -15,17 +13,6 @@
   {
    "fieldname": "section_break_zcrd",
    "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "fertilizer_warehouse",
-   "fieldtype": "Link",
-   "label": "Fertilizer Warehouse",
-   "options": "Warehouse"
-  },
-  {
-   "fieldname": "farm_manager_email",
-   "fieldtype": "Data",
-   "label": "Farm Manager Email"
   },
   {
    "default": "14",

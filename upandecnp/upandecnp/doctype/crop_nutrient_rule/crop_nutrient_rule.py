@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class FertilizerRate(Document):
+class CropNutrientRule(Document):
 	pass

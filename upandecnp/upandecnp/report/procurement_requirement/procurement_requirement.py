@@ -25,6 +25,8 @@ def get_data(filters):
         frappe.throw("Please select a Fertilizer Programme")
 
     programme = frappe.get_doc("Fertilizer Programme", programme_name)
+    warehouse = frappe.db.get_value("Farm", programme.farm, "warehouse") if programme.farm else None
+    bag_sizes = get_bag_sizes(programme.crop)
 
     # Aggregate requirements per product
     requirements = {}
@@ -36,9 +38,9 @@ def get_data(filters):
 
     rows = []
     for product, req in requirements.items():
-        stock = get_stock_qty(product)
+        stock = get_stock_qty(product, warehouse)
         shortfall = max(req["total_kg"] - stock, 0)
-        order_qty = round_order_qty(shortfall, product)
+        order_qty = round_order_qty(shortfall, product, bag_sizes)
 
         rows.append({
             "product":      product,
@@ -52,18 +54,29 @@ def get_data(filters):
     return sorted(rows, key=lambda r: r["shortfall_kg"], reverse=True)
 
 
-def get_stock_qty(item_code):
-    result = frappe.db.get_value("Bin", {"item_code": item_code}, "actual_qty")
+def get_stock_qty(item_code, warehouse=None):
+    filters = {"item_code": item_code}
+    if warehouse:
+        filters["warehouse"] = warehouse
+    result = frappe.db.get_value("Bin", filters, "actual_qty")
     return flt(result)
 
 
-def round_order_qty(shortfall, product):
+def get_bag_sizes(crop):
+    """Read bag_weight_kg per product from the crop's Crop Nutrient Rule rows,
+    instead of a hardcoded table, so it stays in sync with the calculation engine."""
+    if not crop:
+        return {}
+    rows = frappe.get_all(
+        "Crop Nutrient Rule",
+        filters={"parent": crop, "parenttype": "Crop"},
+        fields=["fertilizer_product", "bag_weight_kg"],
+    )
+    return {r.fertilizer_product: flt(r.bag_weight_kg) for r in rows if r.bag_weight_kg}
+
+
+def round_order_qty(shortfall, product, bag_sizes):
     if shortfall <= 0:
         return 0
-    bag_sizes = {
-        "CAN": 50, "TSP": 50, "MOP": 50, "K2SO4": 50,
-        "Gypsum": 1000, "Ag Lime": 1000,
-        "Zinc Sulphate": 25, "Borax": 25,
-    }
     bag = bag_sizes.get(product, 50)
     return math.ceil(shortfall / bag) * bag

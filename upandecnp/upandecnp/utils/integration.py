@@ -27,14 +27,16 @@ def month_to_date(month_name):
     return f"{year}-{month_idx:02d}-01"
 
 
+def get_farm_warehouse(farm):
+    return frappe.db.get_value("Farm", farm, "warehouse") if farm else None
+
+
 def calculate_shortfalls(programme):
     """
     Aggregate programme requirement per product, net off live stock,
     return a dict of products with a shortfall.
     """
-    warehouse = frappe.db.get_single_value(
-        "Crop Nutrition Planning Settings", "fertilizer_warehouse"
-    )
+    warehouse = get_farm_warehouse(programme.farm)
 
     requirements = {}
     for line in programme.get("programme_lines", []):
@@ -67,6 +69,7 @@ def create_material_requests_for_programme(programme_name):
         frappe.msgprint("Stock is sufficient — no Material Request needed.", alert=True)
         return None
 
+    warehouse = get_farm_warehouse(programme.farm)
     items = []
     for product, data in shortfalls.items():
         items.append({
@@ -74,9 +77,7 @@ def create_material_requests_for_programme(programme_name):
             "qty": round(data["shortfall_kg"], 2),
             "uom": "Kg",
             "schedule_date": month_to_date(data["first_month"]),
-            "warehouse": frappe.db.get_single_value(
-                "Crop Nutrition Planning Settings", "fertilizer_warehouse"
-            ),
+            "warehouse": warehouse,
         })
 
     mr = frappe.get_doc({
@@ -104,12 +105,22 @@ def is_fertilizer(item_code):
 def update_budget_on_receipt(doc, method=None):
     """
     Hook: called when a Purchase Receipt is submitted.
-    For each fertilizer line, update the actuals on the most recent
-    submitted Fertilizer Budget.
+    Resolves the receiving warehouse back to a Farm, then updates the actuals
+    on that farm's most recent submitted Fertilizer Budget - a receipt for
+    one farm's warehouse must never update another farm's budget.
     """
+    fertilizer_items = [item for item in doc.get("items", []) if is_fertilizer(item.item_code)]
+    if not fertilizer_items:
+        return
+
+    warehouses = {item.warehouse for item in fertilizer_items if item.warehouse}
+    farm = frappe.db.get_value("Farm", {"warehouse": ["in", list(warehouses)]}, "name") if warehouses else None
+    if not farm:
+        return
+
     budgets = frappe.get_all(
         "Fertilizer Budget",
-        filters={"docstatus": 1},
+        filters={"docstatus": 1, "farm": farm},
         fields=["name"],
         order_by="creation desc",
         limit=1,
@@ -119,18 +130,14 @@ def update_budget_on_receipt(doc, method=None):
 
     budget = frappe.get_doc("Fertilizer Budget", budgets[0].name)
 
-    updated = False
-    for item in doc.get("items", []):
-        if is_fertilizer(item.item_code):
-            budget.update_actuals_from_receipt(
-                item_code=item.item_code,
-                received_qty=flt(item.qty),
-                received_rate=flt(item.rate),
-            )
-            updated = True
-
-    if updated:
-        frappe.msgprint(
-            f"Fertilizer Budget {budget.name} updated with received quantities.",
-            alert=True,
+    for item in fertilizer_items:
+        budget.update_actuals_from_receipt(
+            item_code=item.item_code,
+            received_qty=flt(item.qty),
+            received_rate=flt(item.rate),
         )
+
+    frappe.msgprint(
+        f"Fertilizer Budget {budget.name} updated with received quantities.",
+        alert=True,
+    )

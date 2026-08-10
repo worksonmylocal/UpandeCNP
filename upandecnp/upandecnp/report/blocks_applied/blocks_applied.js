@@ -1,6 +1,12 @@
 frappe.query_reports["Blocks Applied"] = {
     filters: [
         {
+            fieldname: "farm",
+            label: "Farm",
+            fieldtype: "Link",
+            options: "Farm"
+        },
+        {
             fieldname: "from_date",
             label: "From Date",
             fieldtype: "Date"

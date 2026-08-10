@@ -1,13 +1,17 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:LA-{block}-{sampling_date}",
+ "autoname": "format:LA-{section}-{yield_tier}",
  "creation": "2026-06-22 16:46:06.108065",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "section_break_tyyt",
   "amended_from",
+  "section",
+  "yield_tier",
+  "crop",
+  "farm",
   "block",
   "sampling_date",
   "season",
@@ -34,12 +38,42 @@
    "search_index": 1
   },
   {
-   "fieldname": "block",
+   "fieldname": "section",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Block",
-   "options": "Farm Block",
+   "label": "Section",
+   "options": "Section",
    "reqd": 1
+  },
+  {
+   "fieldname": "yield_tier",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Yield Tier",
+   "options": "15T\n18T\n20T\n24T",
+   "reqd": 1
+  },
+  {
+   "fieldname": "crop",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Crop",
+   "options": "Crop",
+   "reqd": 1
+  },
+  {
+   "fieldname": "farm",
+   "fieldtype": "Link",
+   "label": "Farm",
+   "options": "Farm",
+   "read_only": 1
+  },
+  {
+   "fieldname": "block",
+   "fieldtype": "Link",
+   "label": "Block Sampled (optional)",
+   "options": "Farm Block",
+   "description": "Informational only - which physical block(s) the sample was drawn from. Not used for calculation; the (Section, Yield Tier) pair above is the actual identity."
   },
   {
    "fieldname": "sampling_date",
@@ -94,7 +128,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-07-02 12:57:22.883652",
+ "modified": "2026-08-10 09:00:00.000000",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Leaf Analysis",
@@ -119,5 +153,6 @@
  "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "yield_tier"
 }

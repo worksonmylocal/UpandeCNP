@@ -8,15 +8,13 @@
  "field_order": [
   "section_break_0o6z",
   "block",
+  "section",
   "fertilizer_product",
   "application_month",
   "yield_tier",
   "kg_per_ha_rate",
   "total_kg",
-  "total_kg_big_trees",
-  "total_kg_small_trees",
-  "g_per_big_tree",
-  "g_per_small_tree"
+  "dose_per_tree_g"
  ],
  "fields": [
   {
@@ -30,6 +28,12 @@
    "label": "Block",
    "options": "Farm Block",
    "reqd": 1
+  },
+  {
+   "fieldname": "section",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Section"
   },
   {
    "fieldname": "fertilizer_product",
@@ -64,31 +68,16 @@
    "label": "Total Kg"
   },
   {
-   "fieldname": "total_kg_big_trees",
+   "fieldname": "dose_per_tree_g",
    "fieldtype": "Float",
-   "label": "Total Kg Big Trees"
-  },
-  {
-   "fieldname": "total_kg_small_trees",
-   "fieldtype": "Float",
-   "label": "Total Kg Small Trees"
-  },
-  {
-   "fieldname": "g_per_big_tree",
-   "fieldtype": "Float",
-   "label": "G Per Big Tree"
-  },
-  {
-   "fieldname": "g_per_small_tree",
-   "fieldtype": "Float",
-   "label": "G Per Small Tree"
+   "label": "Dose Per Tree (g)"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-06-22 18:49:28.085870",
+ "modified": "2026-08-10 09:00:00.000000",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Fertilizer Programme Line",

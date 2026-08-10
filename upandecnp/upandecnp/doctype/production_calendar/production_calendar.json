@@ -1,14 +1,14 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:PC-{orchard}-{season}",
+ "autoname": "format:PC-{farm}-{season}",
  "creation": "2026-06-22 17:52:28.217201",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "section_break_ygei",
   "season",
-  "orchard",
+  "farm",
   "season_notes",
   "calendar_events",
   "fertilizer_schedule"
@@ -26,9 +26,12 @@
    "reqd": 1
   },
   {
-   "fieldname": "orchard",
-   "fieldtype": "Data",
-   "label": "Orchard"
+   "fieldname": "farm",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Farm",
+   "options": "Farm",
+   "reqd": 1
   },
   {
    "fieldname": "season_notes",

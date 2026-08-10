@@ -12,8 +12,7 @@
   "unit",
   "normal_range_low",
   "normal_range_high",
-  "status",
-  "build_up_factor"
+  "status"
  ],
  "fields": [
   {
@@ -52,12 +51,6 @@
    "fieldname": "normal_range_high",
    "fieldtype": "Float",
    "label": "Normal Range High"
-  },
-  {
-   "fieldname": "build_up_factor",
-   "fieldtype": "Float",
-   "label": "Build Up Factor",
-   "read_only": 1
   },
   {
    "fieldname": "status",

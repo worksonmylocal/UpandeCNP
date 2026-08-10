@@ -10,6 +10,7 @@
   "amended_from",
   "season",
   "fertilizer_programme",
+  "farm",
   "total_budget_ksh",
   "total_actual",
   "total_variance_ksh",
@@ -48,6 +49,13 @@
    "label": "Fertilizer Programme",
    "options": "Fertilizer Programme",
    "reqd": 1
+  },
+  {
+   "fieldname": "farm",
+   "fieldtype": "Link",
+   "label": "Farm",
+   "options": "Farm",
+   "read_only": 1
   },
   {
    "fieldname": "total_budget_ksh",

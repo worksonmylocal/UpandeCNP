@@ -38,9 +38,7 @@ class FertilizerApplication(Document):
         )
 
     def get_fertilizer_warehouse(self):
-        warehouse = frappe.db.get_single_value(
-            "Crop Nutrition Planning Settings", "fertilizer_warehouse"
-        )
+        warehouse = frappe.db.get_value("Farm", self.farm, "warehouse") if self.farm else None
         if not warehouse:
             warehouse = frappe.db.get_single_value("Stock Settings", "default_warehouse")
         return warehouse
@@ -87,17 +85,19 @@ class FertilizerApplication(Document):
         if not self.planned_quantity_kg:
             return
 
-        settings = frappe.get_doc("Crop Nutrition Planning Settings")
-        if not settings.farm_manager_email:
+        farm_manager = frappe.db.get_value("Farm", self.farm, "farm_manager") if self.farm else None
+        if not farm_manager:
             return
+        recipient = frappe.db.get_value("User", farm_manager, "email") or farm_manager
 
+        settings = frappe.get_doc("Crop Nutrition Planning Settings")
         threshold = flt(settings.variance_threshold_pct or 15)
         variance_ratio = abs(flt(self.variance_kg)) / flt(self.planned_quantity_kg) * 100
 
         if variance_ratio > threshold:
             try:
                 frappe.sendmail(
-                    recipients=[settings.farm_manager_email],
+                    recipients=[recipient],
                     subject=f"Fertilizer Application Variance Alert - {self.block}",
                     message=f"""
                     <p>Application <b>{self.name}</b> shows a variance above the {threshold}% threshold:</p>

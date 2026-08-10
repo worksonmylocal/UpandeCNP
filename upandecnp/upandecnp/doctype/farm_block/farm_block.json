@@ -9,12 +9,15 @@
   "section_break_ccdy",
   "block_name",
   "block_number",
+  "section",
+  "farm",
+  "crop",
+  "column_break_fb1",
   "area_ha",
-  "big_tree_count",
-  "small_tree_count",
+  "tree_count",
+  "previous_year_yield_kg_ha",
   "planting_year",
-  "variety",
-  "location"
+  "variety"
  ],
  "fields": [
   {
@@ -37,6 +40,33 @@
    "reqd": 1
   },
   {
+   "fieldname": "section",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Section",
+   "options": "Section",
+   "reqd": 1
+  },
+  {
+   "fieldname": "farm",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Farm",
+   "options": "Farm",
+   "read_only": 1
+  },
+  {
+   "fieldname": "crop",
+   "fieldtype": "Link",
+   "label": "Crop",
+   "options": "Crop",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_fb1",
+   "fieldtype": "Column Break"
+  },
+  {
    "fieldname": "area_ha",
    "fieldtype": "Float",
    "in_list_view": 1,
@@ -44,14 +74,16 @@
    "reqd": 1
   },
   {
-   "fieldname": "big_tree_count",
+   "fieldname": "tree_count",
    "fieldtype": "Int",
-   "label": "Big Tree Count"
+   "in_list_view": 1,
+   "label": "Tree Count"
   },
   {
-   "fieldname": "small_tree_count",
-   "fieldtype": "Int",
-   "label": "Small Tree Count"
+   "fieldname": "previous_year_yield_kg_ha",
+   "fieldtype": "Float",
+   "label": "Previous Year Yield (Kg/Ha)",
+   "description": "Refreshed once a year after harvest. Drives yield-tier classification for the next season's Fertilizer Programme."
   },
   {
    "fieldname": "planting_year",
@@ -62,17 +94,12 @@
    "fieldname": "variety",
    "fieldtype": "Data",
    "label": "Variety"
-  },
-  {
-   "fieldname": "location",
-   "fieldtype": "Data",
-   "label": "Location"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-06-30 13:44:23.255433",
+ "modified": "2026-08-10 09:00:00.000000",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Farm Block",

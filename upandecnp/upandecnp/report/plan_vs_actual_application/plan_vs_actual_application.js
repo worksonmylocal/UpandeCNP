@@ -1,6 +1,12 @@
 frappe.query_reports["Plan vs Actual Application"] = {
     filters: [
         {
+            fieldname: "farm",
+            label: "Farm",
+            fieldtype: "Link",
+            options: "Farm"
+        },
+        {
             fieldname: "season",
             label: "Season",
             fieldtype: "Data"

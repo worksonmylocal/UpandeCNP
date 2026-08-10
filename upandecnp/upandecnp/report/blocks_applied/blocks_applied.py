@@ -27,6 +27,8 @@ def get_columns():
 def get_data(filters):
     conditions = {"docstatus": 1}
 
+    if filters.get("farm"):
+        conditions["farm"] = filters["farm"]
     if filters.get("from_date") and filters.get("to_date"):
         conditions["application_date"] = ["between", [filters["from_date"], filters["to_date"]]]
     if filters.get("block"):

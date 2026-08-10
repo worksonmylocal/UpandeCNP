@@ -8,11 +8,10 @@
  "field_order": [
   "section_break_etxo",
   "block",
+  "section",
   "area_ha",
-  "actual_yield_t_ha",
-  "big_tree_count",
-  "small_tree_count",
-  "leaf_analysis"
+  "tree_count",
+  "yield_kg_ha"
  ],
  "fields": [
   {
@@ -28,6 +27,14 @@
    "reqd": 1
   },
   {
+   "fieldname": "section",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Section",
+   "options": "Section",
+   "read_only": 1
+  },
+  {
    "fieldname": "area_ha",
    "fieldtype": "Float",
    "in_list_view": 1,
@@ -35,34 +42,24 @@
    "reqd": 1
   },
   {
-   "fieldname": "actual_yield_t_ha",
+   "fieldname": "tree_count",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Tree Count"
+  },
+  {
+   "fieldname": "yield_kg_ha",
    "fieldtype": "Float",
    "in_list_view": 1,
-   "label": "Actual Yield (T/Ha)",
+   "label": "Yield (Kg/Ha)",
    "reqd": 1
-  },
-  {
-   "fieldname": "big_tree_count",
-   "fieldtype": "Int",
-   "label": "Big Tree Count"
-  },
-  {
-   "fieldname": "small_tree_count",
-   "fieldtype": "Int",
-   "label": "Small Tree Count"
-  },
-  {
-   "fieldname": "leaf_analysis",
-   "fieldtype": "Link",
-   "label": "Leaf Analysis",
-   "options": "Leaf Analysis"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-06-22 18:49:58.337388",
+ "modified": "2026-08-10 09:00:00.000000",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Programme Block Yield",

@@ -10,6 +10,7 @@
   "amended_from",
   "block_fertilizer_plan",
   "block",
+  "farm",
   "fertilizer_product",
   "application_month",
   "quantity_requested_kg",
@@ -51,6 +52,13 @@
    "options": "Farm Block",
    "read_only": 1,
    "reqd": 1
+  },
+  {
+   "fieldname": "farm",
+   "fieldtype": "Link",
+   "label": "Farm",
+   "options": "Farm",
+   "read_only": 1
   },
   {
    "fieldname": "fertilizer_product",

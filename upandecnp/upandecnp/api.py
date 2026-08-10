@@ -134,11 +134,19 @@ def get_seasons():
 
 
 @frappe.whitelist()
-def get_dashboard_summary(season=None):
+def get_farms():
+    """Return active farms, for the dashboard's farm selector."""
+    return frappe.get_all("Farm", filters={"is_active": 1}, fields=["name"], order_by="name")
+
+
+@frappe.whitelist()
+def get_dashboard_summary(season=None, farm=None):
     """Return headline numbers for the dashboard."""
     plan_filter = {"docstatus": 1}
     if season and season != "All Seasons":
         plan_filter["season"] = season
+    if farm:
+        plan_filter["farm"] = farm
 
     plans = frappe.get_all("Block Fertilizer Plan", filters=plan_filter,
                            fields=["name", "status", "total_kg_required", "block"])
@@ -152,7 +160,10 @@ def get_dashboard_summary(season=None):
     blocks = len(set(p.block for p in plans))
 
     # Pending store requests
-    pending_requests = frappe.db.count("Fertilizer Store Request", {"status": "Requested"})
+    request_filter = {"status": "Requested"}
+    if farm:
+        request_filter["farm"] = farm
+    pending_requests = frappe.db.count("Fertilizer Store Request", request_filter)
 
     pct_applied = round(applied / total_plans * 100, 1) if total_plans else 0
 
@@ -169,11 +180,13 @@ def get_dashboard_summary(season=None):
 
 
 @frappe.whitelist()
-def get_monthly_breakdown(season=None):
+def get_monthly_breakdown(season=None, farm=None):
     """Return quantity and cost per month across the programme."""
     prog_filter = {"docstatus": 1}
     if season and season != "All Seasons":
         prog_filter["season"] = season
+    if farm:
+        prog_filter["farm"] = farm
 
     programmes = frappe.get_all("Fertilizer Programme", filters=prog_filter, fields=["name"])
 
@@ -203,11 +216,13 @@ def get_monthly_breakdown(season=None):
 
 
 @frappe.whitelist()
-def get_product_breakdown(season=None):
+def get_product_breakdown(season=None, farm=None):
     """Return total quantity per product."""
     prog_filter = {"docstatus": 1}
     if season and season != "All Seasons":
         prog_filter["season"] = season
+    if farm:
+        prog_filter["farm"] = farm
 
     programmes = frappe.get_all("Fertilizer Programme", filters=prog_filter, fields=["name"])
     products = {}
@@ -221,9 +236,12 @@ def get_product_breakdown(season=None):
 
 
 @frappe.whitelist()
-def get_recent_activity():
+def get_recent_activity(farm=None):
     """Return the last 8 fertilizer applications."""
-    apps = frappe.get_all("Fertilizer Application", filters={"docstatus": 1},
+    filters = {"docstatus": 1}
+    if farm:
+        filters["farm"] = farm
+    apps = frappe.get_all("Fertilizer Application", filters=filters,
         fields=["block", "fertilizer_product", "actual_quantity_applied_kg",
                 "application_date", "applied_by", "applied_in_full"],
         order_by="creation desc", limit=8)
@@ -231,9 +249,9 @@ def get_recent_activity():
 
 
 @frappe.whitelist()
-def get_stock_levels():
+def get_stock_levels(farm=None):
     """Return current stock for each fertilizer item."""
-    warehouse = frappe.db.get_single_value("Crop Nutrition Planning Settings", "fertilizer_warehouse")
+    warehouse = frappe.db.get_value("Farm", farm, "warehouse") if farm else None
     items = ["CAN", "MOP", "K2SO4", "TSP", "Gypsum", "Ag Lime", "Zinc Sulphate", "Borax"]
     result = []
     for item in items:
@@ -249,11 +267,13 @@ def get_stock_levels():
 # ---------------------------------------------------------------------------
 
 @frappe.whitelist()
-def get_budget_summary(season=None):
+def get_budget_summary(season=None, farm=None):
     """Budget vs actual spend and cost per hectare."""
     filters = {"docstatus": 1}
     if season and season != "All Seasons":
         filters["season"] = season
+    if farm:
+        filters["farm"] = farm
 
     budgets = frappe.get_all("Fertilizer Budget", filters=filters,
         fields=["name", "total_budget_ksh", "total_actual",
@@ -276,7 +296,7 @@ def get_budget_summary(season=None):
 
 
 @frappe.whitelist()
-def get_upcoming_and_overdue():
+def get_upcoming_and_overdue(farm=None):
     """Plans due in the next 30 days, and overdue plans (month passed, not applied)."""
     from frappe.utils import today, getdate, date_diff
 
@@ -284,8 +304,12 @@ def get_upcoming_and_overdue():
               "July","August","September","October","November","December"]
     today_date = getdate(today())
 
+    plan_filter = {"docstatus": 1, "status": ["in", ["Planned", "Issued"]]}
+    if farm:
+        plan_filter["farm"] = farm
+
     plans = frappe.get_all("Block Fertilizer Plan",
-        filters={"docstatus": 1, "status": ["in", ["Planned", "Issued"]]},
+        filters=plan_filter,
         fields=["block", "fertilizer_product", "application_month", "total_kg_required", "status"])
 
     upcoming, overdue = [], []
@@ -310,11 +334,13 @@ def get_upcoming_and_overdue():
 
 
 @frappe.whitelist()
-def get_leaf_deficiency_grid(season=None):
+def get_leaf_deficiency_grid(season=None, farm=None):
     """Grid of blocks x nutrients showing status (Deficient/Adequate/Excess)."""
     filters = {"docstatus": 1}
     if season and season != "All Seasons":
         filters["season"] = season
+    if farm:
+        filters["farm"] = farm
 
     analyses = frappe.get_all("Leaf Analysis", filters=filters, fields=["name", "block"])
 
@@ -332,11 +358,13 @@ def get_leaf_deficiency_grid(season=None):
 
 
 @frappe.whitelist()
-def get_stock_coverage(season=None):
+def get_stock_coverage(season=None, farm=None):
     """Stock on hand vs remaining requirement per product."""
     prog_filter = {"docstatus": 1}
     if season and season != "All Seasons":
         prog_filter["season"] = season
+    if farm:
+        prog_filter["farm"] = farm
 
     programmes = frappe.get_all("Fertilizer Programme", filters=prog_filter, fields=["name"])
     required = {}
@@ -345,7 +373,7 @@ def get_stock_coverage(season=None):
         for line in doc.get("programme_lines", []):
             required[line.fertilizer_product] = required.get(line.fertilizer_product, 0) + flt(line.total_kg)
 
-    warehouse = frappe.db.get_single_value("Crop Nutrition Planning Settings", "fertilizer_warehouse")
+    warehouse = frappe.db.get_value("Farm", farm, "warehouse") if farm else None
     result = []
     for product, need in required.items():
         filters = {"item_code": product}
@@ -366,11 +394,13 @@ def get_stock_coverage(season=None):
 # ---------------------------------------------------------------------------
 
 @frappe.whitelist()
-def get_manager_kpis(season=None):
+def get_manager_kpis(season=None, farm=None):
     """Headline KPIs for the managerial dashboard."""
     plan_filter = {"docstatus": 1}
     if season and season != "All Seasons":
         plan_filter["season"] = season
+    if farm:
+        plan_filter["farm"] = farm
 
     plans = frappe.get_all("Block Fertilizer Plan", filters=plan_filter,
                            fields=["status", "block", "total_kg_required"])
@@ -382,6 +412,8 @@ def get_manager_kpis(season=None):
     bfilter = {"docstatus": 1}
     if season and season != "All Seasons":
         bfilter["season"] = season
+    if farm:
+        bfilter["farm"] = farm
     budgets = frappe.get_all("Fertilizer Budget", filters=bfilter,
         fields=["total_budget_ksh", "total_actual", "cost_per_ha_actual", "cost_per_ha_budget"])
     total_budget = sum(flt(b.total_budget_ksh) for b in budgets)
@@ -390,10 +422,13 @@ def get_manager_kpis(season=None):
     cph_b = [flt(b.cost_per_ha_budget) for b in budgets if b.cost_per_ha_budget]
 
     # Overdue count (reuse logic)
-    overdue = len(get_upcoming_and_overdue().get("overdue", []))
+    overdue = len(get_upcoming_and_overdue(farm=farm).get("overdue", []))
 
     # Pending requests
-    pending = frappe.db.count("Fertilizer Store Request", {"status": "Requested"})
+    request_filter = {"status": "Requested"}
+    if farm:
+        request_filter["farm"] = farm
+    pending = frappe.db.count("Fertilizer Store Request", request_filter)
 
     return {
         "total_budget": round(total_budget, 0),
@@ -410,31 +445,38 @@ def get_manager_kpis(season=None):
 
 
 @frappe.whitelist()
-def get_yield_tier_distribution(season=None):
+def get_yield_tier_distribution(season=None, farm=None):
     """How many blocks fall in each yield tier."""
+    from upandecnp.upandecnp.utils.calculation_engine import get_yield_tier
+
     prog_filter = {"docstatus": 1}
     if season and season != "All Seasons":
         prog_filter["season"] = season
-    programmes = frappe.get_all("Fertilizer Programme", filters=prog_filter, fields=["name"])
+    if farm:
+        prog_filter["farm"] = farm
+    programmes = frappe.get_all("Fertilizer Programme", filters=prog_filter, fields=["name", "crop"])
 
+    crop_cache = {}
     tiers = {}
+    order = []
     for prog in programmes:
+        if prog.crop not in crop_cache:
+            crop_cache[prog.crop] = frappe.get_doc("Crop", prog.crop)
+        crop_doc = crop_cache[prog.crop]
+
         doc = frappe.get_doc("Fertilizer Programme", prog.name)
         for row in doc.get("block_yield_data", []):
-            # Recompute tier from yield
-            y = flt(row.actual_yield_t_ha)
-            if y >= 22: tier = "24T"
-            elif y >= 18.5: tier = "20T"
-            elif y >= 14: tier = "18T"
-            else: tier = "15T"
-            tiers[tier] = tiers.get(tier, 0) + 1
+            tier_label, _ = get_yield_tier(crop_doc, row.yield_kg_ha)
+            if tier_label not in tiers:
+                tiers[tier_label] = 0
+                order.append(tier_label)
+            tiers[tier_label] += 1
 
-    order = ["15T", "18T", "20T", "24T"]
-    return [{"tier": t, "count": tiers.get(t, 0)} for t in order]
+    return [{"tier": t, "count": tiers[t]} for t in order]
 
 
 @frappe.whitelist()
-def get_application_pace(season=None):
+def get_application_pace(season=None, farm=None):
     """Month-by-month: planned applications vs actually applied."""
     months = ["January","February","March","April","May","June",
               "July","August","September","October","November","December"]
@@ -442,6 +484,8 @@ def get_application_pace(season=None):
     plan_filter = {"docstatus": 1}
     if season and season != "All Seasons":
         plan_filter["season"] = season
+    if farm:
+        plan_filter["farm"] = farm
 
     plans = frappe.get_all("Block Fertilizer Plan", filters=plan_filter,
                            fields=["application_month", "status"])
@@ -461,11 +505,13 @@ def get_application_pace(season=None):
 
 
 @frappe.whitelist()
-def get_leaf_deficiency_summary(season=None):
+def get_leaf_deficiency_summary(season=None, farm=None):
     """Count of blocks deficient per nutrient."""
     filters = {"docstatus": 1}
     if season and season != "All Seasons":
         filters["season"] = season
+    if farm:
+        filters["farm"] = farm
     analyses = frappe.get_all("Leaf Analysis", filters=filters, fields=["name"])
 
     nutrients = ["N", "P", "K", "Ca", "Mg", "S", "Zn", "B"]
@@ -512,7 +558,12 @@ def sync_blocks_from_warehouse(farm=None):
     Sync Farm Block records from Kaitet's Warehouse master.
     If `farm` is given, only syncs blocks under that custom_farm value.
     Otherwise syncs all farms.
-    Always overwrites area_ha and big_tree_count from the warehouse.
+    Always overwrites area_ha and tree_count from the warehouse.
+
+    Kaitet has no concept of Section or Crop, so newly-created blocks land
+    without them (ignore_mandatory) - an agronomist assigns those manually
+    afterwards on the same Farm Block record. Farm itself is derived from
+    Section, so it's also blank until then.
     """
     filters = {"warehouse_type": "Block", "is_group": 0}
     if farm:
@@ -528,7 +579,6 @@ def sync_blocks_from_warehouse(farm=None):
         try:
             area = w.custom_area_ha or 0
             trees = _get_tree_count(w.name) or 0
-            orchard = w.warehouse_name.split(" BLK ")[0].strip() if " BLK " in w.warehouse_name else w.warehouse_name
             match = re.search(r"BLK\s+(\d+)", w.warehouse_name)
             block_number = match.group(1) if match else "0"
 
@@ -537,8 +587,7 @@ def sync_blocks_from_warehouse(farm=None):
             if existing:
                 doc = frappe.get_doc("Farm Block", existing)
                 doc.area_ha = area
-                doc.big_tree_count = trees
-                doc.location = w.custom_farm or orchard
+                doc.tree_count = trees
                 doc.save(ignore_permissions=True)
                 updated += 1
             else:
@@ -546,13 +595,11 @@ def sync_blocks_from_warehouse(farm=None):
                     "doctype": "Farm Block",
                     "block_name": w.warehouse_name,
                     "block_number": block_number,
-                    "location": w.custom_farm or orchard,
                     "area_ha": area,
-                    "big_tree_count": trees,
-                    "small_tree_count": 0,
+                    "tree_count": trees,
                     "variety": "Hass",
                 })
-                doc.insert(ignore_permissions=True)
+                doc.insert(ignore_permissions=True, ignore_mandatory=True)
                 created += 1
         except Exception as e:
             errors.append(f"{w.name}: {str(e)}")

@@ -6,15 +6,25 @@
  "engine": "InnoDB",
  "field_order": [
   "section_break_qpqf",
+  "crop",
   "nutrient",
   "low",
   "high",
+  "midpoint",
   "unit"
  ],
  "fields": [
   {
    "fieldname": "section_break_qpqf",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "crop",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Crop",
+   "options": "Crop",
+   "reqd": 1
   },
   {
    "fieldname": "nutrient",
@@ -37,6 +47,13 @@
    "in_list_view": 1,
    "label": "Normal High",
    "reqd": 1
+  },
+  {
+   "fieldname": "midpoint",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Midpoint",
+   "description": "Threshold below which a leaf result triggers the +adjustment. Defaults to (low + high) / 2 if left blank, but is overridable."
   },
   {
    "fieldname": "unit",

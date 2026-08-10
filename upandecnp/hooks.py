@@ -147,7 +147,19 @@ after_install = "upandecnp.upandecnp.install.after_install"
 doc_events = {
     "Purchase Receipt": {
         "on_submit": "upandecnp.upandecnp.utils.integration.update_budget_on_receipt"
-    }
+    },
+    "Fertilizer Store Request": {
+        "validate": "upandecnp.upandecnp.utils.farm_scope.set_farm_from_block"
+    },
+    "Fertilizer Application": {
+        "validate": "upandecnp.upandecnp.utils.farm_scope.set_farm_from_block"
+    },
+    "Block Fertilizer Plan": {
+        "validate": "upandecnp.upandecnp.utils.farm_scope.set_farm_from_block"
+    },
+    "Fertilizer Budget": {
+        "validate": "upandecnp.upandecnp.utils.farm_scope.set_farm_from_programme"
+    },
 }
 
 # Scheduled Tasks

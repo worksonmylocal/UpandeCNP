@@ -31,9 +31,7 @@ class FertilizerStoreRequest(Document):
                     self.quantity_requested_kg = flt(plan.total_kg_required)
 
     def issue_stock(self):
-        warehouse = frappe.db.get_single_value(
-            "Crop Nutrition Planning Settings", "fertilizer_warehouse"
-        )
+        warehouse = frappe.db.get_value("Farm", self.farm, "warehouse") if self.farm else None
 
         se = frappe.get_doc({
             "doctype": "Stock Entry",

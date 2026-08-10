@@ -11,14 +11,14 @@
   "fertilizer_programme",
   "season",
   "block",
+  "farm",
+  "section",
   "fertilizer_product",
   "application_month",
   "yield_tier",
   "application_rate_kg_ha",
-  "big_tree_dose_g",
-  "small_tree_dose_g",
-  "big_tree_count",
-  "small_tree_count",
+  "dose_per_tree_g",
+  "tree_count",
   "total_kg_required",
   "status"
  ],
@@ -61,6 +61,21 @@
    "reqd": 1
   },
   {
+   "fieldname": "farm",
+   "fieldtype": "Link",
+   "label": "Farm",
+   "options": "Farm",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Section",
+   "options": "Section",
+   "read_only": 1
+  },
+  {
    "fieldname": "application_month",
    "fieldtype": "Select",
    "in_list_view": 1,
@@ -80,24 +95,14 @@
    "label": "Application Rate (Kg/Ha)"
   },
   {
-   "fieldname": "big_tree_dose_g",
+   "fieldname": "dose_per_tree_g",
    "fieldtype": "Float",
-   "label": "Big Tree Dose (g/tree)"
+   "label": "Dose Per Tree (g)"
   },
   {
-   "fieldname": "small_tree_dose_g",
-   "fieldtype": "Float",
-   "label": "Small Tree Dose (g/tree)"
-  },
-  {
-   "fieldname": "big_tree_count",
+   "fieldname": "tree_count",
    "fieldtype": "Int",
-   "label": "Big Tree Count"
-  },
-  {
-   "fieldname": "small_tree_count",
-   "fieldtype": "Int",
-   "label": "Small Tree Count"
+   "label": "Tree Count"
   },
   {
    "fieldname": "total_kg_required",
