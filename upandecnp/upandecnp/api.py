@@ -335,25 +335,28 @@ def get_upcoming_and_overdue(farm=None):
 
 @frappe.whitelist()
 def get_leaf_deficiency_grid(season=None, farm=None):
-    """Grid of blocks x nutrients showing status (Deficient/Adequate/Excess)."""
+    """Grid of section/tier groups x nutrients showing status (Deficient/
+    Adequate/Excess). Leaf Analysis is keyed by (Section, Yield Tier), not
+    by block - see leaf_analysis.json."""
     filters = {"docstatus": 1}
     if season and season != "All Seasons":
         filters["season"] = season
     if farm:
         filters["farm"] = farm
 
-    analyses = frappe.get_all("Leaf Analysis", filters=filters, fields=["name", "block"])
+    analyses = frappe.get_all("Leaf Analysis", filters=filters, fields=["name", "section", "yield_tier"])
 
     nutrients = ["N", "P", "K", "Ca", "Mg", "S", "Zn", "B"]
     grid = []
     for a in analyses:
         doc = frappe.get_doc("Leaf Analysis", a.name)
-        row = {"block": a.block, "cells": {}}
+        row = {"section": a.section, "yield_tier": a.yield_tier, "cells": {}}
         for r in doc.get("nutrient_results", []):
             if r.nutrient in nutrients:
                 row["cells"][r.nutrient] = r.status or "—"
         grid.append(row)
 
+    grid.sort(key=lambda r: (r["section"] or "", r["yield_tier"] or ""))
     return {"nutrients": nutrients, "grid": grid}
 
 
@@ -611,6 +614,305 @@ def sync_blocks_from_warehouse(farm=None):
         "errors": errors,
         "total_processed": len(warehouses),
     }
+
+
+# ---------------------------------------------------------------------------
+# Agronomist / Manager Dashboard v2 - progress, planned-vs-actual, alerts
+# ---------------------------------------------------------------------------
+
+DASHBOARD_MONTHS = ["January", "February", "March", "April", "May", "June",
+                    "July", "August", "September", "October", "November", "December"]
+
+
+def _is_month_passed(month_name, today_date):
+    if month_name not in DASHBOARD_MONTHS:
+        return False
+    month_idx = DASHBOARD_MONTHS.index(month_name) + 1
+    year = today_date.year if month_idx <= today_date.month else today_date.year - 1
+    month_end = frappe.utils.getdate(f"{year}-{month_idx:02d}-28")
+    return today_date > month_end
+
+
+@frappe.whitelist()
+def get_block_progress(farm=None, season=None):
+    """Section -> block list with a derived status (Completed/In Progress/
+    Behind Schedule/Pending), for progress views and farm->section->block
+    drill-down. A block can have several plan lines (product x month); the
+    least-advanced status wins so a block isn't "Completed" until all of
+    its lines are."""
+    filters = {"docstatus": 1}
+    if farm:
+        filters["farm"] = farm
+    if season:
+        filters["season"] = season
+
+    plans = frappe.get_all("Block Fertilizer Plan", filters=filters,
+        fields=["block", "section", "application_month", "status"])
+
+    today_date = frappe.utils.getdate(frappe.utils.today())
+    priority = {"Behind Schedule": 0, "Pending": 1, "In Progress": 2, "Completed": 3}
+    sections = {}
+
+    for p in plans:
+        if p.status in ("Applied", "Verified"):
+            derived = "Completed"
+        elif p.status == "Issued":
+            derived = "In Progress"
+        elif _is_month_passed(p.application_month, today_date):
+            derived = "Behind Schedule"
+        else:
+            derived = "Pending"
+
+        sec = sections.setdefault(p.section or "Unassigned", {})
+        existing = sec.get(p.block)
+        if not existing or priority[derived] < priority[existing]:
+            sec[p.block] = derived
+
+    result = []
+    for section, blocks in sections.items():
+        counts = {"Completed": 0, "In Progress": 0, "Pending": 0, "Behind Schedule": 0}
+        for status in blocks.values():
+            counts[status] += 1
+        total = sum(counts.values())
+        result.append({
+            "section": section,
+            "counts": counts,
+            "total_blocks": total,
+            "pct_complete": round(counts["Completed"] / total * 100, 1) if total else 0,
+            "blocks": sorted(
+                [{"block": b, "status": s} for b, s in blocks.items()],
+                key=lambda r: r["block"],
+            ),
+        })
+
+    return sorted(result, key=lambda r: r["section"])
+
+
+@frappe.whitelist()
+def get_farm_progress_overview(farm=None, season=None):
+    """Farm-wide rollup of section/block progress, for headline KPIs."""
+    sections = get_block_progress(farm=farm, season=season)
+
+    counts = {"Completed": 0, "In Progress": 0, "Pending": 0, "Behind Schedule": 0}
+    total_blocks = 0
+    for s in sections:
+        for k in counts:
+            counts[k] += s["counts"][k]
+        total_blocks += s["total_blocks"]
+
+    return {
+        "total_sections": len(sections),
+        "total_blocks": total_blocks,
+        "counts": counts,
+        "pct_complete": round(counts["Completed"] / total_blocks * 100, 1) if total_blocks else 0,
+    }
+
+
+@frappe.whitelist()
+def get_qty_planned_vs_actual(farm=None, season=None):
+    """Total planned kg (submitted programme lines) vs total actual kg
+    (submitted applications), for the whole farm/season."""
+    prog_filter = {"docstatus": 1}
+    if farm:
+        prog_filter["farm"] = farm
+    if season:
+        prog_filter["season"] = season
+    programmes = frappe.get_all("Fertilizer Programme", filters=prog_filter, fields=["name"])
+
+    planned = 0
+    for prog in programmes:
+        doc = frappe.get_doc("Fertilizer Programme", prog.name)
+        planned += sum(flt(l.total_kg) for l in doc.get("programme_lines", []))
+
+    plan_filter = {"docstatus": 1}
+    if farm:
+        plan_filter["farm"] = farm
+    if season:
+        plan_filter["season"] = season
+    plan_names = frappe.get_all("Block Fertilizer Plan", filters=plan_filter, pluck="name")
+
+    actual = 0
+    if plan_names:
+        actual = flt(frappe.db.sql("""
+            SELECT SUM(actual_quantity_applied_kg) FROM `tabFertilizer Application`
+            WHERE docstatus = 1 AND block_fertilizer_plan IN %(plans)s
+        """, {"plans": plan_names})[0][0] or 0)
+
+    remaining = max(planned - actual, 0)
+    variance = actual - planned
+
+    return {
+        "planned_kg": round(planned, 1),
+        "actual_kg": round(actual, 1),
+        "remaining_kg": round(remaining, 1),
+        "variance_kg": round(variance, 1),
+        "variance_pct": round(variance / planned * 100, 1) if planned else 0,
+    }
+
+
+@frappe.whitelist()
+def get_section_usage_breakdown(farm=None, season=None):
+    """Planned vs actual kg per section."""
+    prog_filter = {"docstatus": 1}
+    if farm:
+        prog_filter["farm"] = farm
+    if season:
+        prog_filter["season"] = season
+    programmes = frappe.get_all("Fertilizer Programme", filters=prog_filter, fields=["name"])
+
+    planned = {}
+    for prog in programmes:
+        doc = frappe.get_doc("Fertilizer Programme", prog.name)
+        for line in doc.get("programme_lines", []):
+            planned[line.section] = planned.get(line.section, 0) + flt(line.total_kg)
+
+    conditions = ["fa.docstatus = 1", "bfp.docstatus = 1"]
+    values = {}
+    if farm:
+        conditions.append("bfp.farm = %(farm)s")
+        values["farm"] = farm
+    if season:
+        conditions.append("bfp.season = %(season)s")
+        values["season"] = season
+
+    rows = frappe.db.sql(f"""
+        SELECT bfp.section AS section, SUM(fa.actual_quantity_applied_kg) AS actual_kg
+        FROM `tabFertilizer Application` fa
+        JOIN `tabBlock Fertilizer Plan` bfp ON bfp.name = fa.block_fertilizer_plan
+        WHERE {" AND ".join(conditions)}
+        GROUP BY bfp.section
+    """, values, as_dict=True)
+    actual = {r.section: flt(r.actual_kg) for r in rows}
+
+    sections = sorted(set(list(planned.keys()) + list(actual.keys())))
+    return [
+        {
+            "section": s,
+            "planned_kg": round(planned.get(s, 0), 1),
+            "actual_kg": round(actual.get(s, 0), 1),
+        }
+        for s in sections
+    ]
+
+
+@frappe.whitelist()
+def get_partial_applications(farm=None, season=None):
+    """Applications not done in full - the closest real signal to a field
+    exception, using applied_in_full/partial_reason (there's no typed
+    exception log yet)."""
+    filters = {"docstatus": 1, "applied_in_full": 0}
+    if farm:
+        filters["farm"] = farm
+
+    apps = frappe.get_all("Fertilizer Application", filters=filters,
+        fields=["name", "block", "fertilizer_product", "application_date",
+                "planned_quantity_kg", "actual_quantity_applied_kg",
+                "partial_reason", "block_fertilizer_plan"],
+        order_by="application_date desc")
+
+    if season:
+        plan_names = set(frappe.get_all("Block Fertilizer Plan", filters={"season": season}, pluck="name"))
+        apps = [a for a in apps if a.block_fertilizer_plan in plan_names]
+
+    return apps
+
+
+@frappe.whitelist()
+def get_operator_activity(farm=None, season=None):
+    """Applications count and total kg per applied_by Employee - the
+    closest real signal to applicator productivity (only one operator is
+    recorded per application, not a crew)."""
+    filters = {"docstatus": 1}
+    if farm:
+        filters["farm"] = farm
+    apps = frappe.get_all("Fertilizer Application", filters=filters,
+        fields=["applied_by", "actual_quantity_applied_kg", "block_fertilizer_plan"])
+
+    if season:
+        plan_names = set(frappe.get_all("Block Fertilizer Plan", filters={"season": season}, pluck="name"))
+        apps = [a for a in apps if a.block_fertilizer_plan in plan_names]
+
+    stats = {}
+    for a in apps:
+        key = a.applied_by or "Unassigned"
+        s = stats.setdefault(key, {"applications": 0, "total_kg": 0})
+        s["applications"] += 1
+        s["total_kg"] += flt(a.actual_quantity_applied_kg)
+
+    return sorted(
+        [{"applied_by": k, "applications": v["applications"], "total_kg": round(v["total_kg"], 1)}
+         for k, v in stats.items()],
+        key=lambda x: x["applications"], reverse=True,
+    )
+
+
+@frappe.whitelist()
+def get_variance_alerts(farm=None, season=None):
+    """Applications whose actual-vs-planned variance exceeds the configured
+    threshold (same threshold Fertilizer Application's own variance email
+    alert uses)."""
+    settings = frappe.get_cached_doc("Crop Nutrition Planning Settings")
+    threshold = flt(settings.variance_threshold_pct or 15)
+
+    filters = {"docstatus": 1}
+    if farm:
+        filters["farm"] = farm
+    apps = frappe.get_all("Fertilizer Application", filters=filters,
+        fields=["name", "block", "fertilizer_product", "application_date",
+                "planned_quantity_kg", "actual_quantity_applied_kg", "variance_kg",
+                "block_fertilizer_plan"])
+
+    if season:
+        plan_names = set(frappe.get_all("Block Fertilizer Plan", filters={"season": season}, pluck="name"))
+        apps = [a for a in apps if a.block_fertilizer_plan in plan_names]
+
+    alerts = []
+    for a in apps:
+        if not a.planned_quantity_kg:
+            continue
+        pct = abs(flt(a.variance_kg)) / flt(a.planned_quantity_kg) * 100
+        if pct > threshold:
+            alerts.append({**a, "variance_pct": round(pct, 1)})
+
+    return sorted(alerts, key=lambda x: x["variance_pct"], reverse=True)
+
+
+@frappe.whitelist()
+def get_computed_budget(farm=None, season=None):
+    """Estimated fertilizer cost = season requirement (from submitted
+    Programme Lines) x Item buying price. Available immediately, without
+    needing a manually created + submitted Fertilizer Budget document
+    (that doctype is still used for tracking *actual* spend against
+    Purchase Receipts - this is the always-on estimate)."""
+    prog_filter = {"docstatus": 1}
+    if farm:
+        prog_filter["farm"] = farm
+    if season:
+        prog_filter["season"] = season
+    programmes = frappe.get_all("Fertilizer Programme", filters=prog_filter, fields=["name"])
+
+    required = {}
+    for prog in programmes:
+        doc = frappe.get_doc("Fertilizer Programme", prog.name)
+        for line in doc.get("programme_lines", []):
+            required[line.fertilizer_product] = required.get(line.fertilizer_product, 0) + flt(line.total_kg)
+
+    price_cache = {}
+    def price(product):
+        if product not in price_cache:
+            price_cache[product] = flt(frappe.db.get_value(
+                "Item Price", {"item_code": product, "buying": 1}, "price_list_rate"))
+        return price_cache[product]
+
+    lines = []
+    total = 0
+    for product, qty in required.items():
+        rate = price(product)
+        cost = qty * rate
+        total += cost
+        lines.append({"product": product, "qty_kg": round(qty, 1), "unit_price": rate, "cost": round(cost, 0)})
+
+    return {"total_cost": round(total, 0), "lines": sorted(lines, key=lambda x: x["cost"], reverse=True)}
 
 
 @frappe.whitelist()

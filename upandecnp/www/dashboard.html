@@ -1,124 +1,194 @@
 {% extends "templates/web.html" %}
 
-{% block title %}Crop Nutrition Dashboard{% endblock %}
+{% block title %}Agronomist Dashboard{% endblock %}
 
 {% block head_include %}
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
-    body { background: #eef1f0; }
-    .dash { max-width: 1200px; margin: 0 auto; padding: 16px;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    :root {
+        --green: #1F6E43; --green-light: #3DA96A; --green-bg: #DDF3E4;
+        --amber: #C9822A; --amber-bg: #FDE9D2;
+        --blue: #2C6BB3; --blue-bg: #DDEBFF;
+        --purple: #7A4FB5; --purple-bg: #EEE3FA;
+        --red: #D14C4C; --red-bg: #FDE2E2;
+        --ink: #1a1a1a; --muted: #78807c; --line: #eef1f0;
+    }
+    * { box-sizing: border-box; }
+    body { background: #f4f7f5; }
+    .dash { max-width: 1280px; margin: 0 auto; padding: 16px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: var(--ink); }
     .dash-header { display: flex; justify-content: space-between; align-items: center;
-        flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
-    .dash-header h1 { font-size: 24px; color: #1F6E43; margin: 0; }
-    .dash-header select { padding: 10px 14px; font-size: 15px; border-radius: 10px;
-        border: 1px solid #cbd5d0; background: #fff; }
-    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-        gap: 14px; margin-bottom: 20px; }
-    .metric { background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-        border-left: 5px solid #1F6E43; }
-    .metric .value { font-size: 30px; font-weight: 700; color: #1a1a1a; line-height: 1; }
-    .metric .label { font-size: 13px; color: #777; margin-top: 6px; }
-    .metric.amber { border-left-color: #C9822A; }
-    .metric.blue  { border-left-color: #2C6BB3; }
-    .metric.purple{ border-left-color: #7A4FB5; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
-    @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
-    .panel { background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    .panel h3 { margin: 0 0 16px; font-size: 16px; color: #1a1a1a; }
-    .progress-wrap { background: #eef1f0; border-radius: 20px; height: 28px; overflow: hidden; margin-top: 8px; }
-    .progress-bar { height: 100%; background: linear-gradient(90deg,#1F6E43,#3DA96A);
-        color: #fff; font-size: 13px; font-weight: 600; display: flex; align-items: center;
-        justify-content: center; transition: width 0.6s; }
-    table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    th { text-align: left; color: #888; font-weight: 600; padding: 8px 6px; border-bottom: 2px solid #eef1f0; font-size: 12px; }
-    td { padding: 9px 6px; border-bottom: 1px solid #f2f4f3; }
-    .badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
-    .badge-full { background: #DDF3E4; color: #1F6E43; }
-    .badge-part { background: #FDE9D2; color: #9A6206; }
-    .spinner { text-align: center; padding: 40px; color: #999; }
-    .stock-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-    .stock-name { width: 110px; font-size: 13px; }
-    .stock-bar-wrap { flex: 1; background: #eef1f0; border-radius: 10px; height: 18px; overflow: hidden; }
-    .stock-bar { height: 100%; background: #2C6BB3; }
-    .stock-val { width: 70px; text-align: right; font-size: 13px; font-weight: 600; }
-    /* Budget */
-    .budget-row { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
-    .budget-metric { flex: 1; min-width: 130px; }
-    .budget-metric .v { font-size: 24px; font-weight: 700; }
-    .budget-metric .l { font-size: 12px; color: #888; }
-    .over { color: #D14C4C; } .under { color: #1F6E43; }
-    /* Coverage */
-    .cov-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-    .cov-name { width: 110px; font-size: 13px; }
-    .cov-bar-wrap { flex: 1; background: #eef1f0; border-radius: 10px; height: 20px; overflow: hidden; position: relative; }
+        flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+    .dash-header h1 { font-size: 23px; color: var(--green); margin: 0; }
+    .filters { display: flex; gap: 10px; }
+    .filters select { padding: 9px 14px; font-size: 14px; border-radius: 10px;
+        border: 1px solid #cbd5d0; background: #fff; font-weight: 600; color: var(--ink); }
+
+    .tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap;
+        background: #fff; padding: 6px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .tab-btn { border: none; background: transparent; padding: 10px 16px; font-size: 14px;
+        font-weight: 700; color: var(--muted); border-radius: 10px; cursor: pointer; transition: all .15s; }
+    .tab-btn:hover { background: #f0f4f2; }
+    .tab-btn.active { background: linear-gradient(135deg,var(--green),var(--green-light)); color: #fff; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; animation: fadein .2s; }
+    @keyframes fadein { from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+        gap: 12px; margin-bottom: 16px; }
+    .metric { background: #fff; border-radius: 14px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        border-left: 5px solid var(--green); }
+    .metric .value { font-size: 26px; font-weight: 800; line-height: 1; }
+    .metric .label { font-size: 12px; color: var(--muted); margin-top: 6px; }
+    .metric.amber { border-left-color: var(--amber); }
+    .metric.blue  { border-left-color: var(--blue); }
+    .metric.purple{ border-left-color: var(--purple); }
+    .metric.red   { border-left-color: var(--red); }
+
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 14px; }
+    @media (max-width: 900px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
+    .panel { background: #fff; border-radius: 14px; padding: 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .panel h3 { margin: 0 0 12px; font-size: 14px; color: var(--ink); display: flex; align-items: center; gap: 6px; }
+    .panel.scroll { max-height: 340px; overflow-y: auto; }
+
+    .progress-wrap { background: var(--line); border-radius: 20px; height: 24px; overflow: hidden; margin-top: 6px; }
+    .progress-bar { height: 100%; background: linear-gradient(90deg,var(--green),var(--green-light));
+        color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center;
+        justify-content: center; transition: width .6s; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; color: var(--muted); font-weight: 700; padding: 7px 6px; border-bottom: 2px solid var(--line); font-size: 11px; text-transform: uppercase; }
+    td { padding: 8px 6px; border-bottom: 1px solid var(--line); }
+    .badge { font-size: 11px; padding: 2px 9px; border-radius: 10px; font-weight: 700; white-space: nowrap; }
+    .b-completed { background: var(--green-bg); color: var(--green); }
+    .b-progress  { background: var(--blue-bg); color: var(--blue); }
+    .b-pending   { background: var(--amber-bg); color: #9A6206; }
+    .b-behind    { background: var(--red-bg); color: #A12020; }
+    .spinner { text-align: center; padding: 30px; color: #999; font-size: 13px; }
+
+    /* Section progress cards */
+    .sec-card { background: #fff; border-radius: 14px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 12px; cursor: pointer; }
+    .sec-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .sec-card-head b { font-size: 14px; }
+    .sec-pct { font-size: 20px; font-weight: 800; color: var(--green); }
+    .seg-bar { display: flex; height: 16px; border-radius: 8px; overflow: hidden; background: var(--line); }
+    .seg { height: 100%; }
+    .sec-legend { display: flex; gap: 14px; margin-top: 10px; font-size: 11px; color: var(--muted); flex-wrap: wrap; }
+    .sec-legend span { display: inline-flex; align-items: center; gap: 5px; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+    .sec-blocks { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line); }
+    .sec-blocks.open { display: block; }
+    .block-chip { display: inline-block; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; margin: 3px; }
+
+    .stock-row, .cov-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+    .stock-name, .cov-name { width: 100px; font-size: 12px; }
+    .stock-bar-wrap, .cov-bar-wrap { flex: 1; background: var(--line); border-radius: 10px; height: 16px; overflow: hidden; }
+    .stock-bar { height: 100%; background: var(--blue); }
     .cov-bar { height: 100%; }
-    .cov-val { width: 150px; text-align: right; font-size: 12px; }
-    /* Leaf grid */
-    .leaf-table td, .leaf-table th { text-align: center; padding: 8px 10px; }
-    .leaf-cell { border-radius: 6px; font-size: 11px; font-weight: 600; padding: 4px 8px; }
-    .def { background: #FDE2E2; color: #A12020; }
-    .adq { background: #DDF3E4; color: #1F6E43; }
-    .exc { background: #FEF0D9; color: #9A6206; }
+    .stock-val, .cov-val { width: 130px; text-align: right; font-size: 11px; font-weight: 600; }
+
+    .leaf-table td, .leaf-table th { text-align: center; padding: 7px 9px; }
+    .leaf-cell { border-radius: 6px; font-size: 11px; font-weight: 700; padding: 4px 8px; }
+    .def { background: var(--red-bg); color: #A12020; }
+    .adq { background: var(--green-bg); color: var(--green); }
+    .exc { background: var(--amber-bg); color: #9A6206; }
     .na  { background: #f0f0f0; color: #aaa; }
-    .pill-days { background:#DDEBFF; color:#1B4B8A; font-size:11px; padding:2px 8px; border-radius:10px; font-weight:600; }
+    .pill-days { background: var(--blue-bg); color: #1B4B8A; font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 700; }
+    .alert-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+    .alert-row:last-child { border-bottom: none; }
+    .headline { display: flex; gap: 22px; flex-wrap: wrap; margin-bottom: 14px; }
+    .headline .v { font-size: 24px; font-weight: 800; }
+    .headline .l { font-size: 11px; color: var(--muted); text-transform: uppercase; }
+    .over { color: var(--red); } .under { color: var(--green); }
 </style>
 {% endblock %}
 
 {% block page_content %}
 <div class="dash">
     <div class="dash-header">
-        <h1>🌱 Crop Nutrition Dashboard</h1>
-        <select id="season-select" onchange="loadAll()"></select>
-    </div>
-
-    <div class="cards" id="metrics"><div class="spinner">Loading…</div></div>
-
-    <div class="panel" style="margin-bottom:20px;">
-        <h3>Season Progress — Applications Completed</h3>
-        <div class="progress-wrap"><div class="progress-bar" id="progress-bar" style="width:0%">0%</div></div>
-    </div>
-
-    <div class="grid">
-        <div class="panel"><h3>Monthly Fertilizer Requirement (Kg)</h3><canvas id="monthly-chart" height="200"></canvas></div>
-        <div class="panel"><h3>Requirement by Product (Kg)</h3><canvas id="product-chart" height="200"></canvas></div>
-    </div>
-
-    <div class="panel" style="margin-bottom:20px;">
-        <h3>Budget vs Actual Spend</h3>
-        <div id="budget-panel"><div class="spinner">Loading…</div></div>
-    </div>
-
-    <div class="grid">
-        <div class="panel">
-            <h3>⏳ Upcoming Applications (next 30 days)</h3>
-            <div id="upcoming-list"><div class="spinner">Loading…</div></div>
-        </div>
-        <div class="panel">
-            <h3>🚨 Overdue Applications</h3>
-            <div id="overdue-list"><div class="spinner">Loading…</div></div>
+        <h1>🌱 Agronomist Dashboard</h1>
+        <div class="filters">
+            <select id="farm-select" onchange="loadAll()"></select>
+            <select id="season-select" onchange="loadAll()"></select>
         </div>
     </div>
 
-    <div class="panel" style="margin-bottom:20px;">
-        <h3>Stock Coverage vs Season Need</h3>
-        <div id="coverage-list"><div class="spinner">Loading…</div></div>
+    <div class="tabs">
+        <button class="tab-btn active" data-tab="overview">Overview</button>
+        <button class="tab-btn" data-tab="progress">Progress</button>
+        <button class="tab-btn" data-tab="planvsactual">Planned vs Actual</button>
+        <button class="tab-btn" data-tab="field">Field &amp; Leaf</button>
+        <button class="tab-btn" data-tab="alerts">Alerts</button>
     </div>
 
-    <div class="panel" style="margin-bottom:20px;">
-        <h3>🍃 Leaf Nutrient Status by Block</h3>
-        <div id="leaf-grid" style="overflow-x:auto;"><div class="spinner">Loading…</div></div>
+    <!-- OVERVIEW -->
+    <div class="tab-content active" id="tab-overview">
+        <div class="cards" id="metrics"><div class="spinner">Loading…</div></div>
+        <div class="panel" style="margin-bottom:14px;">
+            <h3>Season Progress — Applications Completed</h3>
+            <div class="progress-wrap"><div class="progress-bar" id="progress-bar" style="width:0%">0%</div></div>
+        </div>
+        <div class="grid2">
+            <div class="panel"><h3>📅 Monthly Fertilizer Requirement (Kg)</h3><canvas id="monthly-chart" height="190"></canvas></div>
+            <div class="panel"><h3>🧪 Requirement by Product (Kg)</h3><canvas id="product-chart" height="190"></canvas></div>
+        </div>
     </div>
 
-    <div class="grid">
-        <div class="panel">
-            <h3>Current Stock Levels</h3>
-            <div id="stock-list"><div class="spinner">Loading…</div></div>
+    <!-- PROGRESS -->
+    <div class="tab-content" id="tab-progress">
+        <div id="section-progress"><div class="spinner">Loading…</div></div>
+    </div>
+
+    <!-- PLANNED VS ACTUAL -->
+    <div class="tab-content" id="tab-planvsactual">
+        <div class="panel" style="margin-bottom:14px;">
+            <h3>⚖️ Fertilizer Planned vs Actual (Kg)</h3>
+            <div id="qty-headline"><div class="spinner">Loading…</div></div>
+        </div>
+        <div class="grid2">
+            <div class="panel"><h3>Usage by Section</h3><div id="section-usage"><div class="spinner">Loading…</div></div></div>
+            <div class="panel"><h3>💰 Budget vs Actual Spend</h3><div id="budget-panel"><div class="spinner">Loading…</div></div></div>
         </div>
         <div class="panel">
-            <h3>Recent Field Activity</h3>
-            <div id="activity-list"><div class="spinner">Loading…</div></div>
+            <h3>🧮 Estimated Cost — Season Requirement × Item Price</h3>
+            <div id="computed-budget"><div class="spinner">Loading…</div></div>
+        </div>
+    </div>
+
+    <!-- FIELD & LEAF -->
+    <div class="tab-content" id="tab-field">
+        <div class="panel" style="margin-bottom:14px;">
+            <h3>🍃 Leaf Nutrient Status by Section/Tier</h3>
+            <div id="leaf-grid" style="overflow-x:auto;"><div class="spinner">Loading…</div></div>
+        </div>
+        <div class="grid2">
+            <div class="panel"><h3>Current Stock Levels</h3><div id="stock-list"><div class="spinner">Loading…</div></div></div>
+            <div class="panel"><h3>Stock Coverage vs Season Need</h3><div id="coverage-list"><div class="spinner">Loading…</div></div></div>
+        </div>
+        <div class="grid2">
+            <div class="panel panel-recent"><h3>Recent Field Activity</h3><div id="activity-list" class="panel scroll" style="box-shadow:none;padding:0;"><div class="spinner">Loading…</div></div></div>
+            <div class="panel"><h3>⚠️ Partial / Incomplete Applications</h3><div id="partial-list" class="panel scroll" style="box-shadow:none;padding:0;"><div class="spinner">Loading…</div></div></div>
+        </div>
+        <div class="panel"><h3>👷 Operator Activity</h3><div id="operator-list"><div class="spinner">Loading…</div></div></div>
+    </div>
+
+    <!-- ALERTS -->
+    <div class="tab-content" id="tab-alerts">
+        <div class="grid2">
+            <div class="panel">
+                <h3>⏳ Upcoming Applications (next 30 days)</h3>
+                <div id="upcoming-list"><div class="spinner">Loading…</div></div>
+            </div>
+            <div class="panel">
+                <h3>🚨 Overdue Applications</h3>
+                <div id="overdue-list"><div class="spinner">Loading…</div></div>
+            </div>
+        </div>
+        <div class="panel">
+            <h3>📉 Significant Variance (Actual vs Planned)</h3>
+            <div id="variance-list"><div class="spinner">Loading…</div></div>
         </div>
     </div>
 </div>
@@ -136,23 +206,36 @@ async function call(method, args) {
 }
 
 let monthlyChart, productChart;
+function farm() { const v = document.getElementById("farm-select").value; return v === "__all__" ? null : v; }
+function season() { return document.getElementById("season-select").value; }
 
-async function loadSeasons() {
-    const seasons = await call("get_seasons", {});
-    const sel = document.getElementById("season-select");
-    sel.innerHTML = seasons.map(s => `<option value="${s}">${s}</option>`).join("");
+document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+    });
+});
+
+async function loadFilters() {
+    const [farms, seasons] = await Promise.all([call("get_farms", {}), call("get_seasons", {})]);
+    document.getElementById("farm-select").innerHTML =
+        `<option value="__all__">All Farms</option>` + farms.map(f => `<option value="${f.name}">${f.name}</option>`).join("");
+    document.getElementById("season-select").innerHTML = seasons.map(s => `<option value="${s}">${s}</option>`).join("");
     loadAll();
 }
-function season() { return document.getElementById("season-select").value; }
 
 async function loadAll() {
     loadMetrics(); loadMonthly(); loadProducts();
-    loadStock(); loadActivity(); loadBudget();
-    loadUpcomingOverdue(); loadCoverage(); loadLeafGrid();
+    loadSectionProgress();
+    loadQtyPlannedVsActual(); loadSectionUsage(); loadBudget(); loadComputedBudget();
+    loadStock(); loadCoverage(); loadLeafGrid(); loadActivity(); loadPartial(); loadOperators();
+    loadUpcomingOverdue(); loadVarianceAlerts();
 }
 
 async function loadMetrics() {
-    const m = await call("get_dashboard_summary", { season: season() });
+    const m = await call("get_dashboard_summary", { season: season(), farm: farm() });
     document.getElementById("metrics").innerHTML = `
         <div class="metric"><div class="value">${m.blocks}</div><div class="label">Blocks in Programme</div></div>
         <div class="metric blue"><div class="value">${m.total_kg.toLocaleString()}</div><div class="label">Total Kg Planned</div></div>
@@ -166,7 +249,7 @@ async function loadMetrics() {
 }
 
 async function loadMonthly() {
-    const data = await call("get_monthly_breakdown", { season: season() });
+    const data = await call("get_monthly_breakdown", { season: season(), farm: farm() });
     const ctx = document.getElementById("monthly-chart");
     if (monthlyChart) monthlyChart.destroy();
     monthlyChart = new Chart(ctx, { type: "bar",
@@ -176,7 +259,7 @@ async function loadMonthly() {
 }
 
 async function loadProducts() {
-    const data = await call("get_product_breakdown", { season: season() });
+    const data = await call("get_product_breakdown", { season: season(), farm: farm() });
     const ctx = document.getElementById("product-chart");
     if (productChart) productChart.destroy();
     const colors = ["#1F6E43","#2C6BB3","#C9822A","#7A4FB5","#3DA96A","#D14C4C","#E0A82E","#4A9BD1"];
@@ -186,8 +269,75 @@ async function loadProducts() {
         options: { plugins: { legend: { position: "right", labels: { boxWidth: 14, font: { size: 12 } } } } } });
 }
 
+const STATUS_COLOR = { "Completed": "#3DA96A", "In Progress": "#2C6BB3", "Pending": "#C9822A", "Behind Schedule": "#D14C4C" };
+const STATUS_CLASS = { "Completed": "b-completed", "In Progress": "b-progress", "Pending": "b-pending", "Behind Schedule": "b-behind" };
+
+async function loadSectionProgress() {
+    const data = await call("get_block_progress", { season: season(), farm: farm() });
+    if (!data.length) { document.getElementById("section-progress").innerHTML = '<div class="spinner">No blocks in this programme yet.</div>'; return; }
+    document.getElementById("section-progress").innerHTML = data.map((s, i) => `
+        <div class="sec-card" onclick="document.getElementById('blocks-${i}').classList.toggle('open')">
+            <div class="sec-card-head"><b>${s.section}</b><span class="sec-pct">${s.pct_complete}%</span></div>
+            <div class="seg-bar">
+                ${Object.entries(s.counts).map(([k,v]) => v ? `<div class="seg" style="width:${v/s.total_blocks*100}%;background:${STATUS_COLOR[k]}" title="${k}: ${v}"></div>` : "").join("")}
+            </div>
+            <div class="sec-legend">
+                ${Object.entries(s.counts).map(([k,v]) => `<span><span class="dot" style="background:${STATUS_COLOR[k]}"></span>${k}: ${v}</span>`).join("")}
+                <span style="margin-left:auto;color:#aaa;">▾ ${s.total_blocks} blocks — click to expand</span>
+            </div>
+            <div class="sec-blocks" id="blocks-${i}">
+                ${s.blocks.map(b => `<span class="block-chip ${STATUS_CLASS[b.status]}">${b.block}</span>`).join("")}
+            </div>
+        </div>`).join("");
+}
+
+async function loadQtyPlannedVsActual() {
+    const d = await call("get_qty_planned_vs_actual", { season: season(), farm: farm() });
+    const varClass = d.variance_kg < 0 ? "under" : "over";
+    document.getElementById("qty-headline").innerHTML = `
+        <div class="headline">
+            <div><div class="v">${d.planned_kg.toLocaleString()}</div><div class="l">Planned Kg</div></div>
+            <div><div class="v">${d.actual_kg.toLocaleString()}</div><div class="l">Actual Kg</div></div>
+            <div><div class="v">${d.remaining_kg.toLocaleString()}</div><div class="l">Remaining Kg</div></div>
+            <div><div class="v ${varClass}">${d.variance_pct}%</div><div class="l">Variance</div></div>
+        </div>
+        <div class="progress-wrap"><div class="progress-bar" style="width:${Math.min(d.planned_kg? d.actual_kg/d.planned_kg*100:0,100)}%">${d.planned_kg? Math.round(d.actual_kg/d.planned_kg*100):0}% applied</div></div>
+    `;
+}
+
+async function loadSectionUsage() {
+    const data = await call("get_section_usage_breakdown", { season: season(), farm: farm() });
+    if (!data.length) { document.getElementById("section-usage").innerHTML = '<div class="spinner">No data.</div>'; return; }
+    const max = Math.max(...data.map(d => Math.max(d.planned_kg, d.actual_kg)), 1);
+    document.getElementById("section-usage").innerHTML = data.map(d => `
+        <div style="margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
+                <b>${d.section}</b><span>${d.actual_kg.toLocaleString()} / ${d.planned_kg.toLocaleString()} Kg</span>
+            </div>
+            <div class="stock-bar-wrap" style="height:10px;position:relative;">
+                <div style="position:absolute;height:100%;width:${d.planned_kg/max*100}%;background:#eef1f0;border-radius:10px;"></div>
+                <div style="position:absolute;height:100%;width:${d.actual_kg/max*100}%;background:#2C6BB3;border-radius:10px;"></div>
+            </div>
+        </div>`).join("");
+}
+
+async function loadBudget() {
+    const b = await call("get_budget_summary", { season: season(), farm: farm() });
+    const varClass = b.variance > 0 ? "over" : "under";
+    const varSign = b.variance > 0 ? "+" : "";
+    document.getElementById("budget-panel").innerHTML = `
+        <div class="headline">
+            <div><div class="v">Ksh ${b.total_budget.toLocaleString()}</div><div class="l">Budgeted</div></div>
+            <div><div class="v">Ksh ${b.total_actual.toLocaleString()}</div><div class="l">Actual</div></div>
+            <div><div class="v ${varClass}">${varSign}Ksh ${b.variance.toLocaleString()}</div><div class="l">Variance</div></div>
+        </div>
+        <div class="progress-wrap">
+            <div class="progress-bar" style="width:${Math.min(b.pct_spent,100)}%;background:${b.pct_spent>100?'#D14C4C':'linear-gradient(90deg,#2C6BB3,#4A9BD1)'}">${b.pct_spent}% spent</div>
+        </div>`;
+}
+
 async function loadStock() {
-    const data = await call("get_stock_levels", {});
+    const data = await call("get_stock_levels", { farm: farm() });
     const max = Math.max(...data.map(d => d.qty), 1);
     document.getElementById("stock-list").innerHTML = data.map(d => `
         <div class="stock-row">
@@ -198,38 +348,43 @@ async function loadStock() {
 }
 
 async function loadActivity() {
-    const data = await call("get_recent_activity", {});
+    const data = await call("get_recent_activity", { farm: farm() });
     if (!data.length) { document.getElementById("activity-list").innerHTML = '<div class="spinner">No applications yet.</div>'; return; }
     document.getElementById("activity-list").innerHTML = `
         <table>
-            <tr><th>Date</th><th>Block</th><th>Product</th><th>Kg</th><th>Status</th></tr>
+            <tr><th>Date</th><th>Block</th><th>Product</th><th>Kg</th></tr>
             ${data.map(a => `<tr>
                 <td>${a.application_date || ""}</td><td>${a.block}</td><td>${a.fertilizer_product}</td>
                 <td>${a.actual_quantity_applied_kg}</td>
-                <td>${a.applied_in_full ? '<span class="badge badge-full">Full</span>' : '<span class="badge badge-part">Partial</span>'}</td>
             </tr>`).join("")}
         </table>`;
 }
 
-async function loadBudget() {
-    const b = await call("get_budget_summary", { season: season() });
-    const varClass = b.variance > 0 ? "over" : "under";
-    const varSign = b.variance > 0 ? "+" : "";
-    document.getElementById("budget-panel").innerHTML = `
-        <div class="budget-row">
-            <div class="budget-metric"><div class="v">Ksh ${b.total_budget.toLocaleString()}</div><div class="l">Budgeted</div></div>
-            <div class="budget-metric"><div class="v">Ksh ${b.total_actual.toLocaleString()}</div><div class="l">Actual so far</div></div>
-            <div class="budget-metric"><div class="v ${varClass}">${varSign}Ksh ${b.variance.toLocaleString()}</div><div class="l">Variance</div></div>
-            <div class="budget-metric"><div class="v">Ksh ${b.cost_per_ha_budget.toLocaleString()}</div><div class="l">Budget Cost / Ha</div></div>
-            <div class="budget-metric"><div class="v">Ksh ${b.cost_per_ha_actual.toLocaleString()}</div><div class="l">Actual Cost / Ha</div></div>
-        </div>
-        <div class="progress-wrap" style="margin-top:16px;">
-            <div class="progress-bar" style="width:${Math.min(b.pct_spent,100)}%;background:${b.pct_spent>100?'#D14C4C':'linear-gradient(90deg,#2C6BB3,#4A9BD1)'}">${b.pct_spent}% spent</div>
-        </div>`;
+async function loadPartial() {
+    const data = await call("get_partial_applications", { season: season(), farm: farm() });
+    if (!data.length) { document.getElementById("partial-list").innerHTML = '<div class="spinner">✅ No partial applications.</div>'; return; }
+    document.getElementById("partial-list").innerHTML = `
+        <table>
+            <tr><th>Block</th><th>Product</th><th>Kg</th><th>Reason</th></tr>
+            ${data.map(a => `<tr>
+                <td>${a.block}</td><td>${a.fertilizer_product}</td>
+                <td>${a.actual_quantity_applied_kg} / ${a.planned_quantity_kg}</td>
+                <td style="color:#9A6206;">${a.partial_reason || "—"}</td>
+            </tr>`).join("")}
+        </table>`;
+}
+
+async function loadOperators() {
+    const data = await call("get_operator_activity", { season: season(), farm: farm() });
+    if (!data.length) { document.getElementById("operator-list").innerHTML = '<div class="spinner">No applications recorded yet.</div>'; return; }
+    document.getElementById("operator-list").innerHTML = `
+        <table><tr><th>Operator</th><th>Applications</th><th>Total Kg</th></tr>
+        ${data.map(o => `<tr><td>${o.applied_by}</td><td>${o.applications}</td><td>${o.total_kg.toLocaleString()}</td></tr>`).join("")}
+        </table>`;
 }
 
 async function loadUpcomingOverdue() {
-    const d = await call("get_upcoming_and_overdue", {});
+    const d = await call("get_upcoming_and_overdue", { farm: farm() });
     const up = d.upcoming || [], od = d.overdue || [];
     document.getElementById("upcoming-list").innerHTML = up.length ? `
         <table><tr><th>Block</th><th>Product</th><th>Month</th><th>Due in</th></tr>
@@ -242,8 +397,21 @@ async function loadUpcomingOverdue() {
         : '<div class="spinner">✅ Nothing overdue.</div>';
 }
 
+async function loadVarianceAlerts() {
+    const data = await call("get_variance_alerts", { season: season(), farm: farm() });
+    if (!data.length) { document.getElementById("variance-list").innerHTML = '<div class="spinner">✅ No significant deviations.</div>'; return; }
+    document.getElementById("variance-list").innerHTML = data.map(a => `
+        <div class="alert-row">
+            <div><b>${a.block}</b> · ${a.fertilizer_product} · ${a.application_date || ""}</div>
+            <div style="text-align:right;">
+                <div>${a.actual_quantity_applied_kg} / ${a.planned_quantity_kg} Kg</div>
+                <span class="badge b-behind">${a.variance_pct}% variance</span>
+            </div>
+        </div>`).join("");
+}
+
 async function loadCoverage() {
-    const data = await call("get_stock_coverage", { season: season() });
+    const data = await call("get_stock_coverage", { season: season(), farm: farm() });
     if (!data.length) { document.getElementById("coverage-list").innerHTML = '<div class="spinner">No requirement data.</div>'; return; }
     const max = Math.max(...data.map(d => Math.max(d.need, d.stock)), 1);
     document.getElementById("coverage-list").innerHTML = data.map(d => {
@@ -259,15 +427,16 @@ async function loadCoverage() {
 }
 
 async function loadLeafGrid() {
-    const d = await call("get_leaf_deficiency_grid", { season: season() });
+    const d = await call("get_leaf_deficiency_grid", { season: season(), farm: farm() });
     if (!d.grid.length) { document.getElementById("leaf-grid").innerHTML = '<div class="spinner">No leaf analysis data.</div>'; return; }
     const cls = s => s === "Deficient" ? "def" : s === "Adequate" ? "adq" : s === "Excess" ? "exc" : "na";
     const short = s => s === "Deficient" ? "Low" : s === "Adequate" ? "OK" : s === "Excess" ? "High" : "—";
     document.getElementById("leaf-grid").innerHTML = `
         <table class="leaf-table">
-            <tr><th>Block</th>${d.nutrients.map(n => `<th>${n}</th>`).join("")}</tr>
+            <tr><th>Section</th><th>Tier</th>${d.nutrients.map(n => `<th>${n}</th>`).join("")}</tr>
             ${d.grid.map(r => `<tr>
-                <td style="text-align:left;font-weight:600;">${r.block}</td>
+                <td style="text-align:left;font-weight:600;">${r.section}</td>
+                <td>${r.yield_tier}</td>
                 ${d.nutrients.map(n => {
                     const s = r.cells[n] || "—";
                     return `<td><span class="leaf-cell ${cls(s)}">${short(s)}</span></td>`;
@@ -276,6 +445,18 @@ async function loadLeafGrid() {
         </table>`;
 }
 
-window.addEventListener("load", () => setTimeout(loadSeasons, 150));
+async function loadComputedBudget() {
+    const d = await call("get_computed_budget", { season: season(), farm: farm() });
+    if (!d.lines.length) { document.getElementById("computed-budget").innerHTML = '<div class="spinner">No submitted programme to estimate from yet.</div>'; return; }
+    document.getElementById("computed-budget").innerHTML = `
+        <div class="headline"><div><div class="v">Ksh ${d.total_cost.toLocaleString()}</div><div class="l">Estimated Season Cost</div></div></div>
+        <table>
+            <tr><th>Product</th><th>Qty (Kg)</th><th>Unit Price</th><th>Cost (Ksh)</th></tr>
+            ${d.lines.map(l => `<tr><td>${l.product}</td><td>${l.qty_kg.toLocaleString()}</td>
+                <td>${l.unit_price.toLocaleString()}</td><td>${l.cost.toLocaleString()}</td></tr>`).join("")}
+        </table>`;
+}
+
+window.addEventListener("load", () => setTimeout(loadFilters, 150));
 </script>
 {% endblock %}

@@ -37,9 +37,18 @@ LEAF_NORMS = [
 
 
 def execute():
+	"""Called both as a migration patch (existing sites picking up this
+	update) and from install.py::after_install (fresh installs - patches
+	are skipped entirely on a fresh `install-app`, so this must also be
+	reachable outside the patch runner)."""
 	if frappe.db.exists("Crop", CROP_NAME):
 		return
 
+	# Item records (CAN/TSP/MOP/K2SO4) are operational setup, not shipped with
+	# the app - they may not exist yet on a fresh site. Use ignore_links so
+	# the full Crop config (all 4 nutrient rules) is created regardless; the
+	# Link fields resolve automatically once those Items are created with
+	# matching codes.
 	crop = frappe.get_doc({
 		"doctype": "Crop",
 		"crop_name": CROP_NAME,
@@ -67,10 +76,9 @@ def execute():
 				"nutrient_source_group": group,
 			}
 			for product, nutrient, rate, bag_weight, pct, netting, group in NUTRIENT_RULES
-			if frappe.db.exists("Item", product)
 		],
 	})
-	crop.insert(ignore_permissions=True)
+	crop.insert(ignore_permissions=True, ignore_links=True)
 
 	for nutrient, low, high in LEAF_NORMS:
 		if frappe.db.exists("Leaf Analysis Norm", {"crop": CROP_NAME, "nutrient": nutrient}):
@@ -85,3 +93,11 @@ def execute():
 		}).insert(ignore_permissions=True)
 
 	frappe.db.commit()
+
+	missing = [p for p in {r[0] for r in NUTRIENT_RULES} if not frappe.db.exists("Item", p)]
+	if missing:
+		print(
+			f"UpandeCNP: Crop '{CROP_NAME}' seeded. Create Item records for {', '.join(sorted(missing))} "
+			"(matching these exact codes) before building a Fertilizer Programme - the calculation "
+			"engine's product links need them to exist."
+		)

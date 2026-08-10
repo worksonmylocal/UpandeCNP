@@ -5,8 +5,17 @@ def after_install():
     create_roles()
     create_material_request_custom_field()
     set_site_config()
+    seed_crop_data()
     frappe.db.commit()
     print("UpandeCNP: post-install setup complete.")
+
+
+def seed_crop_data():
+    """Patches don't run on a fresh `bench install-app` (only on `bench
+    migrate` for sites that already had the app) - call the same seed
+    function directly so it also runs on a brand new site."""
+    from upandecnp.patches.seed_lokitela_crop_data import execute as seed_crop
+    seed_crop()
 
 
 def create_roles():
