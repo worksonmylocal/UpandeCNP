@@ -8,10 +8,13 @@
  "field_order": [
   "section_break_pc52",
   "amended_from",
+  "progress",
   "fertilizer_programme",
+  "status",
   "season",
   "block",
   "farm",
+  "company",
   "section",
   "fertilizer_product",
   "application_month",
@@ -19,8 +22,7 @@
   "application_rate_kg_ha",
   "dose_per_tree_g",
   "tree_count",
-  "total_kg_required",
-  "status"
+  "total_kg_required"
  ],
  "fields": [
   {
@@ -36,6 +38,14 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "progress",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "Progress",
+   "no_copy": 1,
+   "read_only": 1
   },
   {
    "fieldname": "fertilizer_programme",
@@ -65,6 +75,13 @@
    "fieldtype": "Link",
    "label": "Farm",
    "options": "Farm",
+   "read_only": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
    "read_only": 1
   },
   {
@@ -138,7 +155,6 @@
  "owner": "Administrator",
  "permissions": [
   {
-   "create": 1,
    "delete": 1,
    "email": 1,
    "export": 1,

@@ -19,6 +19,10 @@ class LeafAnalysis(Document):
 	def set_farm(self):
 		if self.section:
 			self.farm = frappe.db.get_value("Section", self.section, "farm")
+		elif self.block:
+			# Section master data isn't populated yet on this site, so fall back
+			# to the block -> farm chain the other Farm Block scoped doctypes use.
+			self.farm = frappe.db.get_value("Farm Block", self.block, "farm")
 
 	def populate_norms_and_status(self):
 		norms = {

@@ -9,6 +9,7 @@
   "section_break_ygei",
   "season",
   "farm",
+  "company",
   "season_notes",
   "calendar_events",
   "fertilizer_schedule"
@@ -32,6 +33,13 @@
    "label": "Farm",
    "options": "Farm",
    "reqd": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1
   },
   {
    "fieldname": "season_notes",

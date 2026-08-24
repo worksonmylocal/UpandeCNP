@@ -12,6 +12,7 @@
   "yield_tier",
   "crop",
   "farm",
+  "company",
   "block",
   "sampling_date",
   "season",
@@ -66,6 +67,13 @@
    "fieldtype": "Link",
    "label": "Farm",
    "options": "Farm",
+   "read_only": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
    "read_only": 1
   },
   {

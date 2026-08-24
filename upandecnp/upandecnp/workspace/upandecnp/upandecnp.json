@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"type\": \"header\", \"data\": {\"text\": \"<span class='h4'><b>At a Glance</b></span>\", \"col\": 12}}, {\"type\": \"number_card\", \"data\": {\"number_card_name\": \"Blocks Planned\", \"col\": 3}}, {\"type\": \"number_card\", \"data\": {\"number_card_name\": \"Issued (Awaiting Apply)\", \"col\": 3}}, {\"type\": \"number_card\", \"data\": {\"number_card_name\": \"Applications Done\", \"col\": 3}}, {\"type\": \"number_card\", \"data\": {\"number_card_name\": \"Pending Store Requests\", \"col\": 3}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class='h4'><b>Managerial</b></span>\", \"col\": 12}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\\ud83d\\udcc8 Manager Dashboard\", \"col\": 3}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class='h4'><b>Field &amp; Overview</b></span>\", \"col\": 12}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\\ud83d\\udcca Dashboard\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\\ud83d\\udcf1 Field Page\", \"col\": 3}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class='h4'><b>Planning</b></span>\", \"col\": 12}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Fertilizer Programme\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Block Fertilizer Plan\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Production Calendar\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Fertilizer Budget\", \"col\": 3}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class='h4'><b>Field Execution</b></span>\", \"col\": 12}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Fertilizer Store Request\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Fertilizer Application\", \"col\": 3}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class='h4'><b>Master Data</b></span>\", \"col\": 12}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Farm\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Section\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Crop\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Farm Block\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Leaf Analysis\", \"col\": 3}}]",
+ "content": "[{\"type\": \"header\", \"data\": {\"text\": \"<span class='h4'><b>At a Glance</b></span>\", \"col\": 12}}, {\"type\": \"number_card\", \"data\": {\"number_card_name\": \"Blocks Planned\", \"col\": 3}}, {\"type\": \"number_card\", \"data\": {\"number_card_name\": \"Issued (Awaiting Apply)\", \"col\": 3}}, {\"type\": \"number_card\", \"data\": {\"number_card_name\": \"Applications Done\", \"col\": 3}}, {\"type\": \"number_card\", \"data\": {\"number_card_name\": \"Pending Store Requests\", \"col\": 3}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class='h4'><b>Managerial</b></span>\", \"col\": 12}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\\ud83d\\udcc8 Manager Dashboard\", \"col\": 3}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class='h4'><b>Field &amp; Overview</b></span>\", \"col\": 12}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\\ud83d\\udcca Dashboard\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\\ud83d\\udcf1 Field Page\", \"col\": 3}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class='h4'><b>Planning</b></span>\", \"col\": 12}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Fertilizer Programme\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Fertilizer Budget (Estimated)\", \"col\": 3}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class='h4'><b>Field Execution</b></span>\", \"col\": 12}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Material Request (Mine)\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Fertilizer Application\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Block Fertilizer Plan\", \"col\": 3}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class='h4'><b>Master Data</b></span>\", \"col\": 12}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Farm Block\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Leaf Analysis\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Production Calendar\", \"col\": 3}}]",
  "creation": "2026-06-23 10:44:18.173377",
  "custom_blocks": [],
  "docstatus": 0,
@@ -16,41 +16,11 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Masters",
+   "label": "Master Data",
    "link_count": 0,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Farm",
-   "link_count": 0,
-   "link_to": "Farm",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Section",
-   "link_count": 0,
-   "link_to": "Section",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Crop",
-   "link_count": 0,
-   "link_to": "Crop",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
   },
   {
    "hidden": 0,
@@ -68,6 +38,16 @@
    "label": "Leaf Analysis",
    "link_count": 0,
    "link_to": "Leaf Analysis",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Production Calendar",
+   "link_count": 0,
+   "link_to": "Production Calendar",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -103,72 +83,6 @@
  "sequence_id": 15.0,
  "shortcuts": [
   {
-   "doc_view": "List",
-   "label": "Fertilizer Programme",
-   "link_to": "Fertilizer Programme",
-   "type": "DocType"
-  },
-  {
-   "doc_view": "List",
-   "label": "Block Fertilizer Plan",
-   "link_to": "Block Fertilizer Plan",
-   "type": "DocType"
-  },
-  {
-   "doc_view": "List",
-   "label": "Fertilizer Application",
-   "link_to": "Fertilizer Application",
-   "type": "DocType"
-  },
-  {
-   "doc_view": "List",
-   "label": "Fertilizer Budget",
-   "link_to": "Fertilizer Budget",
-   "type": "DocType"
-  },
-  {
-   "doc_view": "List",
-   "label": "Production Calendar",
-   "link_to": "Production Calendar",
-   "type": "DocType"
-  },
-  {
-   "doc_view": "List",
-   "label": "Farm",
-   "link_to": "Farm",
-   "type": "DocType"
-  },
-  {
-   "doc_view": "List",
-   "label": "Section",
-   "link_to": "Section",
-   "type": "DocType"
-  },
-  {
-   "doc_view": "List",
-   "label": "Crop",
-   "link_to": "Crop",
-   "type": "DocType"
-  },
-  {
-   "doc_view": "List",
-   "label": "Farm Block",
-   "link_to": "Farm Block",
-   "type": "DocType"
-  },
-  {
-   "doc_view": "List",
-   "label": "Leaf Analysis",
-   "link_to": "Leaf Analysis",
-   "type": "DocType"
-  },
-  {
-   "doc_view": "List",
-   "label": "Fertilizer Store Request",
-   "link_to": "Fertilizer Store Request",
-   "type": "DocType"
-  },
-  {
    "doc_view": "",
    "label": "\ud83d\udcca Dashboard",
    "type": "URL",
@@ -185,6 +99,55 @@
    "label": "\ud83d\udcc8 Manager Dashboard",
    "type": "URL",
    "url": "/manager"
+  },
+  {
+   "doc_view": "List",
+   "label": "Fertilizer Programme",
+   "link_to": "Fertilizer Programme",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "List",
+   "label": "Fertilizer Budget (Estimated)",
+   "link_to": "Fertilizer Budget",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "List",
+   "label": "Material Request (Mine)",
+   "link_to": "Material Request",
+   "type": "DocType",
+   "stats_filter": "{\"owner\": frappe.session.user}"
+  },
+  {
+   "doc_view": "List",
+   "label": "Fertilizer Application",
+   "link_to": "Fertilizer Application",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "List",
+   "label": "Block Fertilizer Plan",
+   "link_to": "Block Fertilizer Plan",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "List",
+   "label": "Farm Block",
+   "link_to": "Farm Block",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "List",
+   "label": "Leaf Analysis",
+   "link_to": "Leaf Analysis",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "List",
+   "label": "Production Calendar",
+   "link_to": "Production Calendar",
+   "type": "DocType"
   }
  ],
  "title": "UpandeCNP"

@@ -23,3 +23,12 @@ def set_farm_from_programme(doc, method=None):
 	(Fertilizer Budget)."""
 	if doc.get("fertilizer_programme"):
 		doc.farm = frappe.db.get_value("Fertilizer Programme", doc.fertilizer_programme, "farm")
+
+
+def set_company_from_farm(doc, method=None):
+	"""doc_events target for any doctype carrying both a `farm` link and a
+	`company` field. Run after whichever hook (if any) resolves `farm` on that
+	doctype, so the company always reflects the farm's parent Company for
+	per-company accounting/reporting."""
+	if doc.get("farm"):
+		doc.company = frappe.db.get_value("Farm", doc.farm, "company")

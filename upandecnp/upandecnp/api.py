@@ -32,17 +32,17 @@ def get_pending_plans_for_block(block):
     )
 
     for p in plans:
-        # Find the most recent store request for this plan
+        # Find the most recent store request (Material Request) for this plan
         requests = frappe.get_all(
-            "Fertilizer Store Request",
-            filters={"block_fertilizer_plan": p["name"]},
-            fields=["name", "status"],
+            "Material Request",
+            filters={"custom_block_fertilizer_plan": p["name"]},
+            fields=["name", "status", "workflow_state"],
             order_by="creation desc",
             limit=1,
         )
         if requests:
             p["request_name"] = requests[0].name
-            p["request_status"] = requests[0].status
+            p["request_status"] = requests[0].workflow_state or requests[0].status
         else:
             p["request_name"] = None
             p["request_status"] = None
@@ -52,25 +52,15 @@ def get_pending_plans_for_block(block):
 
 @frappe.whitelist()
 def create_store_request(block_fertilizer_plan, quantity, employee=None):
-    """Create a Fertilizer Store Request from the field page."""
-    plan = frappe.get_doc("Block Fertilizer Plan", block_fertilizer_plan)
+    """Create a Material Request (Material Issue) from the field page, in the
+    same format used for every other store-issue category on this site."""
+    from upandecnp.upandecnp.utils.integration import create_material_issue_request
 
     if not employee:
         employee = frappe.db.get_value("Employee", {"user_id": frappe.session.user}, "name")
 
-    doc = frappe.get_doc({
-        "doctype": "Fertilizer Store Request",
-        "block_fertilizer_plan": block_fertilizer_plan,
-        "block": plan.block,
-        "fertilizer_product": plan.fertilizer_product,
-        "application_month": plan.application_month,
-        "quantity_requested_kg": flt(quantity),
-        "requested_by": employee,
-        "request_date": frappe.utils.today(),
-        "status": "Requested",
-    })
-    doc.insert(ignore_permissions=True)
-    return {"name": doc.name, "status": "Requested"}
+    mr = create_material_issue_request(block_fertilizer_plan, quantity, employee)
+    return {"name": mr.name, "status": mr.workflow_state or mr.status}
 
 
 @frappe.whitelist()
@@ -107,14 +97,21 @@ def record_application(block_fertilizer_plan, actual_quantity, applied_in_full,
 
 @frappe.whitelist()
 def get_issued_request_for_plan(block_fertilizer_plan):
-    """Find an issued store request for this plan, so the app can link to it."""
-    sr = frappe.get_all(
-        "Fertilizer Store Request",
-        filters={"block_fertilizer_plan": block_fertilizer_plan, "status": "Issued"},
+    """Find a fully-issued Material Request for this plan, so the app can link
+    to it. `per_ordered` is ERPNext's own tracking of how much of the
+    requested qty has actually moved out via Stock Entry - 100% means issued
+    in full, regardless of which workflow state it's sitting in."""
+    mr = frappe.get_all(
+        "Material Request",
+        filters={
+            "custom_block_fertilizer_plan": block_fertilizer_plan,
+            "docstatus": 1,
+            "per_ordered": [">=", 100],
+        },
         fields=["name"],
         limit=1,
     )
-    return sr[0].name if sr else None
+    return mr[0].name if mr else None
 
 @frappe.whitelist(allow_guest=False)
 def get_token():
@@ -159,11 +156,11 @@ def get_dashboard_summary(season=None, farm=None):
 
     blocks = len(set(p.block for p in plans))
 
-    # Pending store requests
-    request_filter = {"status": "Requested"}
+    # Pending store requests (Material Requests not yet fully issued from store)
+    request_filter = {"custom_request_type": "Fertiliser Issuing", "per_ordered": ["<", 100]}
     if farm:
-        request_filter["farm"] = farm
-    pending_requests = frappe.db.count("Fertilizer Store Request", request_filter)
+        request_filter["custom_farm"] = farm
+    pending_requests = frappe.db.count("Material Request", request_filter)
 
     pct_applied = round(applied / total_plans * 100, 1) if total_plans else 0
 

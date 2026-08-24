@@ -117,13 +117,29 @@ after_install = "upandecnp.upandecnp.install.after_install"
 # -----------
 # Permissions evaluated in scripted ways
 
-# permission_query_conditions = {
-# 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
-# }
-#
-# has_permission = {
-# 	"Event": "frappe.desk.doctype.event.event.has_permission",
-# }
+permission_query_conditions = {
+    "Material Request": "upandecnp.upandecnp.utils.farm_permissions.material_request_query",
+    "Fertilizer Programme": "upandecnp.upandecnp.utils.farm_permissions.fertilizer_programme_query",
+    "Block Fertilizer Plan": "upandecnp.upandecnp.utils.farm_permissions.block_fertilizer_plan_query",
+    "Fertilizer Budget": "upandecnp.upandecnp.utils.farm_permissions.fertilizer_budget_query",
+    "Fertilizer Application": "upandecnp.upandecnp.utils.farm_permissions.fertilizer_application_query",
+    "Production Calendar": "upandecnp.upandecnp.utils.farm_permissions.production_calendar_query",
+    "Leaf Analysis": "upandecnp.upandecnp.utils.farm_permissions.leaf_analysis_query",
+    "Farm Block": "upandecnp.upandecnp.utils.farm_permissions.farm_block_query",
+    "Section": "upandecnp.upandecnp.utils.farm_permissions.section_query",
+}
+
+has_permission = {
+    "Material Request": "upandecnp.upandecnp.utils.farm_permissions.has_farm_permission",
+    "Fertilizer Programme": "upandecnp.upandecnp.utils.farm_permissions.has_farm_permission",
+    "Block Fertilizer Plan": "upandecnp.upandecnp.utils.farm_permissions.has_farm_permission",
+    "Fertilizer Budget": "upandecnp.upandecnp.utils.farm_permissions.has_farm_permission",
+    "Fertilizer Application": "upandecnp.upandecnp.utils.farm_permissions.has_farm_permission",
+    "Production Calendar": "upandecnp.upandecnp.utils.farm_permissions.has_farm_permission",
+    "Leaf Analysis": "upandecnp.upandecnp.utils.farm_permissions.has_farm_permission",
+    "Farm Block": "upandecnp.upandecnp.utils.farm_permissions.has_farm_permission",
+    "Section": "upandecnp.upandecnp.utils.farm_permissions.has_farm_permission",
+}
 
 # DocType Class
 # ---------------
@@ -149,16 +165,43 @@ doc_events = {
         "on_submit": "upandecnp.upandecnp.utils.integration.update_budget_on_receipt"
     },
     "Fertilizer Store Request": {
-        "validate": "upandecnp.upandecnp.utils.farm_scope.set_farm_from_block"
+        "validate": [
+            "upandecnp.upandecnp.utils.farm_scope.set_farm_from_block",
+            "upandecnp.upandecnp.utils.farm_scope.set_company_from_farm",
+        ]
     },
     "Fertilizer Application": {
-        "validate": "upandecnp.upandecnp.utils.farm_scope.set_farm_from_block"
+        "validate": [
+            "upandecnp.upandecnp.utils.farm_scope.set_farm_from_block",
+            "upandecnp.upandecnp.utils.farm_scope.set_company_from_farm",
+        ]
     },
     "Block Fertilizer Plan": {
-        "validate": "upandecnp.upandecnp.utils.farm_scope.set_farm_from_block"
+        "validate": [
+            "upandecnp.upandecnp.utils.farm_scope.set_farm_from_block",
+            "upandecnp.upandecnp.utils.farm_scope.set_company_from_farm",
+        ]
     },
     "Fertilizer Budget": {
-        "validate": "upandecnp.upandecnp.utils.farm_scope.set_farm_from_programme"
+        "validate": [
+            "upandecnp.upandecnp.utils.farm_scope.set_farm_from_programme",
+            "upandecnp.upandecnp.utils.farm_scope.set_company_from_farm",
+        ]
+    },
+    "Farm Block": {
+        "validate": "upandecnp.upandecnp.utils.farm_scope.set_company_from_farm"
+    },
+    "Fertilizer Programme": {
+        "validate": "upandecnp.upandecnp.utils.farm_scope.set_company_from_farm"
+    },
+    "Leaf Analysis": {
+        "validate": "upandecnp.upandecnp.utils.farm_scope.set_company_from_farm"
+    },
+    "Production Calendar": {
+        "validate": "upandecnp.upandecnp.utils.farm_scope.set_company_from_farm"
+    },
+    "Section": {
+        "validate": "upandecnp.upandecnp.utils.farm_scope.set_company_from_farm"
     },
 }
 

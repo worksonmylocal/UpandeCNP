@@ -7,3 +7,5 @@ upandecnp.patches.remove_leaf_selection_doctype
 [post_model_sync]
 # Patches added in this section will be executed after doctypes are migrated
 upandecnp.patches.seed_lokitela_crop_data
+upandecnp.patches.add_material_request_block_fertilizer_plan_field
+upandecnp.patches.create_agronomist_roles

@@ -11,6 +11,7 @@
   "block_fertilizer_plan",
   "block",
   "farm",
+  "company",
   "fertilizer_product",
   "application_month",
   "quantity_requested_kg",
@@ -58,6 +59,13 @@
    "fieldtype": "Link",
    "label": "Farm",
    "options": "Farm",
+   "read_only": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
    "read_only": 1
   },
   {
@@ -136,7 +144,6 @@
  "owner": "Administrator",
  "permissions": [
   {
-   "create": 1,
    "delete": 1,
    "email": 1,
    "export": 1,

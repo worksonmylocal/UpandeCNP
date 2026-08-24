@@ -11,6 +11,7 @@
   "block",
   "block_fertilizer_plan",
   "farm",
+  "company",
   "application_date",
   "fertilizer_product",
   "planned_quantity_kg",
@@ -53,6 +54,13 @@
    "fieldtype": "Link",
    "label": "Farm",
    "options": "Farm",
+   "read_only": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
    "read_only": 1
   },
   {
@@ -134,7 +142,7 @@
    "fieldname": "store_request",
    "fieldtype": "Link",
    "label": "Store Request",
-   "options": "Fertilizer Store Request",
+   "options": "Material Request",
    "reqd": 1
   },
   {

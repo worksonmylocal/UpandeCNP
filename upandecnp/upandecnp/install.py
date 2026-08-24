@@ -19,8 +19,12 @@ def seed_crop_data():
 
 
 def create_roles():
-    """Create the Field Worker and Storekeeper roles if missing."""
-    for role_name in ["Field Worker", "Storekeeper"]:
+    """Create the Field Worker, Storekeeper and per-farm Agronomist roles if
+    missing. A role named "<Farm> Agronomist" restricts whoever holds it to
+    that Farm's data only (see utils/farm_permissions.py) - onboarding a new
+    farm's agronomist just needs a matching Role, no code change."""
+    roles = ["Field Worker", "Storekeeper", "Lokitela Agronomist", "Endebess Agronomist"]
+    for role_name in roles:
         if not frappe.db.exists("Role", role_name):
             frappe.get_doc({
                 "doctype": "Role",
@@ -45,6 +49,20 @@ def create_material_request_custom_field():
             "read_only": 1,
         }).insert(ignore_permissions=True)
         print("UpandeCNP: created Material Request custom field")
+
+    block_plan_fieldname = "custom_block_fertilizer_plan"
+    if not frappe.db.exists("Custom Field", f"Material Request-{block_plan_fieldname}"):
+        frappe.get_doc({
+            "doctype": "Custom Field",
+            "dt": "Material Request",
+            "fieldname": block_plan_fieldname,
+            "label": "Block Fertilizer Plan",
+            "fieldtype": "Link",
+            "options": "Block Fertilizer Plan",
+            "insert_after": "custom_fertilizer_programme",
+            "read_only": 1,
+        }).insert(ignore_permissions=True)
+        print("UpandeCNP: created Material Request custom_block_fertilizer_plan field")
 
 
 def set_site_config():

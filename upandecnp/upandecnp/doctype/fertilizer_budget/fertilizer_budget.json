@@ -11,6 +11,7 @@
   "season",
   "fertilizer_programme",
   "farm",
+  "company",
   "total_budget_ksh",
   "total_actual",
   "total_variance_ksh",
@@ -55,6 +56,13 @@
    "fieldtype": "Link",
    "label": "Farm",
    "options": "Farm",
+   "read_only": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
    "read_only": 1
   },
   {

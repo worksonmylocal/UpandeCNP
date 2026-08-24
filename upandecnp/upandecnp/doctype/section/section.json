@@ -8,6 +8,7 @@
  "field_order": [
   "section_break_section",
   "farm",
+  "company",
   "section_name",
   "is_active"
  ],
@@ -23,6 +24,13 @@
    "label": "Farm",
    "options": "Farm",
    "reqd": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1
   },
   {
    "fieldname": "section_name",

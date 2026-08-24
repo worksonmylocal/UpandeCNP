@@ -8,6 +8,7 @@
  "field_order": [
   "section_break_crop",
   "crop_name",
+  "item",
   "column_break_crop_compost",
   "compost_dose_kg",
   "compost_n_pct",
@@ -29,6 +30,14 @@
    "label": "Crop Name",
    "reqd": 1,
    "unique": 1
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item",
+   "unique": 1,
+   "description": "The post-production/harvested-produce Item this crop yields, e.g. Hass Avocado -> Item 'Avocado'."
   },
   {
    "fieldname": "column_break_crop_compost",

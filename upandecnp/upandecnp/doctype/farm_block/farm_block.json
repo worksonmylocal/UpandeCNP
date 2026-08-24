@@ -11,13 +11,15 @@
   "block_number",
   "section",
   "farm",
+  "company",
   "crop",
   "column_break_fb1",
   "area_ha",
   "tree_count",
   "previous_year_yield_kg_ha",
   "planting_year",
-  "variety"
+  "variety",
+  "cost_center"
  ],
  "fields": [
   {
@@ -53,6 +55,13 @@
    "in_list_view": 1,
    "label": "Farm",
    "options": "Farm",
+   "read_only": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
    "read_only": 1
   },
   {
@@ -94,6 +103,14 @@
    "fieldname": "variety",
    "fieldtype": "Data",
    "label": "Variety"
+  },
+  {
+   "fieldname": "cost_center",
+   "fieldtype": "Link",
+   "label": "Cost Center",
+   "options": "Cost Center",
+   "read_only": 1,
+   "description": "The block-level Cost Center under this block's Section in the Kaitet chart of accounts, e.g. LA 5 - KL."
   }
  ],
  "grid_page_length": 50,
