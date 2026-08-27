@@ -19,7 +19,7 @@
   "variance_kg",
   "application_method",
   "weather_conditions",
-  "operator",
+  "applicators",
   "supervisor",
   "stock_entry",
   "notes",
@@ -53,7 +53,7 @@
    "fieldname": "farm",
    "fieldtype": "Link",
    "label": "Farm",
-   "options": "Farm",
+   "options": "CNP Farm",
    "read_only": 1
   },
   {
@@ -108,10 +108,10 @@
    "options": "Dry / Sunny\nLight Cloud\nLight Rain\nWet"
   },
   {
-   "fieldname": "operator",
-   "fieldtype": "Link",
-   "label": "Operator",
-   "options": "Employee"
+   "fieldname": "applicators",
+   "fieldtype": "Table",
+   "label": "Applicators",
+   "options": "Fertilizer Application Applicator"
   },
   {
    "fieldname": "supervisor",

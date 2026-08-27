@@ -66,7 +66,7 @@
    "fieldname": "farm",
    "fieldtype": "Link",
    "label": "Farm",
-   "options": "Farm",
+   "options": "CNP Farm",
    "read_only": 1
   },
   {

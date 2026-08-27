@@ -4,7 +4,7 @@ frappe.query_reports["Blocks Applied"] = {
             fieldname: "farm",
             label: "Farm",
             fieldtype: "Link",
-            options: "Farm"
+            options: "CNP Farm"
         },
         {
             fieldname: "from_date",

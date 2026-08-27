@@ -88,7 +88,7 @@ after_install = "upandecnp.upandecnp.install.after_install"
 # Uninstallation
 # ------------
 
-# before_uninstall = "upandecnp.uninstall.before_uninstall"
+before_uninstall = "upandecnp.uninstall.before_uninstall"
 # after_uninstall = "upandecnp.uninstall.after_uninstall"
 
 # Integration Setup
@@ -163,6 +163,9 @@ has_permission = {
 doc_events = {
     "Purchase Receipt": {
         "on_submit": "upandecnp.upandecnp.utils.integration.update_budget_on_receipt"
+    },
+    "Stock Entry": {
+        "on_submit": "upandecnp.upandecnp.utils.integration.mark_plan_issued_from_stock_entry"
     },
     "Fertilizer Store Request": {
         "validate": [

@@ -28,7 +28,7 @@ def month_to_date(month_name):
 
 
 def get_farm_warehouse(farm):
-    return frappe.db.get_value("Farm", farm, "warehouse") if farm else None
+    return frappe.db.get_value("CNP Farm", farm, "warehouse") if farm else None
 
 
 def get_business_unit_for_farm(farm_doc):
@@ -51,7 +51,7 @@ def create_material_issue_request(block_fertilizer_plan, quantity, employee=None
     same farm-manager approval workflow instead of a bespoke one.
     """
     plan = frappe.get_doc("Block Fertilizer Plan", block_fertilizer_plan)
-    farm_doc = frappe.get_doc("Farm", plan.farm)
+    farm_doc = frappe.get_doc("CNP Farm", plan.farm)
 
     if not farm_doc.warehouse:
         frappe.throw(
@@ -88,7 +88,79 @@ def create_material_issue_request(block_fertilizer_plan, quantity, employee=None
         }],
     })
     mr.insert(ignore_permissions=True)
+    advance_to_approval(mr)
     return mr
+
+
+def advance_to_approval(mr):
+    """Move a freshly-inserted Material Request out of Draft into the farm's
+    real approval queue (e.g. "Farm Manager to Approve"), using the same
+    Workflow ("Item Requisition") the desk approval screens already use for
+    every other store-issue category on this site - otherwise it silently
+    sits in Draft forever and the field app has no way to show real
+    approval progress. The workflow's own transitions are gated by roles
+    (Stock User) that field-app supervisors don't hold, so this writes the
+    state directly instead of going through frappe.model.workflow.apply_workflow
+    - the same "bypass the gate, rely on upandecnp's own scoping" pattern
+    used by every other write in this app."""
+    from frappe.model.workflow import get_workflow_name, is_transition_condition_satisfied
+
+    workflow_name = get_workflow_name(mr.doctype)
+    if not workflow_name:
+        return
+    workflow = frappe.get_cached_doc("Workflow", workflow_name)
+    current_state = mr.get(workflow.workflow_state_field) or workflow.states[0].state
+
+    for transition in workflow.transitions:
+        if transition.state != current_state:
+            continue
+        if "submit" not in (transition.action or "").lower():
+            continue
+        if is_transition_condition_satisfied(transition, mr):
+            frappe.db.set_value(mr.doctype, mr.name, workflow.workflow_state_field, transition.next_state)
+            return
+
+
+def categorize_request_status(state):
+    """Collapse the shared, farm-specific "Item Requisition" workflow's many
+    state names (e.g. "Request Approved by Lokitela Farm Manager", "Approved
+    by Saboti Farm Manager") into the handful of buckets the field app's UI
+    actually branches on."""
+    if not state or state.lower().endswith("to approve"):
+        return "Requested"
+    if state.startswith("Rejected"):
+        return "Rejected"
+    if state.startswith("Approved") or state.startswith("Request Approved"):
+        return "Approved"
+    return "Requested"
+
+
+def mark_plan_issued_from_stock_entry(doc, method=None):
+    """Stock Entry on_submit hook. When a storekeeper issues stock against a
+    Material Request that the field app created (custom_block_fertilizer_plan
+    set), and that request has now been fully issued, flip the linked Block
+    Fertilizer Plan to Issued - this is the missing link that used to exist
+    only for the old Fertilizer Store Request doctype (its issue_stock()
+    method set this directly) but was never carried over when store requests
+    moved to the standard Material Request + Item Requisition workflow.
+    Without this, a fully-approved-and-issued request would never show up as
+    ready in the field app's Record Application flow."""
+    mr_names = {item.material_request for item in doc.items if item.material_request}
+    if not mr_names:
+        return
+
+    requests = frappe.get_all(
+        "Material Request",
+        filters={"name": ["in", list(mr_names)], "custom_block_fertilizer_plan": ["is", "set"]},
+        fields=["name", "custom_block_fertilizer_plan"],
+    )
+    for mr in requests:
+        # Stock Entry's own on_submit may run update_completed_qty() before
+        # or after this hook depending on hook ordering - read per_ordered
+        # fresh from the DB rather than trusting any in-memory value.
+        per_ordered = flt(frappe.db.get_value("Material Request", mr.name, "per_ordered"))
+        if per_ordered >= 100:
+            frappe.db.set_value("Block Fertilizer Plan", mr.custom_block_fertilizer_plan, "status", "Issued")
 
 
 def calculate_shortfalls(programme):
@@ -105,9 +177,17 @@ def calculate_shortfalls(programme):
             requirements[product] = {"total_kg": 0, "first_month": line.application_month}
         requirements[product]["total_kg"] += flt(line.total_kg)
 
+    stock_by_product = {}
+    if requirements:
+        bin_filters = {"item_code": ["in", list(requirements.keys())]}
+        if warehouse:
+            bin_filters["warehouse"] = warehouse
+        for row in frappe.get_all("Bin", filters=bin_filters, fields=["item_code", "sum(actual_qty) as actual_qty"], group_by="item_code"):
+            stock_by_product[row.item_code] = flt(row.actual_qty)
+
     shortfalls = {}
     for product, req in requirements.items():
-        stock = get_stock_qty(product, warehouse)
+        stock = stock_by_product.get(product, 0)
         shortfall = req["total_kg"] - stock
         if shortfall > 0:
             shortfalls[product] = {
@@ -130,7 +210,7 @@ def create_material_requests_for_programme(programme_name):
         return None
 
     warehouse = get_farm_warehouse(programme.farm)
-    farm_doc = frappe.get_doc("Farm", programme.farm) if programme.farm else None
+    farm_doc = frappe.get_doc("CNP Farm", programme.farm) if programme.farm else None
     items = []
     for product, data in shortfalls.items():
         items.append({
@@ -180,7 +260,7 @@ def update_budget_on_receipt(doc, method=None):
         return
 
     warehouses = {item.warehouse for item in fertilizer_items if item.warehouse}
-    farm = frappe.db.get_value("Farm", {"warehouse": ["in", list(warehouses)]}, "name") if warehouses else None
+    farm = frappe.db.get_value("CNP Farm", {"warehouse": ["in", list(warehouses)]}, "name") if warehouses else None
     if not farm:
         return
 

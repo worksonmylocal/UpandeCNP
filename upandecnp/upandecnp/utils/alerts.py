@@ -18,7 +18,7 @@ def get_settings():
 
 
 def get_active_farms():
-    return frappe.get_all("Farm", filters={"is_active": 1}, fields=["name", "farm_manager", "warehouse"])
+    return frappe.get_all("CNP Farm", filters={"is_active": 1}, fields=["name", "farm_manager", "warehouse"])
 
 
 def get_recipient(farm_manager):

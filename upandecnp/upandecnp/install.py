@@ -4,6 +4,7 @@ import frappe
 def after_install():
     create_roles()
     create_material_request_custom_field()
+    create_employee_custom_fields()
     set_site_config()
     seed_crop_data()
     frappe.db.commit()
@@ -63,6 +64,40 @@ def create_material_request_custom_field():
             "read_only": 1,
         }).insert(ignore_permissions=True)
         print("UpandeCNP: created Material Request custom_block_fertilizer_plan field")
+
+
+def create_employee_custom_fields():
+    """Add upandecnp's own field-team fields to Employee. Deliberately kept
+    separate from the HR reports_to field - custom_field_supervisor is
+    "who manages this person for field-application purposes", set/cleared
+    by supervisors themselves through the field app, and must never be
+    confused with the real org-chart reporting line."""
+    fieldname = "custom_field_supervisor"
+    if not frappe.db.exists("Custom Field", f"Employee-{fieldname}"):
+        frappe.get_doc({
+            "doctype": "Custom Field",
+            "dt": "Employee",
+            "fieldname": fieldname,
+            "label": "Field Supervisor (UpandeCNP)",
+            "fieldtype": "Link",
+            "options": "Employee",
+            "insert_after": "reports_to",
+            "description": "Who manages this employee for fertilizer field-application purposes - set via the field app's Manage Team, separate from the HR reporting line above.",
+        }).insert(ignore_permissions=True)
+        print("UpandeCNP: created Employee custom_field_supervisor field")
+
+    block_fieldname = "custom_assigned_block"
+    if not frappe.db.exists("Custom Field", f"Employee-{block_fieldname}"):
+        frappe.get_doc({
+            "doctype": "Custom Field",
+            "dt": "Employee",
+            "fieldname": block_fieldname,
+            "label": "Assigned Block (UpandeCNP)",
+            "fieldtype": "Link",
+            "options": "Farm Block",
+            "insert_after": "custom_field_supervisor",
+        }).insert(ignore_permissions=True)
+        print("UpandeCNP: created Employee custom_assigned_block field")
 
 
 def set_site_config():

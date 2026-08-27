@@ -31,4 +31,4 @@ def set_company_from_farm(doc, method=None):
 	doctype, so the company always reflects the farm's parent Company for
 	per-company accounting/reporting."""
 	if doc.get("farm"):
-		doc.company = frappe.db.get_value("Farm", doc.farm, "company")
+		doc.company = frappe.db.get_value("CNP Farm", doc.farm, "company")

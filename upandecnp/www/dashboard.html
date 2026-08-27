@@ -23,7 +23,6 @@
   <div class="topbar__nav">
     <a href="/dashboard" class="on">Agronomist</a>
     <a href="/manager">Manager</a>
-    <a href="/field">Field App</a>
   </div>
   <div class="topbar__right">
     <span>{{ frappe.session.user }}</span>
@@ -152,8 +151,12 @@ document.querySelectorAll(".tab").forEach(btn => {
 
 async function loadFilters() {
     const [farms, seasons] = await Promise.all([call("get_farms", {}), call("get_seasons", {})]);
+    // get_farms() is already scoped to what this user is allowed to see - a
+    // restricted (single-farm) user gets no "All Farms" option at all, since
+    // picking it wouldn't actually show them every farm.
+    const allOption = farms.length > 1 ? `<option value="__all__">All Farms</option>` : "";
     document.getElementById("farm-select").innerHTML =
-        `<option value="__all__">All Farms</option>` + farms.map(f => `<option value="${f.name}">${f.name}</option>`).join("");
+        allOption + farms.map(f => `<option value="${f.name}">${f.name}</option>`).join("");
     document.getElementById("season-select").innerHTML = seasons.map(s => `<option value="${s}">${s}</option>`).join("");
     loadAll();
 }

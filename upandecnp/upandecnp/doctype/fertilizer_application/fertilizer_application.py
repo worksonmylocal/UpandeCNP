@@ -38,7 +38,7 @@ class FertilizerApplication(Document):
         )
 
     def get_fertilizer_warehouse(self):
-        warehouse = frappe.db.get_value("Farm", self.farm, "warehouse") if self.farm else None
+        warehouse = frappe.db.get_value("CNP Farm", self.farm, "warehouse") if self.farm else None
         if not warehouse:
             warehouse = frappe.db.get_single_value("Stock Settings", "default_warehouse")
         return warehouse
@@ -85,7 +85,7 @@ class FertilizerApplication(Document):
         if not self.planned_quantity_kg:
             return
 
-        farm_manager = frappe.db.get_value("Farm", self.farm, "farm_manager") if self.farm else None
+        farm_manager = frappe.db.get_value("CNP Farm", self.farm, "farm_manager") if self.farm else None
         if not farm_manager:
             return
         recipient = frappe.db.get_value("User", farm_manager, "email") or farm_manager

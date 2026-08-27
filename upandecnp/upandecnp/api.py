@@ -4,7 +4,58 @@ These reuse the existing DocType logic so the workflow stays consistent.
 """
 
 import frappe
-from frappe.utils import flt
+from frappe.utils import flt, today
+from upandecnp.upandecnp.utils.farm_permissions import resolve_farm_scope
+
+
+def _current_employee():
+    return frappe.db.get_value("Employee", {"user_id": frappe.session.user}, "name")
+
+
+def _section_scope_guard(section):
+    """frappe.get_all() bypasses permission_query_conditions, so every
+    endpoint that takes a raw section/block name (not already routed through
+    resolve_farm_scope's own farm param) needs to check the caller is
+    allowed to see that section's farm explicitly."""
+    farm = frappe.db.get_value("Section", section, "farm")
+    resolve_farm_scope(frappe.session.user, farm)
+
+
+def _block_scope_guard(block):
+    farm = frappe.db.get_value("Farm Block", block, "farm")
+    resolve_farm_scope(frappe.session.user, farm)
+
+
+@frappe.whitelist(allow_guest=True)
+def mobile_login(usr, pwd):
+    """Token login for the bundled mobile app. Session cookies don't survive
+    the app's cross-origin calls to the server - browsers only send
+    SameSite=Lax cookies (Frappe's default) on top-level navigation, never
+    on cross-site fetch/XHR - so the app authenticates once here and uses
+    the returned api_key/api_secret as an Authorization header on every
+    later call instead of relying on a cookie."""
+    from frappe.core.doctype.user.user import User
+
+    result = User.find_by_credentials(usr, pwd)
+    if not result or not result.get("is_authenticated") or not result.get("enabled"):
+        frappe.throw("Incorrect user or password.", frappe.AuthenticationError)
+
+    user_doc = frappe.get_doc("User", result["name"])
+    if not user_doc.api_key:
+        user_doc.api_key = frappe.generate_hash(length=15)
+    api_secret = frappe.generate_hash(length=15)
+    user_doc.api_secret = api_secret
+    user_doc.save(ignore_permissions=True)
+    # api_secret is a Password field - it's masked on user_doc in-memory as
+    # soon as save() runs, so the plaintext above (not user_doc.api_secret)
+    # is the only copy left to return.
+
+    return {
+        "api_key": user_doc.api_key,
+        "api_secret": api_secret,
+        "full_name": user_doc.full_name,
+        "user": user_doc.name,
+    }
 
 
 @frappe.whitelist()
@@ -23,6 +74,9 @@ def get_blocks_with_pending_work():
 @frappe.whitelist()
 def get_pending_plans_for_block(block):
     """Return the pending fertilizer plans for a block, with any linked request status."""
+    from upandecnp.upandecnp.utils.integration import categorize_request_status
+
+    _block_scope_guard(block)
     plans = frappe.get_all(
         "Block Fertilizer Plan",
         filters={"docstatus": 1, "block": block, "status": ["in", ["Planned", "Issued"]]},
@@ -42,7 +96,7 @@ def get_pending_plans_for_block(block):
         )
         if requests:
             p["request_name"] = requests[0].name
-            p["request_status"] = requests[0].workflow_state or requests[0].status
+            p["request_status"] = categorize_request_status(requests[0].workflow_state or requests[0].status)
         else:
             p["request_name"] = None
             p["request_status"] = None
@@ -51,26 +105,213 @@ def get_pending_plans_for_block(block):
 
 
 @frappe.whitelist()
+def get_sections_with_pending_work(farm=None):
+    """Sections that have at least one Planned or Issued Block Fertilizer
+    Plan, with a pending-plan count - the entry point for the field app's
+    Upcoming Applications flow (Sections first, then plans within one)."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
+    filters = {"docstatus": 1, "status": ["in", ["Planned", "Issued"]]}
+    if farm:
+        filters["farm"] = farm
+
+    plans = frappe.get_all("Block Fertilizer Plan", filters=filters, fields=["section"])
+    counts = {}
+    for p in plans:
+        if p.section:
+            counts[p.section] = counts.get(p.section, 0) + 1
+
+    return sorted(
+        [{"section": section, "pending_count": count} for section, count in counts.items()],
+        key=lambda x: x["section"],
+    )
+
+
+@frappe.whitelist()
+def get_pending_plans_for_section(section):
+    """Same shape as get_pending_plans_for_block, scoped to every block in
+    a Section instead of a single block."""
+    from upandecnp.upandecnp.utils.integration import categorize_request_status
+
+    _section_scope_guard(section)
+    plans = frappe.get_all(
+        "Block Fertilizer Plan",
+        filters={"docstatus": 1, "section": section, "status": ["in", ["Planned", "Issued"]]},
+        fields=["name", "block", "fertilizer_product", "application_month",
+                "total_kg_required", "status"],
+        order_by="block, application_month",
+    )
+
+    for p in plans:
+        requests = frappe.get_all(
+            "Material Request",
+            filters={"custom_block_fertilizer_plan": p["name"]},
+            fields=["name", "status", "workflow_state"],
+            order_by="creation desc",
+            limit=1,
+        )
+        if requests:
+            p["request_name"] = requests[0].name
+            p["request_status"] = categorize_request_status(requests[0].workflow_state or requests[0].status)
+        else:
+            p["request_name"] = None
+            p["request_status"] = None
+
+    return plans
+
+
+@frappe.whitelist()
+def get_sections_with_issued_work(farm=None):
+    """Same shape as get_sections_with_pending_work, but only counts blocks
+    that have already been issued fertilizer from store - the entry point
+    for Record Application, which should only ever offer blocks that are
+    actually ready to record against."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
+    filters = {"docstatus": 1, "status": "Issued"}
+    if farm:
+        filters["farm"] = farm
+
+    plans = frappe.get_all("Block Fertilizer Plan", filters=filters, fields=["section"])
+    counts = {}
+    for p in plans:
+        if p.section:
+            counts[p.section] = counts.get(p.section, 0) + 1
+
+    return sorted(
+        [{"section": section, "pending_count": count} for section, count in counts.items()],
+        key=lambda x: x["section"],
+    )
+
+
+@frappe.whitelist()
+def get_issued_blocks_in_section(section):
+    """Blocks within a section that have at least one Issued Block
+    Fertilizer Plan - used by Record Application's block picker so a
+    supervisor can only select blocks actually ready to record against."""
+    _section_scope_guard(section)
+    plans = frappe.get_all(
+        "Block Fertilizer Plan",
+        filters={"docstatus": 1, "section": section, "status": "Issued"},
+        fields=["block"],
+    )
+    counts = {}
+    for p in plans:
+        counts[p.block] = counts.get(p.block, 0) + 1
+    return sorted(
+        [{"block": block, "issued_count": count} for block, count in counts.items()],
+        key=lambda x: x["block"],
+    )
+
+
+@frappe.whitelist()
+def get_all_sections(farm=None):
+    """Every active Section for the caller's farm scope - used by the
+    add-applicator and reassign-block pickers, which need to reach any
+    block regardless of whether it currently has pending fertilizer work."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
+    filters = {"is_active": 1}
+    if farm:
+        filters["farm"] = farm
+    return frappe.get_all("Section", filters=filters, fields=["name", "section_name"], order_by="section_name")
+
+
+@frappe.whitelist()
+def get_blocks_in_section(section):
+    """Every Farm Block in a section, regardless of fertilizer-plan status -
+    the pick list backing the add-applicator and reassign-block flows."""
+    _section_scope_guard(section)
+    return frappe.get_all("Farm Block", filters={"section": section}, fields=["name"], order_by="name")
+
+
+@frappe.whitelist()
+def get_applications_today(farm=None):
+    """Count of Fertilizer Applications recorded today - the field app's
+    home-screen headline stat."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
+    filters = {"docstatus": 1, "application_date": frappe.utils.today()}
+    if farm:
+        filters["farm"] = farm
+    return frappe.db.count("Fertilizer Application", filters)
+
+
+@frappe.whitelist()
 def create_store_request(block_fertilizer_plan, quantity, employee=None):
     """Create a Material Request (Material Issue) from the field page, in the
     same format used for every other store-issue category on this site."""
-    from upandecnp.upandecnp.utils.integration import create_material_issue_request
+    from upandecnp.upandecnp.utils.integration import create_material_issue_request, categorize_request_status
 
     if not employee:
-        employee = frappe.db.get_value("Employee", {"user_id": frappe.session.user}, "name")
+        employee = _current_employee()
 
     mr = create_material_issue_request(block_fertilizer_plan, quantity, employee)
-    return {"name": mr.name, "status": mr.workflow_state or mr.status}
+    return {"name": mr.name, "status": categorize_request_status(mr.workflow_state or mr.status)}
+
+
+@frappe.whitelist()
+def get_store_requests(farm=None):
+    """All Fertiliser Issuing Material Requests for the caller's farm scope,
+    with a colour-coded status - the field app's "status of requests"
+    view."""
+    from upandecnp.upandecnp.utils.integration import categorize_request_status
+
+    farm = resolve_farm_scope(frappe.session.user, farm)
+    filters = {"custom_request_type": "Fertiliser Issuing"}
+    if farm:
+        filters["custom_farm"] = farm
+
+    requests = frappe.get_all(
+        "Material Request",
+        filters=filters,
+        fields=["name", "custom_block_fertilizer_plan", "workflow_state", "status",
+                "per_ordered", "transaction_date", "docstatus"],
+        order_by="creation desc",
+        limit_page_length=100,
+    )
+    plan_names = list({r.custom_block_fertilizer_plan for r in requests if r.custom_block_fertilizer_plan})
+    plans = {
+        p.name: p for p in frappe.get_all(
+            "Block Fertilizer Plan",
+            filters={"name": ["in", plan_names]},
+            fields=["name", "block", "fertilizer_product"],
+        )
+    } if plan_names else {}
+
+    result = []
+    for r in requests:
+        plan = plans.get(r.custom_block_fertilizer_plan)
+        if r.docstatus == 1 and flt(r.per_ordered) >= 100:
+            category = "Issued"
+        else:
+            category = categorize_request_status(r.workflow_state or r.status)
+        result.append({
+            "name": r.name,
+            "block": plan.block if plan else None,
+            "fertilizer_product": plan.fertilizer_product if plan else None,
+            "date": r.transaction_date,
+            "status": category,
+        })
+    return result
 
 
 @frappe.whitelist()
 def record_application(block_fertilizer_plan, actual_quantity, applied_in_full,
-                       partial_reason=None, employee=None, store_request=None):
-    """Create a Fertilizer Application from the field page."""
+                       partial_reason=None, employee=None, store_request=None, operators=None):
+    """Create a Fertilizer Application from the field page. `employee` is the
+    supervisor recording the entry (defaults to the logged-in user's
+    Employee); `operators` is the list of applicators who actually did the
+    work (a block is too big for one person), picked from the supervisor's
+    team roster (see get_my_applicators)."""
     plan = frappe.get_doc("Block Fertilizer Plan", block_fertilizer_plan)
 
     if not employee:
-        employee = frappe.db.get_value("Employee", {"user_id": frappe.session.user}, "name")
+        employee = _current_employee()
+
+    if operators and isinstance(operators, str):
+        operators = frappe.parse_json(operators)
+    operators = operators or []
+
+    for op in operators:
+        if not _is_my_applicator(op, employee):
+            frappe.throw(f"{op} is not on your team.", frappe.PermissionError)
 
     in_full = 1 if str(applied_in_full) in ("1", "true", "True", "yes") else 0
 
@@ -89,6 +330,8 @@ def record_application(block_fertilizer_plan, actual_quantity, applied_in_full,
         "applied_in_full": in_full,
         "partial_reason": partial_reason,
         "applied_by": employee,
+        "supervisor": employee,
+        "applicators": [{"employee": op} for op in operators],
     })
     doc.insert(ignore_permissions=True)
     doc.submit()
@@ -113,6 +356,193 @@ def get_issued_request_for_plan(block_fertilizer_plan):
     )
     return mr[0].name if mr else None
 
+
+def _is_my_applicator(employee, supervisor):
+    """Guards every team-scoped action (attendance, block assignment,
+    recording an application) - a supervisor may only act on Employees on
+    their own field team. Uses custom_field_supervisor (upandecnp's own
+    field-team assignment), not the HR reports_to line - deliberately kept
+    separate so this app never rewrites the real org chart."""
+    return bool(employee) and bool(supervisor) and frappe.db.exists(
+        "Employee", {"name": employee, "custom_field_supervisor": supervisor, "status": "Active"}
+    )
+
+
+@frappe.whitelist()
+def get_my_applicators():
+    """The current supervisor's field team - Employees whose
+    custom_field_supervisor is the logged-in user's own Employee record -
+    with today's attendance status. Empty list means no one has been added
+    to this supervisor's team yet (see add_applicator), not that nothing
+    is wrong."""
+    supervisor = _current_employee()
+    if not supervisor:
+        return []
+
+    applicators = frappe.get_all(
+        "Employee",
+        filters={"custom_field_supervisor": supervisor, "status": "Active"},
+        fields=["name", "employee_name", "custom_assigned_block"],
+        order_by="employee_name",
+    )
+    if not applicators:
+        return []
+
+    today_attendance = {
+        a.employee: a.status
+        for a in frappe.get_all(
+            "Field Attendance",
+            filters={
+                "employee": ["in", [a.name for a in applicators]],
+                "attendance_date": today(),
+            },
+            fields=["employee", "status"],
+        )
+    }
+    for a in applicators:
+        a["attendance_status"] = today_attendance.get(a.name)
+    return applicators
+
+
+@frappe.whitelist()
+def get_my_applicators_by_section():
+    """The current supervisor's field team, grouped by Section and then by
+    the specific Block each applicator is assigned to (an "Unassigned"
+    section/block bucket for anyone without a block yet) - backs the Manage
+    Team overview, the reassign flow, and the per-block quick-add shortcut."""
+    applicators = get_my_applicators()
+    if not applicators:
+        return []
+
+    blocks = {a.custom_assigned_block for a in applicators if a.custom_assigned_block}
+    block_section = {}
+    if blocks:
+        block_section = {
+            b.name: b.section
+            for b in frappe.get_all("Farm Block", filters={"name": ["in", list(blocks)]}, fields=["name", "section"])
+        }
+
+    sections = {}
+    for a in applicators:
+        block = a.custom_assigned_block
+        section = block_section.get(block) or "Unassigned"
+        block_label = block or "No block assigned"
+        sections.setdefault(section, {}).setdefault(block_label, []).append(a)
+
+    result = []
+    for section, block_map in sections.items():
+        block_list = sorted(
+            [{"block": block, "applicators": apps} for block, apps in block_map.items()],
+            key=lambda x: (x["block"] == "No block assigned", x["block"]),
+        )
+        result.append({"section": section, "blocks": block_list})
+
+    return sorted(result, key=lambda x: (x["section"] == "Unassigned", x["section"]))
+
+
+@frappe.whitelist()
+def get_available_employees_for_team():
+    """Active, unassigned Employees in the caller's own company - the pick
+    list for Manage Team's "Add Applicator" screen. Scoped to company
+    because this site's Employee list spans unrelated businesses (e.g.
+    Karen Roses) that share the same Frappe instance as upandecnp's own
+    company; without this a supervisor would have to search thousands of
+    irrelevant names. Someone already on a team doesn't show up here;
+    they're removed from their current team first if they need to move."""
+    supervisor = _current_employee()
+    filters = {"status": "Active", "custom_field_supervisor": ["is", "not set"]}
+    company = frappe.db.get_value("Employee", supervisor, "company") if supervisor else None
+    if company:
+        filters["company"] = company
+    return frappe.get_all(
+        "Employee",
+        filters=filters,
+        fields=["name", "employee_name"],
+        order_by="employee_name",
+    )
+
+
+@frappe.whitelist()
+def add_applicator(employee):
+    """Add an Employee to the current supervisor's field team. Any active
+    Employee not already on someone else's team can be added - this only
+    ever touches custom_field_supervisor, never the HR reports_to line."""
+    supervisor = _current_employee()
+    if not supervisor:
+        frappe.throw("You don't have an Employee record linked to your account.")
+
+    if not frappe.db.exists("Employee", {"name": employee, "status": "Active"}):
+        frappe.throw("That employee doesn't exist or isn't active.")
+
+    current_supervisor = frappe.db.get_value("Employee", employee, "custom_field_supervisor")
+    if current_supervisor and current_supervisor != supervisor:
+        frappe.throw("That employee is already on another supervisor's team.")
+
+    frappe.db.set_value("Employee", employee, "custom_field_supervisor", supervisor)
+    return {"employee": employee, "status": "added"}
+
+
+@frappe.whitelist()
+def remove_applicator(employee):
+    """Remove an Employee from the current supervisor's field team - a
+    supervisor may only remove their own team members."""
+    supervisor = _current_employee()
+    if not _is_my_applicator(employee, supervisor):
+        frappe.throw("This employee is not on your team.", frappe.PermissionError)
+
+    frappe.db.set_value("Employee", employee, "custom_field_supervisor", None)
+    frappe.db.set_value("Employee", employee, "custom_assigned_block", None)
+    return {"employee": employee, "status": "removed"}
+
+
+@frappe.whitelist()
+def assign_block(employee, block):
+    """Assign (or clear, if block is empty) an applicator's current block -
+    only for employees on the calling supervisor's own team."""
+    supervisor = _current_employee()
+    if not _is_my_applicator(employee, supervisor):
+        frappe.throw("This employee is not on your team.", frappe.PermissionError)
+
+    if block and not frappe.db.exists("Farm Block", block):
+        frappe.throw(f"Block {block} does not exist.")
+
+    frappe.db.set_value("Employee", employee, "custom_assigned_block", block or None)
+    return {"employee": employee, "block": block}
+
+
+@frappe.whitelist()
+def mark_attendance(employee, status):
+    """Mark (or update) today's Field Attendance for an applicator on the
+    current supervisor's team. Idempotent per employee/day - a second call
+    the same day updates the existing row instead of duplicating it."""
+    if status not in ("Present", "Absent"):
+        frappe.throw("Status must be Present or Absent.")
+
+    supervisor = _current_employee()
+    if not _is_my_applicator(employee, supervisor):
+        frappe.throw("This employee is not on your team.", frappe.PermissionError)
+
+    existing = frappe.db.exists("Field Attendance", {
+        "employee": employee,
+        "attendance_date": today(),
+    })
+    if existing:
+        doc = frappe.get_doc("Field Attendance", existing)
+        doc.status = status
+        doc.marked_by = supervisor
+        doc.save(ignore_permissions=True)
+    else:
+        doc = frappe.get_doc({
+            "doctype": "Field Attendance",
+            "employee": employee,
+            "attendance_date": today(),
+            "status": status,
+            "marked_by": supervisor,
+        })
+        doc.insert(ignore_permissions=True)
+    return {"name": doc.name, "status": doc.status}
+
+
 @frappe.whitelist(allow_guest=False)
 def get_token():
     return frappe.sessions.get_csrf_token()
@@ -132,13 +562,25 @@ def get_seasons():
 
 @frappe.whitelist()
 def get_farms():
-    """Return active farms, for the dashboard's farm selector."""
-    return frappe.get_all("Farm", filters={"is_active": 1}, fields=["name"], order_by="name")
+    """Return active farms, for the dashboard's farm selector - scoped to
+    whatever the caller's Agronomist/Farm Manager role restricts them to,
+    same as every other dashboard call (see resolve_farm_scope)."""
+    from upandecnp.upandecnp.utils.farm_permissions import get_agronomist_farms, get_manager_farms
+
+    farms = frappe.get_all("CNP Farm", filters={"is_active": 1}, fields=["name"], order_by="name")
+    if "System Manager" in frappe.get_roles(frappe.session.user):
+        return farms
+
+    allowed = set(get_agronomist_farms(frappe.session.user) + get_manager_farms(frappe.session.user))
+    if not allowed:
+        return farms
+    return [f for f in farms if f.name in allowed]
 
 
 @frappe.whitelist()
 def get_dashboard_summary(season=None, farm=None):
     """Return headline numbers for the dashboard."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
     plan_filter = {"docstatus": 1}
     if season and season != "All Seasons":
         plan_filter["season"] = season
@@ -179,6 +621,7 @@ def get_dashboard_summary(season=None, farm=None):
 @frappe.whitelist()
 def get_monthly_breakdown(season=None, farm=None):
     """Return quantity and cost per month across the programme."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
     prog_filter = {"docstatus": 1}
     if season and season != "All Seasons":
         prog_filter["season"] = season
@@ -215,6 +658,7 @@ def get_monthly_breakdown(season=None, farm=None):
 @frappe.whitelist()
 def get_product_breakdown(season=None, farm=None):
     """Return total quantity per product."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
     prog_filter = {"docstatus": 1}
     if season and season != "All Seasons":
         prog_filter["season"] = season
@@ -235,6 +679,7 @@ def get_product_breakdown(season=None, farm=None):
 @frappe.whitelist()
 def get_recent_activity(farm=None):
     """Return the last 8 fertilizer applications."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
     filters = {"docstatus": 1}
     if farm:
         filters["farm"] = farm
@@ -247,17 +692,47 @@ def get_recent_activity(farm=None):
 
 @frappe.whitelist()
 def get_stock_levels(farm=None):
-    """Return current stock for each fertilizer item."""
-    warehouse = frappe.db.get_value("Farm", farm, "warehouse") if farm else None
-    items = ["CAN", "MOP", "K2SO4", "TSP", "Gypsum", "Ag Lime", "Zinc Sulphate", "Borax"]
+    """Current stock for every fertilizer product actually scheduled for use -
+    pulled from Production Calendar's Fertilizer Schedule (the real source of
+    which products matter for a farm), not a fixed list. Scoping by farm also
+    scopes which products are even considered, not just which warehouse."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
+    calendar_filters = {"farm": farm} if farm else {}
+    calendar_names = frappe.get_all("Production Calendar", filters=calendar_filters, pluck="name")
+
+    products = []
+    if calendar_names:
+        products = frappe.get_all(
+            "Fertilizer Schedule",
+            filters={"parent": ["in", calendar_names]},
+            pluck="fertilizer_product",
+            distinct=True,
+        )
+    if not products:
+        return []
+
+    item_names = {
+        row.item_code: row.item_name
+        for row in frappe.get_all("Item", filters={"name": ["in", products]}, fields=["name as item_code", "item_name"])
+    }
+
+    warehouse = frappe.db.get_value("CNP Farm", farm, "warehouse") if farm else None
+    bin_filters = {"item_code": ["in", products]}
+    if warehouse:
+        bin_filters["warehouse"] = warehouse
+    stock_by_code = {
+        row.item_code: flt(row.actual_qty)
+        for row in frappe.get_all("Bin", filters=bin_filters, fields=["item_code", "sum(actual_qty) as actual_qty"], group_by="item_code")
+    }
+
     result = []
-    for item in items:
-        filters = {"item_code": item}
-        if warehouse:
-            filters["warehouse"] = warehouse
-        qty = flt(frappe.db.get_value("Bin", filters, "actual_qty"))
-        result.append({"product": item, "qty": round(qty, 0)})
-    return result
+    for code in products:
+        result.append({
+            "product": item_names.get(code, code),
+            "item_code": code,
+            "qty": round(stock_by_code.get(code, 0), 0),
+        })
+    return sorted(result, key=lambda x: x["product"])
 
 # ---------------------------------------------------------------------------
 # Dashboard - extended panels
@@ -266,6 +741,7 @@ def get_stock_levels(farm=None):
 @frappe.whitelist()
 def get_budget_summary(season=None, farm=None):
     """Budget vs actual spend and cost per hectare."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
     filters = {"docstatus": 1}
     if season and season != "All Seasons":
         filters["season"] = season
@@ -295,6 +771,7 @@ def get_budget_summary(season=None, farm=None):
 @frappe.whitelist()
 def get_upcoming_and_overdue(farm=None):
     """Plans due in the next 30 days, and overdue plans (month passed, not applied)."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
     from frappe.utils import today, getdate, date_diff
 
     months = ["January","February","March","April","May","June",
@@ -335,6 +812,7 @@ def get_leaf_deficiency_grid(season=None, farm=None):
     """Grid of section/tier groups x nutrients showing status (Deficient/
     Adequate/Excess). Leaf Analysis is keyed by (Section, Yield Tier), not
     by block - see leaf_analysis.json."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
     filters = {"docstatus": 1}
     if season and season != "All Seasons":
         filters["season"] = season
@@ -360,26 +838,36 @@ def get_leaf_deficiency_grid(season=None, farm=None):
 @frappe.whitelist()
 def get_stock_coverage(season=None, farm=None):
     """Stock on hand vs remaining requirement per product."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
     prog_filter = {"docstatus": 1}
     if season and season != "All Seasons":
         prog_filter["season"] = season
     if farm:
         prog_filter["farm"] = farm
 
-    programmes = frappe.get_all("Fertilizer Programme", filters=prog_filter, fields=["name"])
+    programme_names = frappe.get_all("Fertilizer Programme", filters=prog_filter, pluck="name")
     required = {}
-    for prog in programmes:
-        doc = frappe.get_doc("Fertilizer Programme", prog.name)
-        for line in doc.get("programme_lines", []):
-            required[line.fertilizer_product] = required.get(line.fertilizer_product, 0) + flt(line.total_kg)
+    if programme_names:
+        for row in frappe.get_all(
+            "Fertilizer Programme Line",
+            filters={"parent": ["in", programme_names]},
+            fields=["fertilizer_product", "sum(total_kg) as total_kg"],
+            group_by="fertilizer_product",
+        ):
+            required[row.fertilizer_product] = flt(row.total_kg)
 
-    warehouse = frappe.db.get_value("Farm", farm, "warehouse") if farm else None
+    warehouse = frappe.db.get_value("CNP Farm", farm, "warehouse") if farm else None
+    stock_by_product = {}
+    if required:
+        bin_filters = {"item_code": ["in", list(required.keys())]}
+        if warehouse:
+            bin_filters["warehouse"] = warehouse
+        for row in frappe.get_all("Bin", filters=bin_filters, fields=["item_code", "sum(actual_qty) as actual_qty"], group_by="item_code"):
+            stock_by_product[row.item_code] = flt(row.actual_qty)
+
     result = []
     for product, need in required.items():
-        filters = {"item_code": product}
-        if warehouse:
-            filters["warehouse"] = warehouse
-        stock = flt(frappe.db.get_value("Bin", filters, "actual_qty"))
+        stock = stock_by_product.get(product, 0)
         result.append({
             "product": product,
             "need": round(need, 0),
@@ -396,6 +884,7 @@ def get_stock_coverage(season=None, farm=None):
 @frappe.whitelist()
 def get_manager_kpis(season=None, farm=None):
     """Headline KPIs for the managerial dashboard."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
     plan_filter = {"docstatus": 1}
     if season and season != "All Seasons":
         plan_filter["season"] = season
@@ -447,6 +936,7 @@ def get_manager_kpis(season=None, farm=None):
 @frappe.whitelist()
 def get_yield_tier_distribution(season=None, farm=None):
     """How many blocks fall in each yield tier."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
     from upandecnp.upandecnp.utils.calculation_engine import get_yield_tier
 
     prog_filter = {"docstatus": 1}
@@ -478,6 +968,7 @@ def get_yield_tier_distribution(season=None, farm=None):
 @frappe.whitelist()
 def get_application_pace(season=None, farm=None):
     """Month-by-month: planned applications vs actually applied."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
     months = ["January","February","March","April","May","June",
               "July","August","September","October","November","December"]
 
@@ -507,6 +998,7 @@ def get_application_pace(season=None, farm=None):
 @frappe.whitelist()
 def get_leaf_deficiency_summary(season=None, farm=None):
     """Count of blocks deficient per nutrient."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
     filters = {"docstatus": 1}
     if season and season != "All Seasons":
         filters["season"] = season
@@ -565,6 +1057,7 @@ def sync_blocks_from_warehouse(farm=None):
     afterwards on the same Farm Block record. Farm itself is derived from
     Section, so it's also blank until then.
     """
+    farm = resolve_farm_scope(frappe.session.user, farm)
     filters = {"warehouse_type": "Block", "is_group": 0}
     if farm:
         filters["custom_farm"] = farm
@@ -637,6 +1130,7 @@ def get_block_progress(farm=None, season=None):
     drill-down. A block can have several plan lines (product x month); the
     least-advanced status wins so a block isn't "Completed" until all of
     its lines are."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
     filters = {"docstatus": 1}
     if farm:
         filters["farm"] = farm
@@ -688,6 +1182,7 @@ def get_block_progress(farm=None, season=None):
 @frappe.whitelist()
 def get_farm_progress_overview(farm=None, season=None):
     """Farm-wide rollup of section/block progress, for headline KPIs."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
     sections = get_block_progress(farm=farm, season=season)
 
     counts = {"Completed": 0, "In Progress": 0, "Pending": 0, "Behind Schedule": 0}
@@ -709,6 +1204,7 @@ def get_farm_progress_overview(farm=None, season=None):
 def get_qty_planned_vs_actual(farm=None, season=None):
     """Total planned kg (submitted programme lines) vs total actual kg
     (submitted applications), for the whole farm/season."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
     prog_filter = {"docstatus": 1}
     if farm:
         prog_filter["farm"] = farm
@@ -750,6 +1246,7 @@ def get_qty_planned_vs_actual(farm=None, season=None):
 @frappe.whitelist()
 def get_section_usage_breakdown(farm=None, season=None):
     """Planned vs actual kg per section."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
     prog_filter = {"docstatus": 1}
     if farm:
         prog_filter["farm"] = farm
@@ -797,6 +1294,7 @@ def get_partial_applications(farm=None, season=None):
     """Applications not done in full - the closest real signal to a field
     exception, using applied_in_full/partial_reason (there's no typed
     exception log yet)."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
     filters = {"docstatus": 1, "applied_in_full": 0}
     if farm:
         filters["farm"] = farm
@@ -815,13 +1313,68 @@ def get_partial_applications(farm=None, season=None):
 
 
 @frappe.whitelist()
-def get_operator_activity(farm=None, season=None):
-    """Applications count and total kg per applied_by Employee - the
-    closest real signal to applicator productivity (only one operator is
-    recorded per application, not a crew)."""
+def get_operator_activity(farm=None, season=None, employees=None, group_by="applied_by"):
+    """Applications count and total kg, grouped by Employee. Defaults to
+    `applied_by` (who recorded the entry - used by the dashboards). Pass
+    group_by="operator" and an `employees` list to get real applicator
+    productivity for a supervisor's team roster instead (see
+    get_my_applicators) - `applied_by` is the recording supervisor, not
+    necessarily who did the physical work. Since an application can now
+    have several applicators (a block is too big for one person), an
+    application's kg is counted once per applicator on it when grouping by
+    operator - it's a per-person activity count, not a stock ledger."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
+    if group_by not in ("applied_by", "operator"):
+        frappe.throw("group_by must be 'applied_by' or 'operator'.")
+
+    if employees and isinstance(employees, str):
+        employees = frappe.parse_json(employees)
+
+    if group_by == "operator":
+        filters = {"parenttype": "Fertilizer Application"}
+        if employees:
+            filters["employee"] = ["in", employees]
+        rows = frappe.get_all(
+            "Fertilizer Application Applicator",
+            filters=filters,
+            fields=["employee", "parent"],
+        )
+        parents = list({r.parent for r in rows})
+        if not parents:
+            return []
+        app_filters = {"docstatus": 1, "name": ["in", parents]}
+        if farm:
+            app_filters["farm"] = farm
+        apps_by_name = {
+            a.name: a for a in frappe.get_all(
+                "Fertilizer Application", filters=app_filters,
+                fields=["name", "actual_quantity_applied_kg", "block_fertilizer_plan"],
+            )
+        }
+        if season:
+            plan_names = set(frappe.get_all("Block Fertilizer Plan", filters={"season": season}, pluck="name"))
+            apps_by_name = {k: v for k, v in apps_by_name.items() if v.block_fertilizer_plan in plan_names}
+
+        stats = {}
+        for r in rows:
+            app = apps_by_name.get(r.parent)
+            if not app:
+                continue
+            s = stats.setdefault(r.employee, {"applications": 0, "total_kg": 0})
+            s["applications"] += 1
+            s["total_kg"] += flt(app.actual_quantity_applied_kg)
+
+        return sorted(
+            [{"operator": k, "applications": v["applications"], "total_kg": round(v["total_kg"], 1)}
+             for k, v in stats.items()],
+            key=lambda x: x["applications"], reverse=True,
+        )
+
     filters = {"docstatus": 1}
     if farm:
         filters["farm"] = farm
+    if employees:
+        filters["applied_by"] = ["in", employees]
     apps = frappe.get_all("Fertilizer Application", filters=filters,
         fields=["applied_by", "actual_quantity_applied_kg", "block_fertilizer_plan"])
 
@@ -848,6 +1401,7 @@ def get_variance_alerts(farm=None, season=None):
     """Applications whose actual-vs-planned variance exceeds the configured
     threshold (same threshold Fertilizer Application's own variance email
     alert uses)."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
     settings = frappe.get_cached_doc("Crop Nutrition Planning Settings")
     threshold = flt(settings.variance_threshold_pct or 15)
 
@@ -881,30 +1435,37 @@ def get_computed_budget(farm=None, season=None):
     needing a manually created + submitted Fertilizer Budget document
     (that doctype is still used for tracking *actual* spend against
     Purchase Receipts - this is the always-on estimate)."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
     prog_filter = {"docstatus": 1}
     if farm:
         prog_filter["farm"] = farm
     if season:
         prog_filter["season"] = season
-    programmes = frappe.get_all("Fertilizer Programme", filters=prog_filter, fields=["name"])
+    programme_names = frappe.get_all("Fertilizer Programme", filters=prog_filter, pluck="name")
 
     required = {}
-    for prog in programmes:
-        doc = frappe.get_doc("Fertilizer Programme", prog.name)
-        for line in doc.get("programme_lines", []):
-            required[line.fertilizer_product] = required.get(line.fertilizer_product, 0) + flt(line.total_kg)
+    if programme_names:
+        for row in frappe.get_all(
+            "Fertilizer Programme Line",
+            filters={"parent": ["in", programme_names]},
+            fields=["fertilizer_product", "sum(total_kg) as total_kg"],
+            group_by="fertilizer_product",
+        ):
+            required[row.fertilizer_product] = flt(row.total_kg)
 
-    price_cache = {}
-    def price(product):
-        if product not in price_cache:
-            price_cache[product] = flt(frappe.db.get_value(
-                "Item Price", {"item_code": product, "buying": 1}, "price_list_rate"))
-        return price_cache[product]
+    prices = {}
+    if required:
+        for row in frappe.get_all(
+            "Item Price",
+            filters={"item_code": ["in", list(required.keys())], "buying": 1},
+            fields=["item_code", "price_list_rate"],
+        ):
+            prices.setdefault(row.item_code, flt(row.price_list_rate))
 
     lines = []
     total = 0
     for product, qty in required.items():
-        rate = price(product)
+        rate = prices.get(product, 0)
         cost = qty * rate
         total += cost
         lines.append({"product": product, "qty_kg": round(qty, 1), "unit_price": rate, "cost": round(cost, 0)})

@@ -4,7 +4,7 @@ frappe.query_reports["Plan vs Actual Application"] = {
             fieldname: "farm",
             label: "Farm",
             fieldtype: "Link",
-            options: "Farm"
+            options: "CNP Farm"
         },
         {
             fieldname: "season",

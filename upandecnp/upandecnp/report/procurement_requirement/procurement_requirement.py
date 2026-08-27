@@ -25,7 +25,7 @@ def get_data(filters):
         frappe.throw("Please select a Fertilizer Programme")
 
     programme = frappe.get_doc("Fertilizer Programme", programme_name)
-    warehouse = frappe.db.get_value("Farm", programme.farm, "warehouse") if programme.farm else None
+    warehouse = frappe.db.get_value("CNP Farm", programme.farm, "warehouse") if programme.farm else None
     bag_sizes = get_bag_sizes(programme.crop)
 
     # Aggregate requirements per product

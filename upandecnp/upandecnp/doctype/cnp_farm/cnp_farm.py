@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class Farm(Document):
+class CNPFarm(Document):
 	pass
