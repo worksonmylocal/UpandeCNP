@@ -593,43 +593,61 @@ function submitRequest() {
 // --- Record application (multi-applicator, auto-filled from block assignment) ---
 let selectedOperators = [];
 
+let operatorRoster = [];
+
 function loadOperatorPicker() {
     selectedOperators = [];
+    operatorRoster = [];
     const box = document.getElementById("plan-action-content");
-    box.innerHTML = `<div class="spinner">Loading your team…</div>`;
-    call("get_my_applicators", {}).then(roster => {
-        if (!roster || !roster.length) {
+    box.innerHTML = `<div class="spinner">Loading applicators…</div>`;
+    call("get_applicators_for_block", { block: currentPlan.block }).then(roster => {
+        operatorRoster = roster || [];
+        if (!operatorRoster.length) {
             box.innerHTML = `
                 <h3>Who applied this?</h3>
-                <div class="empty">No applicators on your team yet. Add them under Manage Team, or continue without selecting anyone.</div>
+                <div class="empty">No applicators are assigned to ${currentPlan.block} yet. Assign some under Manage Team, or continue without selecting anyone.</div>
                 <button class="btn-big btn-warn" onclick="openRecordQty()">Continue</button>`;
             return;
         }
-        selectedOperators = roster.filter(a => a.custom_assigned_block === currentPlan.block).map(a => a.name);
+        selectedOperators = operatorRoster.map(a => a.name);
         box.innerHTML = `
             <h3>Who applied this?</h3>
-            <div class="meta">${currentPlan.block} · ${currentPlan.fertilizer_product} · applicators assigned to this block are pre-selected — adjust if needed</div>
-            <div id="operator-picker">
-                ${roster.map(a => `
-                    <div class="pick-row ${selectedOperators.includes(a.name) ? 'selected' : ''}" id="pick-${a.name}" onclick="toggleOperator('${a.name}')">
-                        <div class="initial">${initials(a.employee_name)}</div>
-                        <div class="name">${a.employee_name}</div>
-                        <div class="check"></div>
-                    </div>`).join("")}
-            </div>
-            <button class="btn-big btn-warn" id="op-continue" onclick="openRecordQty()" ${selectedOperators.length ? "" : 'disabled style="opacity:.5;"'}>${selectedOperators.length ? `Continue (${selectedOperators.length} selected)` : "Select at least one applicator"}</button>`;
+            <div class="meta">${currentPlan.block} · ${currentPlan.fertilizer_product} · everyone assigned to this block is pre-selected — adjust if needed</div>
+            ${operatorRoster.length > 6 ? `<input class="field-input" id="operator-search" type="text" placeholder="Search applicators…" oninput="drawOperatorPicker(this.value)">` : ""}
+            <div id="operator-picker"></div>
+            <button class="btn-big btn-warn" id="op-continue" onclick="openRecordQty()"></button>`;
+        drawOperatorPicker("");
     });
+}
+
+function drawOperatorPicker(filter) {
+    const f = (filter || "").toLowerCase();
+    const rows = operatorRoster.filter(a => a.employee_name.toLowerCase().includes(f));
+    document.getElementById("operator-picker").innerHTML = rows.length
+        ? rows.map(a => `
+            <div class="pick-row ${selectedOperators.includes(a.name) ? 'selected' : ''}" id="pick-${a.name}" onclick="toggleOperator('${a.name}')">
+                <div class="initial">${initials(a.employee_name)}</div>
+                <div class="name">${a.employee_name}</div>
+                <div class="check"></div>
+            </div>`).join("")
+        : `<div class="empty">No matches.</div>`;
+    updateOperatorContinueButton();
+}
+
+function updateOperatorContinueButton() {
+    const btn = document.getElementById("op-continue");
+    btn.disabled = selectedOperators.length === 0;
+    btn.style.opacity = selectedOperators.length ? "1" : ".5";
+    btn.textContent = selectedOperators.length ? `Continue (${selectedOperators.length} selected)` : "Select at least one applicator";
 }
 
 function toggleOperator(name) {
     const idx = selectedOperators.indexOf(name);
     if (idx >= 0) selectedOperators.splice(idx, 1);
     else selectedOperators.push(name);
-    document.getElementById("pick-" + name).classList.toggle("selected", selectedOperators.includes(name));
-    const btn = document.getElementById("op-continue");
-    btn.disabled = selectedOperators.length === 0;
-    btn.style.opacity = selectedOperators.length ? "1" : ".5";
-    btn.textContent = selectedOperators.length ? `Continue (${selectedOperators.length} selected)` : "Select at least one applicator";
+    const row = document.getElementById("pick-" + name);
+    if (row) row.classList.toggle("selected", selectedOperators.includes(name));
+    updateOperatorContinueButton();
 }
 
 function openRecordQty() {
@@ -661,6 +679,10 @@ function submitRecord() {
     const reason = full ? "" : (document.getElementById("reason").value || "");
     if (!full && !reason) { toast("Please give a reason"); return; }
     call("get_issued_request_for_plan", { block_fertilizer_plan: currentPlan.name }).then(sr => {
+        if (!sr) {
+            toast("No fully-issued store request found for this block — check Store Requests before recording.");
+            return;
+        }
         writeCall("record_application", {
             block_fertilizer_plan: currentPlan.name,
             actual_quantity: qty,

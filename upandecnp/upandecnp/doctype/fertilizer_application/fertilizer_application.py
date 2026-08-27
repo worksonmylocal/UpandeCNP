@@ -55,6 +55,7 @@ class FertilizerApplication(Document):
             return
 
         warehouse = self.get_fertilizer_warehouse()
+        cost_center = frappe.db.get_value("Farm Block", self.block, "cost_center") if self.block else None
 
         se = frappe.get_doc({
             "doctype": "Stock Entry",
@@ -66,6 +67,7 @@ class FertilizerApplication(Document):
                 "qty": self.actual_quantity_applied_kg,
                 "uom": "Kg",
                 "s_warehouse": warehouse,
+                "cost_center": cost_center,
             }]
         })
         se.insert(ignore_permissions=True)

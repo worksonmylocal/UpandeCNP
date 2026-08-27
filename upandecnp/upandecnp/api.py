@@ -405,6 +405,23 @@ def get_my_applicators():
 
 
 @frappe.whitelist()
+def get_applicators_for_block(block):
+    """Applicators on the current supervisor's team who are specifically
+    assigned to this block - Record Application only offers people actually
+    assigned there (not the whole team), since who worked a given block is
+    what the entry needs to reflect."""
+    supervisor = _current_employee()
+    if not supervisor:
+        return []
+    return frappe.get_all(
+        "Employee",
+        filters={"custom_field_supervisor": supervisor, "custom_assigned_block": block, "status": "Active"},
+        fields=["name", "employee_name"],
+        order_by="employee_name",
+    )
+
+
+@frappe.whitelist()
 def get_my_applicators_by_section():
     """The current supervisor's field team, grouped by Section and then by
     the specific Block each applicator is assigned to (an "Unassigned"
