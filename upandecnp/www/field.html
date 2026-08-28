@@ -48,9 +48,9 @@
     .toast.show{opacity:1}
 
     /* Side panel */
-    .overlay{position:fixed;inset:0;background:rgba(10,10,10,0.4);z-index:100;opacity:0;pointer-events:none;transition:opacity .2s}
+    .overlay{position:fixed;inset:0;background:rgba(10,10,10,0.4);z-index:99998;opacity:0;pointer-events:none;transition:opacity .2s}
     .overlay.open{opacity:1;pointer-events:auto}
-    .drawer{position:fixed;top:0;left:0;bottom:0;width:280px;background:var(--surface-2);z-index:101;
+    .drawer{position:fixed;top:0;left:0;bottom:0;width:280px;background:var(--surface-2);z-index:99999;
         transform:translateX(-100%);transition:transform .25s;padding:24px 16px;
         border-radius:0 24px 24px 0;box-shadow:var(--shadow-hover);display:flex;flex-direction:column}
     .drawer.open{transform:translateX(0)}
@@ -417,6 +417,21 @@ function renderPickList(containerId, items, opts) {
 }
 
 // --- Drawer ---
+// Frappe's page template nests page_content several levels deep inside
+// <main>/wrapper divs. If any ancestor ever picks up a transform/filter
+// (common in themed sites), position:fixed stops being relative to the
+// viewport and the drawer renders off-screen or clipped while the overlay
+// still looks fine (it's big enough to still cover most of the screen).
+// Re-parenting both onto <body> once, on load, sidesteps that entirely.
+window.addEventListener("load", () => {
+    const overlayEl = document.getElementById("overlay");
+    const drawerEl = document.getElementById("drawer");
+    if (overlayEl && drawerEl) {
+        document.body.appendChild(overlayEl);
+        document.body.appendChild(drawerEl);
+    }
+});
+
 function openDrawer() { document.getElementById("drawer").classList.add("open"); document.getElementById("overlay").classList.add("open"); }
 function closeDrawer() { document.getElementById("drawer").classList.remove("open"); document.getElementById("overlay").classList.remove("open"); }
 
