@@ -7,6 +7,7 @@ def after_install():
     create_employee_custom_fields()
     set_site_config()
     seed_crop_data()
+    seed_demo_data()
     frappe.db.commit()
     print("UpandeCNP: post-install setup complete.")
 
@@ -17,6 +18,14 @@ def seed_crop_data():
     function directly so it also runs on a brand new site."""
     from upandecnp.patches.seed_lokitela_crop_data import execute as seed_crop
     seed_crop()
+
+
+def seed_demo_data():
+    """Same reasoning as seed_crop_data() - restores the Lokitela demo
+    master data (CNP Farm, Sections, Farm Block linkage, Production
+    Calendar, Leaf Analysis) on a fresh install too, not just on migrate."""
+    from upandecnp.patches.seed_lokitela_demo_data import execute as seed_demo
+    seed_demo()
 
 
 def create_roles():

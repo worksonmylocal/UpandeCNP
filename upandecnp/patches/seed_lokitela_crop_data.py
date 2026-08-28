@@ -1,7 +1,8 @@
 """
 Seeds the Hass Avocado crop's calculation constants and leaf-analysis norms for
 Lokitela Orchards, as given by the agronomist: yield tiers, per-tonne nutrient
-rates/bag composition for CAN/TSP/MOP/K2SO4, and N/P/K leaf norms.
+rates/bag composition for CAN/TSP/MOP/K2SO4 (Item codes, not display names -
+fertilizer_product is a Link to Item), and N/P/K leaf norms.
 
 Idempotent - does nothing if the Crop already exists, so re-running (or a second
 farm growing the same crop) won't duplicate/overwrite hand-edited master data.
@@ -20,12 +21,13 @@ YIELD_TIERS = [
 ]
 
 NUTRIENT_RULES = [
-	# fertilizer_product, nutrient, rate_per_tonne, bag_weight_kg, product_nutrient_pct,
-	# apply_compost_netting, nutrient_source_group
-	("CAN", "N", 7.5, 50, 26, 1, None),
-	("TSP", "P", 2.5, 50, 20, 0, None),
-	("MOP", "K", 10.2, 50, 42, 0, "K"),
-	("K2SO4", "K", 10.2, 50, 46, 0, "K"),
+	# fertilizer_product (real Item code, not a display name - this doctype's
+	# fertilizer_product is a Link to Item), nutrient, rate_per_tonne,
+	# bag_weight_kg, product_nutrient_pct, apply_compost_netting, nutrient_source_group
+	("1010100032", "N", 7.5, 50, 26, 1, None),      # CAN
+	("10070010007", "P", 2.5, 50, 20, 0, None),     # TSP
+	("20100100014", "K", 10.2, 50, 42, 0, "K"),     # MOP
+	("10070010005", "K", 10.2, 50, 46, 0, "K"),     # POTASIUM SULPHATE (K2SO4)
 ]
 
 LEAF_NORMS = [

@@ -208,6 +208,16 @@ doc_events = {
     },
 }
 
+# Runs on every `bench migrate`, not just once (unlike patches.txt) - the
+# Lokitela demo/master data has been observed to get wiped by some deploy
+# paths, so this needs to self-heal on every deploy, not just the first one
+# after it's introduced. The function itself is idempotent (checks-before-
+# create for everything except Farm Block field values, which are always
+# re-applied since those are exactly what's been observed to get zeroed).
+after_migrate = [
+    "upandecnp.patches.seed_lokitela_demo_data.execute",
+]
+
 # Scheduled Tasks
 # ---------------
 

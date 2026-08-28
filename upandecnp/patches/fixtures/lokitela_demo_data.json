@@ -1,0 +1,1265 @@
+{
+  "farms": [
+    {
+      "farm_name": "Endebess",
+      "warehouse": "Fertilizer Store Endebess - KL"
+    },
+    {
+      "farm_name": "Lokitela",
+      "warehouse": "Fertilizer Store Lokitela - KL"
+    },
+    {
+      "farm_name": "Saboti",
+      "warehouse": "Fertilizer Store Saboti - KL"
+    },
+    {
+      "farm_name": "Vale",
+      "warehouse": "Fertilizer Store Vale - KL"
+    }
+  ],
+  "sections": [
+    {
+      "section_name": "23 Ha-2018 Planting"
+    },
+    {
+      "section_name": "54 Ha-2024 Planting"
+    },
+    {
+      "section_name": "65 Ha-2023 Planting"
+    },
+    {
+      "section_name": "70 Ha-2022 Planting"
+    }
+  ],
+  "blocks": [
+    {
+      "name": "AIRSTRIP BLK 1",
+      "section": "Lokitela-70 Ha-2022 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.4,
+      "tree_count": 864,
+      "cost_center": "LD Airstrip 1 - KL",
+      "previous_year_yield_kg_ha": 51.0
+    },
+    {
+      "name": "AIRSTRIP BLK 10",
+      "section": "Lokitela-70 Ha-2022 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 5.45,
+      "tree_count": 1000,
+      "cost_center": "LD Airstrip 10 - KL",
+      "previous_year_yield_kg_ha": 27.0
+    },
+    {
+      "name": "AIRSTRIP BLK 11",
+      "section": "Lokitela-70 Ha-2022 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 1.48,
+      "tree_count": 373,
+      "cost_center": "LD Airstrip 11 - KL",
+      "previous_year_yield_kg_ha": 118.0
+    },
+    {
+      "name": "AIRSTRIP BLK 2",
+      "section": "Lokitela-70 Ha-2022 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 2.84,
+      "tree_count": 742,
+      "cost_center": "LD Airstrip 2 - KL",
+      "previous_year_yield_kg_ha": 48.0
+    },
+    {
+      "name": "AIRSTRIP BLK 3",
+      "section": "Lokitela-70 Ha-2022 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.1,
+      "tree_count": 736,
+      "cost_center": "LD Airstrip 3 - KL",
+      "previous_year_yield_kg_ha": 44.0
+    },
+    {
+      "name": "AIRSTRIP BLK 4",
+      "section": "Lokitela-70 Ha-2022 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.1,
+      "tree_count": 777,
+      "cost_center": "LD Airstrip 4 - KL",
+      "previous_year_yield_kg_ha": 25.0
+    },
+    {
+      "name": "AIRSTRIP BLK 5",
+      "section": "Lokitela-70 Ha-2022 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 2.2,
+      "tree_count": 519,
+      "cost_center": "LD Airstrip 5 - KL",
+      "previous_year_yield_kg_ha": 62.0
+    },
+    {
+      "name": "AIRSTRIP BLK 6",
+      "section": "Lokitela-70 Ha-2022 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 2.13,
+      "tree_count": 476,
+      "cost_center": "LD Airstrip 6 - KL",
+      "previous_year_yield_kg_ha": 137.0
+    },
+    {
+      "name": "AIRSTRIP BLK 7",
+      "section": "Lokitela-70 Ha-2022 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.23,
+      "tree_count": 702,
+      "cost_center": "LD Airstrip 7 - KL",
+      "previous_year_yield_kg_ha": 48.0
+    },
+    {
+      "name": "AIRSTRIP BLK 8",
+      "section": "Lokitela-70 Ha-2022 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.14,
+      "tree_count": 815,
+      "cost_center": "LD Airstrip 8 - KL",
+      "previous_year_yield_kg_ha": 37.0
+    },
+    {
+      "name": "AIRSTRIP BLK 9",
+      "section": "Lokitela-70 Ha-2022 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.07,
+      "tree_count": 772,
+      "cost_center": "LD Airstrip 9 - KL",
+      "previous_year_yield_kg_ha": 57.0
+    },
+    {
+      "name": "BLOCK BLK 1",
+      "section": "Lokitela-23 Ha-2018 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 1.0,
+      "tree_count": 284,
+      "cost_center": "LA 1 - KL",
+      "previous_year_yield_kg_ha": 10484.0
+    },
+    {
+      "name": "BLOCK BLK 10",
+      "section": "Lokitela-23 Ha-2018 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 1.82,
+      "tree_count": 448,
+      "cost_center": "LA 10 - KL",
+      "previous_year_yield_kg_ha": 11851.0
+    },
+    {
+      "name": "BLOCK BLK 11",
+      "section": "Lokitela-23 Ha-2018 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 1.74,
+      "tree_count": 195,
+      "cost_center": "LA 11 - KL",
+      "previous_year_yield_kg_ha": 3464.0
+    },
+    {
+      "name": "BLOCK BLK 12",
+      "section": "Lokitela-23 Ha-2018 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 0.76,
+      "tree_count": 473,
+      "cost_center": "LA 12 - KL",
+      "previous_year_yield_kg_ha": 6783.0
+    },
+    {
+      "name": "BLOCK BLK 2",
+      "section": "Lokitela-23 Ha-2018 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 1.68,
+      "tree_count": 448,
+      "cost_center": "LA 2 - KL",
+      "previous_year_yield_kg_ha": 9032.0
+    },
+    {
+      "name": "BLOCK BLK 3",
+      "section": "Lokitela-23 Ha-2018 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 2.5,
+      "tree_count": 600,
+      "cost_center": "LA 3 - KL",
+      "previous_year_yield_kg_ha": 4876.0
+    },
+    {
+      "name": "BLOCK BLK 4",
+      "section": "Lokitela-23 Ha-2018 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 1.01,
+      "tree_count": 230,
+      "cost_center": "LA 4 - KL",
+      "previous_year_yield_kg_ha": 5449.0
+    },
+    {
+      "name": "BLOCK BLK 5",
+      "section": "Lokitela-23 Ha-2018 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 2.11,
+      "tree_count": 613,
+      "cost_center": "LA 5 - KL",
+      "previous_year_yield_kg_ha": 13951.0
+    },
+    {
+      "name": "BLOCK BLK 6",
+      "section": "Lokitela-23 Ha-2018 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.48,
+      "tree_count": 862,
+      "cost_center": "LA 6 - KL",
+      "previous_year_yield_kg_ha": 17519.0
+    },
+    {
+      "name": "BLOCK BLK 7",
+      "section": "Lokitela-23 Ha-2018 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 2.53,
+      "tree_count": 682,
+      "cost_center": "LA 7 - KL",
+      "previous_year_yield_kg_ha": 7193.0
+    },
+    {
+      "name": "BLOCK BLK 8",
+      "section": "Lokitela-23 Ha-2018 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 2.0,
+      "tree_count": 482,
+      "cost_center": "LA 8 - KL",
+      "previous_year_yield_kg_ha": 833.0
+    },
+    {
+      "name": "BLOCK BLK 9",
+      "section": "Lokitela-23 Ha-2018 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 2.2,
+      "tree_count": 601,
+      "cost_center": "LA 9 - KL",
+      "previous_year_yield_kg_ha": 10782.0
+    },
+    {
+      "name": "BONDENI BLK 1",
+      "section": "Lokitela-54 Ha-2024 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 2.4,
+      "tree_count": 596,
+      "cost_center": "LB Bondeni 1 - KL",
+      "previous_year_yield_kg_ha": 11111.0
+    },
+    {
+      "name": "BONDENI BLK 2",
+      "section": "Lokitela-54 Ha-2024 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 2.52,
+      "tree_count": 602,
+      "cost_center": "LB Bondeni 2 - KL",
+      "previous_year_yield_kg_ha": 9344.0
+    },
+    {
+      "name": "BONDENI BLK 3",
+      "section": "Lokitela-54 Ha-2024 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.32,
+      "tree_count": 820,
+      "cost_center": "LB Bondeni 3 - KL",
+      "previous_year_yield_kg_ha": 9007.0
+    },
+    {
+      "name": "BONDENI BLK 4",
+      "section": "Lokitela-54 Ha-2024 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.12,
+      "tree_count": 783,
+      "cost_center": "LB Bondeni 4 - KL",
+      "previous_year_yield_kg_ha": 8814.0
+    },
+    {
+      "name": "BONDENI BLK 5",
+      "section": "Lokitela-54 Ha-2024 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.72,
+      "tree_count": 934,
+      "cost_center": "LB Bondeni 5 - KL",
+      "previous_year_yield_kg_ha": 10096.0
+    },
+    {
+      "name": "BONDENI BLK 6",
+      "section": "Lokitela-54 Ha-2024 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.53,
+      "tree_count": 895,
+      "cost_center": "LB Bondeni 6 - KL",
+      "previous_year_yield_kg_ha": 9783.0
+    },
+    {
+      "name": "BONDENI BLK 7",
+      "section": "Lokitela-54 Ha-2024 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.37,
+      "tree_count": 849,
+      "cost_center": "LB Bondeni 7 - KL",
+      "previous_year_yield_kg_ha": 12599.0
+    },
+    {
+      "name": "BONDENI BLK 8",
+      "section": "Lokitela-54 Ha-2024 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.3,
+      "tree_count": 829,
+      "cost_center": "LB Bondeni 8 - KL",
+      "previous_year_yield_kg_ha": 11217.0
+    },
+    {
+      "name": "DAIRY BLK 1",
+      "section": "Lokitela-65 Ha-2023 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.37,
+      "tree_count": 846,
+      "cost_center": "LC Dairy 1 - KL",
+      "previous_year_yield_kg_ha": 8004.0
+    },
+    {
+      "name": "DAIRY BLK 2",
+      "section": "Lokitela-65 Ha-2023 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 4.32,
+      "tree_count": 1116,
+      "cost_center": "LC Dairy 2 - KL",
+      "previous_year_yield_kg_ha": 7146.0
+    },
+    {
+      "name": "DAIRY BLK 3",
+      "section": "Lokitela-65 Ha-2023 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 4.18,
+      "tree_count": 1080,
+      "cost_center": "LC Dairy 3 - KL",
+      "previous_year_yield_kg_ha": 5888.0
+    },
+    {
+      "name": "DAIRY BLK 4",
+      "section": "Lokitela-65 Ha-2023 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 2.23,
+      "tree_count": 583,
+      "cost_center": "LC Dairy 4 - KL",
+      "previous_year_yield_kg_ha": 5857.0
+    },
+    {
+      "name": "DAIRY BLK 5",
+      "section": "Lokitela-70 Ha-2022 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 1.43,
+      "tree_count": 469,
+      "cost_center": "LD Dairy 5 - KL",
+      "previous_year_yield_kg_ha": 162.0
+    },
+    {
+      "name": "DAIRY BLK 6",
+      "section": "Lokitela-70 Ha-2022 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 1.46,
+      "tree_count": 252,
+      "cost_center": "LD Dairy 6 - KL",
+      "previous_year_yield_kg_ha": 0.0
+    },
+    {
+      "name": "DAIRY BLK 7",
+      "section": "Lokitela-70 Ha-2022 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 1.19,
+      "tree_count": 408,
+      "cost_center": "LD Dairy 7 - KL",
+      "previous_year_yield_kg_ha": 0.0
+    },
+    {
+      "name": "DAIRY BLK 8",
+      "section": "Lokitela-70 Ha-2022 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 0.91,
+      "tree_count": 438,
+      "cost_center": "LD Dairy 8 - KL",
+      "previous_year_yield_kg_ha": 0.0
+    },
+    {
+      "name": "DAIRY BLK 9",
+      "section": "Lokitela-70 Ha-2022 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 2.38,
+      "tree_count": 551,
+      "cost_center": "LD Dairy 9 - KL",
+      "previous_year_yield_kg_ha": 79.0
+    },
+    {
+      "name": "KINYORO BLK 1",
+      "section": "Lokitela-54 Ha-2024 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 2.16,
+      "tree_count": 583,
+      "cost_center": "LB Kinyoro 1 - KL",
+      "previous_year_yield_kg_ha": 9295.0
+    },
+    {
+      "name": "KINYORO BLK 2",
+      "section": "Lokitela-54 Ha-2024 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 2.05,
+      "tree_count": 512,
+      "cost_center": "LB Kinyoro 2 - KL",
+      "previous_year_yield_kg_ha": 6882.0
+    },
+    {
+      "name": "KINYORO BLK 3",
+      "section": "Lokitela-54 Ha-2024 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.12,
+      "tree_count": 781,
+      "cost_center": "LB Kinyoro 3 - KL",
+      "previous_year_yield_kg_ha": 6385.0
+    },
+    {
+      "name": "KINYORO BLK 4",
+      "section": "Lokitela-54 Ha-2024 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.94,
+      "tree_count": 986,
+      "cost_center": "LB Kinyoro 4 - KL",
+      "previous_year_yield_kg_ha": 7511.0
+    },
+    {
+      "name": "MIMA BLK 1",
+      "section": "Lokitela-65 Ha-2023 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 4.16,
+      "tree_count": 1043,
+      "cost_center": "LC Mima 1 - KL",
+      "previous_year_yield_kg_ha": 6629.0
+    },
+    {
+      "name": "MIMA BLK 10",
+      "section": "Lokitela-70 Ha-2022 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 4.43,
+      "tree_count": 1129,
+      "cost_center": "LD Mima 10 - KL",
+      "previous_year_yield_kg_ha": 153.0
+    },
+    {
+      "name": "MIMA BLK 11",
+      "section": "Lokitela-70 Ha-2022 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 1.49,
+      "tree_count": 372,
+      "cost_center": "LD Mima 11 - KL",
+      "previous_year_yield_kg_ha": 117.0
+    },
+    {
+      "name": "MIMA BLK 12",
+      "section": "Lokitela-70 Ha-2022 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 1.45,
+      "tree_count": 407,
+      "cost_center": "LD Mima 12 - KL",
+      "previous_year_yield_kg_ha": 107.0
+    },
+    {
+      "name": "MIMA BLK 13",
+      "section": "Lokitela-70 Ha-2022 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 1.48,
+      "tree_count": 388,
+      "cost_center": "LD Mima 13 - KL",
+      "previous_year_yield_kg_ha": 78.0
+    },
+    {
+      "name": "MIMA BLK 14",
+      "section": "Lokitela-70 Ha-2022 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 1.85,
+      "tree_count": 477,
+      "cost_center": "LD Mima 14 - KL",
+      "previous_year_yield_kg_ha": 84.0
+    },
+    {
+      "name": "MIMA BLK 15",
+      "section": "Lokitela-70 Ha-2022 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 1.43,
+      "tree_count": 380,
+      "cost_center": "LD Mima 15 - KL",
+      "previous_year_yield_kg_ha": 95.0
+    },
+    {
+      "name": "MIMA BLK 2",
+      "section": "Lokitela-65 Ha-2023 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.85,
+      "tree_count": 999,
+      "cost_center": "LC Mima 2 - KL",
+      "previous_year_yield_kg_ha": 5844.0
+    },
+    {
+      "name": "MIMA BLK 3",
+      "section": "Lokitela-65 Ha-2023 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.69,
+      "tree_count": 920,
+      "cost_center": "LC Mima 3 - KL",
+      "previous_year_yield_kg_ha": 5471.0
+    },
+    {
+      "name": "MIMA BLK 4",
+      "section": "Lokitela-65 Ha-2023 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.44,
+      "tree_count": 862,
+      "cost_center": "LC Mima 4 - KL",
+      "previous_year_yield_kg_ha": 6297.0
+    },
+    {
+      "name": "MIMA BLK 5",
+      "section": "Lokitela-65 Ha-2023 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.84,
+      "tree_count": 982,
+      "cost_center": "LC Mima 5 - KL",
+      "previous_year_yield_kg_ha": 7957.0
+    },
+    {
+      "name": "MIMA BLK 6",
+      "section": "Lokitela-65 Ha-2023 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 2.79,
+      "tree_count": 710,
+      "cost_center": "LC Mima 6 - KL",
+      "previous_year_yield_kg_ha": 7335.0
+    },
+    {
+      "name": "MIMA BLK 7",
+      "section": "Lokitela-65 Ha-2023 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 1.16,
+      "tree_count": 286,
+      "cost_center": "LC Mima 7 - KL",
+      "previous_year_yield_kg_ha": 7574.0
+    },
+    {
+      "name": "MIMA BLK 8",
+      "section": "Lokitela-65 Ha-2023 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 2.89,
+      "tree_count": 744,
+      "cost_center": "LC Mima 8 - KL",
+      "previous_year_yield_kg_ha": 6584.0
+    },
+    {
+      "name": "MIMA BLK 9",
+      "section": "Lokitela-70 Ha-2022 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.88,
+      "tree_count": 941,
+      "cost_center": "LD Mima 9 - KL",
+      "previous_year_yield_kg_ha": 155.0
+    },
+    {
+      "name": "MLIMA BLK 1",
+      "section": "Lokitela-65 Ha-2023 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.91,
+      "tree_count": 978,
+      "cost_center": "LC Mlima 1 - KL",
+      "previous_year_yield_kg_ha": 11983.0
+    },
+    {
+      "name": "MLIMA BLK 2",
+      "section": "Lokitela-65 Ha-2023 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 4.58,
+      "tree_count": 1142,
+      "cost_center": "LC Mlima 2 - KL",
+      "previous_year_yield_kg_ha": 7261.0
+    },
+    {
+      "name": "MLIMA BLK 3",
+      "section": "Lokitela-65 Ha-2023 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 2.6,
+      "tree_count": 646,
+      "cost_center": "LC Mlima 3 - KL",
+      "previous_year_yield_kg_ha": 3906.0
+    },
+    {
+      "name": "MUHAMMED BLK 1",
+      "section": "Lokitela-65 Ha-2023 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 2.86,
+      "tree_count": 729,
+      "cost_center": "LC Muhammed 1 - KL",
+      "previous_year_yield_kg_ha": 9656.0
+    },
+    {
+      "name": "MUHAMMED BLK 2",
+      "section": "Lokitela-65 Ha-2023 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 2.0,
+      "tree_count": 520,
+      "cost_center": "LC Muhammed 2 - KL",
+      "previous_year_yield_kg_ha": 9436.0
+    },
+    {
+      "name": "MUHAMMED BLK 3",
+      "section": "Lokitela-65 Ha-2023 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 2.91,
+      "tree_count": 826,
+      "cost_center": "LC Muhammed 3 - KL",
+      "previous_year_yield_kg_ha": 9567.0
+    },
+    {
+      "name": "MUHAMMED BLK 4",
+      "section": "Lokitela-65 Ha-2023 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 2.88,
+      "tree_count": 724,
+      "cost_center": "LC Muhammed 4 - KL",
+      "previous_year_yield_kg_ha": 10309.0
+    },
+    {
+      "name": "MUHAMMED BLK 5",
+      "section": "Lokitela-65 Ha-2023 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 2.29,
+      "tree_count": 608,
+      "cost_center": "LC Muhammed 5 - KL",
+      "previous_year_yield_kg_ha": 11813.0
+    },
+    {
+      "name": "WESA BLK 1",
+      "section": "Lokitela-54 Ha-2024 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 2.41,
+      "tree_count": 611,
+      "cost_center": "LB Wesa 1 - KL",
+      "previous_year_yield_kg_ha": 10277.0
+    },
+    {
+      "name": "WESA BLK 10",
+      "section": "Lokitela-54 Ha-2024 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 1.8,
+      "tree_count": 450,
+      "cost_center": "LB Wesa 10 - KL",
+      "previous_year_yield_kg_ha": 8602.0
+    },
+    {
+      "name": "WESA BLK 11",
+      "section": "Lokitela-54 Ha-2024 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.26,
+      "tree_count": 806,
+      "cost_center": "LB Wesa 11 - KL",
+      "previous_year_yield_kg_ha": 7229.0
+    },
+    {
+      "name": "WESA BLK 2",
+      "section": "Lokitela-54 Ha-2024 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.47,
+      "tree_count": 868,
+      "cost_center": "LB Wesa 2 - KL",
+      "previous_year_yield_kg_ha": 11924.0
+    },
+    {
+      "name": "WESA BLK 3",
+      "section": "Lokitela-54 Ha-2024 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.47,
+      "tree_count": 868,
+      "cost_center": "LB Wesa 3 - KL",
+      "previous_year_yield_kg_ha": 10483.0
+    },
+    {
+      "name": "WESA BLK 4",
+      "section": "Lokitela-54 Ha-2024 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.47,
+      "tree_count": 868,
+      "cost_center": "LB Wesa 4 - KL",
+      "previous_year_yield_kg_ha": 9908.0
+    },
+    {
+      "name": "WESA BLK 5",
+      "section": "Lokitela-54 Ha-2024 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.52,
+      "tree_count": 877,
+      "cost_center": "LB Wesa 5 - KL",
+      "previous_year_yield_kg_ha": 11479.0
+    },
+    {
+      "name": "WESA BLK 6",
+      "section": "Lokitela-54 Ha-2024 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.2,
+      "tree_count": 864,
+      "cost_center": "LB Wesa 6 - KL",
+      "previous_year_yield_kg_ha": 10265.0
+    },
+    {
+      "name": "WESA BLK 7",
+      "section": "Lokitela-54 Ha-2024 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 2.52,
+      "tree_count": 632,
+      "cost_center": "LB Wesa 7 - KL",
+      "previous_year_yield_kg_ha": 7659.0
+    },
+    {
+      "name": "WESA BLK 8",
+      "section": "Lokitela-54 Ha-2024 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 2.72,
+      "tree_count": 685,
+      "cost_center": "LB Wesa 8 - KL",
+      "previous_year_yield_kg_ha": 7303.0
+    },
+    {
+      "name": "WESA BLK 9",
+      "section": "Lokitela-54 Ha-2024 Planting",
+      "crop": "Hass Avocado",
+      "variety": "Hass",
+      "area_ha": 3.58,
+      "tree_count": 892,
+      "cost_center": "LB Wesa 9 - KL",
+      "previous_year_yield_kg_ha": 6783.0
+    }
+  ],
+  "production_calendar": {
+    "season": "2025/2026",
+    "farm": "Lokitela",
+    "fertilizer_schedule": [
+      {
+        "fertilizer_product": "1010100032",
+        "application_month": "November",
+        "percentage": 20.0
+      },
+      {
+        "fertilizer_product": "1010100032",
+        "application_month": "January",
+        "percentage": 40.0
+      },
+      {
+        "fertilizer_product": "1010100032",
+        "application_month": "March",
+        "percentage": 40.0
+      },
+      {
+        "fertilizer_product": "10070010007",
+        "application_month": "May",
+        "percentage": 100.0
+      },
+      {
+        "fertilizer_product": "10070010006",
+        "application_month": "December",
+        "percentage": 100.0
+      },
+      {
+        "fertilizer_product": "1010100021",
+        "application_month": "May",
+        "percentage": 100.0
+      },
+      {
+        "fertilizer_product": "10070010011",
+        "application_month": "November",
+        "percentage": 25.0
+      },
+      {
+        "fertilizer_product": "10070010011",
+        "application_month": "January",
+        "percentage": 25.0
+      },
+      {
+        "fertilizer_product": "10070010011",
+        "application_month": "March",
+        "percentage": 25.0
+      },
+      {
+        "fertilizer_product": "10070010011",
+        "application_month": "June",
+        "percentage": 25.0
+      },
+      {
+        "fertilizer_product": "10070010005",
+        "application_month": "November",
+        "percentage": 20
+      },
+      {
+        "fertilizer_product": "10070010005",
+        "application_month": "January",
+        "percentage": 40
+      },
+      {
+        "fertilizer_product": "10070010005",
+        "application_month": "March",
+        "percentage": 40
+      },
+      {
+        "fertilizer_product": "20100100014",
+        "application_month": "November",
+        "percentage": 20
+      },
+      {
+        "fertilizer_product": "20100100014",
+        "application_month": "January",
+        "percentage": 40
+      },
+      {
+        "fertilizer_product": "20100100014",
+        "application_month": "March",
+        "percentage": 40
+      }
+    ],
+    "calendar_events": [
+      {
+        "event_type": "Flush",
+        "start_month": "February",
+        "end_month": "February",
+        "description": ""
+      },
+      {
+        "event_type": "Flush",
+        "start_month": "May",
+        "end_month": "May",
+        "description": ""
+      },
+      {
+        "event_type": "Flowering",
+        "start_month": "September",
+        "end_month": "October",
+        "description": "Flower & Flush"
+      },
+      {
+        "event_type": "Fruit Development",
+        "start_month": "January",
+        "end_month": "July",
+        "description": ""
+      },
+      {
+        "event_type": "Fruit Development",
+        "start_month": "November",
+        "end_month": "December",
+        "description": ""
+      },
+      {
+        "event_type": "Harvest",
+        "start_month": "August",
+        "end_month": "September",
+        "description": "Harvest 2025"
+      },
+      {
+        "event_type": "Leaf Sampling",
+        "start_month": "January",
+        "end_month": "January",
+        "description": "Leaf & Soil sampling"
+      },
+      {
+        "event_type": "Soil Sampling",
+        "start_month": "January",
+        "end_month": "January",
+        "description": ""
+      },
+      {
+        "event_type": "Other",
+        "start_month": "June",
+        "end_month": "June",
+        "description": "MRL Sampling - 2025"
+      },
+      {
+        "event_type": "Other",
+        "start_month": "December",
+        "end_month": "December",
+        "description": "Water Sampling"
+      },
+      {
+        "event_type": "GlobalGAP Audit",
+        "start_month": "June",
+        "end_month": "July",
+        "description": "GlobalGAP & RFA 2025"
+      },
+      {
+        "event_type": "Rainforest Alliance Audit",
+        "start_month": "June",
+        "end_month": "July",
+        "description": "RFA 2025"
+      },
+      {
+        "event_type": "Other",
+        "start_month": "August",
+        "end_month": "August",
+        "description": "Safe Use P&D Audit"
+      },
+      {
+        "event_type": "Fertilizer Application",
+        "start_month": "September",
+        "end_month": "October",
+        "description": "Boron & Zinc Foliar - Flowering Program x2"
+      },
+      {
+        "event_type": "Pest Control",
+        "start_month": "March",
+        "end_month": "March",
+        "description": "Disease Control - Copper"
+      },
+      {
+        "event_type": "Pest Control",
+        "start_month": "May",
+        "end_month": "May",
+        "description": "Disease Control - Copper"
+      },
+      {
+        "event_type": "Pest Control",
+        "start_month": "October",
+        "end_month": "October",
+        "description": "Mosquito Bug - Acephate"
+      },
+      {
+        "event_type": "Pest Control",
+        "start_month": "January",
+        "end_month": "March",
+        "description": "Fruit Fly - Success Bait"
+      },
+      {
+        "event_type": "Pest Control",
+        "start_month": "November",
+        "end_month": "December",
+        "description": "Fruit Fly - Success Bait"
+      },
+      {
+        "event_type": "Pest Control",
+        "start_month": "April",
+        "end_month": "April",
+        "description": "Fruit Fly - Bait Blocks"
+      },
+      {
+        "event_type": "Pest Control",
+        "start_month": "June",
+        "end_month": "June",
+        "description": "Fruit Fly - Bait Blocks"
+      },
+      {
+        "event_type": "Pest Control",
+        "start_month": "January",
+        "end_month": "December",
+        "description": "Fruit Fly - Ceratrap Stations"
+      },
+      {
+        "event_type": "Pest Control",
+        "start_month": "February",
+        "end_month": "February",
+        "description": "FCM - Last Call"
+      },
+      {
+        "event_type": "Pest Control",
+        "start_month": "April",
+        "end_month": "April",
+        "description": "FCM - X-Mate"
+      },
+      {
+        "event_type": "Pest Control",
+        "start_month": "February",
+        "end_month": "February",
+        "description": "Scale - Segatron"
+      },
+      {
+        "event_type": "Pest Control",
+        "start_month": "December",
+        "end_month": "December",
+        "description": "Scale - Segatron"
+      },
+      {
+        "event_type": "Pest Control",
+        "start_month": "September",
+        "end_month": "September",
+        "description": "Scale - Movento & Oil"
+      },
+      {
+        "event_type": "Pollination",
+        "start_month": "January",
+        "end_month": "January",
+        "description": "Bees"
+      },
+      {
+        "event_type": "Pollination",
+        "start_month": "June",
+        "end_month": "July",
+        "description": "Intro Bees"
+      }
+    ]
+  },
+  "leaf_analyses": [
+    {
+      "section": "Lokitela-70 Ha-2022 Planting",
+      "yield_tier": "15T",
+      "farm": "Lokitela",
+      "crop": "Hass Avocado",
+      "season": "2025/2026",
+      "sampling_date": "2026-08-13",
+      "nutrient_results": [
+        {
+          "nutrient": "P",
+          "result_value": 0.19,
+          "unit": "%",
+          "normal_range_low": 0.08,
+          "normal_range_high": 0.3,
+          "status": "Adequate",
+          "build_up_factor": 0.0
+        },
+        {
+          "nutrient": "N",
+          "result_value": 2.3,
+          "unit": "%",
+          "normal_range_low": 2.0,
+          "normal_range_high": 2.6,
+          "status": "Adequate",
+          "build_up_factor": 0.0
+        },
+        {
+          "nutrient": "K",
+          "result_value": 1.37,
+          "unit": "%",
+          "normal_range_low": 0.74,
+          "normal_range_high": 2.0,
+          "status": "Adequate",
+          "build_up_factor": 0.0
+        }
+      ]
+    },
+    {
+      "section": "Lokitela-65 Ha-2023 Planting",
+      "yield_tier": "15T",
+      "farm": "Lokitela",
+      "crop": "Hass Avocado",
+      "season": "2025/2026",
+      "sampling_date": "2026-08-13",
+      "nutrient_results": [
+        {
+          "nutrient": "K",
+          "result_value": 1.37,
+          "unit": "%",
+          "normal_range_low": 0.74,
+          "normal_range_high": 2.0,
+          "status": "Adequate",
+          "build_up_factor": 0.0
+        },
+        {
+          "nutrient": "P",
+          "result_value": 0.19,
+          "unit": "%",
+          "normal_range_low": 0.08,
+          "normal_range_high": 0.3,
+          "status": "Adequate",
+          "build_up_factor": 0.0
+        },
+        {
+          "nutrient": "N",
+          "result_value": 2.3,
+          "unit": "%",
+          "normal_range_low": 2.0,
+          "normal_range_high": 2.6,
+          "status": "Adequate",
+          "build_up_factor": 0.0
+        }
+      ]
+    },
+    {
+      "section": "Lokitela-54 Ha-2024 Planting",
+      "yield_tier": "15T",
+      "farm": "Lokitela",
+      "crop": "Hass Avocado",
+      "season": "2025/2026",
+      "sampling_date": "2026-08-13",
+      "nutrient_results": [
+        {
+          "nutrient": "K",
+          "result_value": 1.37,
+          "unit": "%",
+          "normal_range_low": 0.74,
+          "normal_range_high": 2.0,
+          "status": "Adequate",
+          "build_up_factor": 0.0
+        },
+        {
+          "nutrient": "N",
+          "result_value": 2.3,
+          "unit": "%",
+          "normal_range_low": 2.0,
+          "normal_range_high": 2.6,
+          "status": "Adequate",
+          "build_up_factor": 0.0
+        },
+        {
+          "nutrient": "P",
+          "result_value": 0.19,
+          "unit": "%",
+          "normal_range_low": 0.08,
+          "normal_range_high": 0.3,
+          "status": "Adequate",
+          "build_up_factor": 0.0
+        }
+      ]
+    },
+    {
+      "section": "Lokitela-23 Ha-2018 Planting",
+      "yield_tier": "18T",
+      "farm": "Lokitela",
+      "crop": "Hass Avocado",
+      "season": "2025/2026",
+      "sampling_date": "2026-08-13",
+      "nutrient_results": [
+        {
+          "nutrient": "N",
+          "result_value": 2.3,
+          "unit": "%",
+          "normal_range_low": 2.0,
+          "normal_range_high": 2.6,
+          "status": "Adequate",
+          "build_up_factor": 0.0
+        },
+        {
+          "nutrient": "P",
+          "result_value": 0.19,
+          "unit": "%",
+          "normal_range_low": 0.08,
+          "normal_range_high": 0.3,
+          "status": "Adequate",
+          "build_up_factor": 0.0
+        },
+        {
+          "nutrient": "K",
+          "result_value": 1.37,
+          "unit": "%",
+          "normal_range_low": 0.74,
+          "normal_range_high": 2.0,
+          "status": "Adequate",
+          "build_up_factor": 0.0
+        }
+      ]
+    },
+    {
+      "section": "Lokitela-23 Ha-2018 Planting",
+      "yield_tier": "15T",
+      "farm": "Lokitela",
+      "crop": "Hass Avocado",
+      "season": "2025/2026",
+      "sampling_date": "2026-08-13",
+      "nutrient_results": [
+        {
+          "nutrient": "N",
+          "result_value": 2.3,
+          "unit": "%",
+          "normal_range_low": 2.0,
+          "normal_range_high": 2.6,
+          "status": "Adequate",
+          "build_up_factor": 0.0
+        },
+        {
+          "nutrient": "K",
+          "result_value": 1.37,
+          "unit": "%",
+          "normal_range_low": 0.74,
+          "normal_range_high": 2.0,
+          "status": "Adequate",
+          "build_up_factor": 0.0
+        },
+        {
+          "nutrient": "P",
+          "result_value": 0.19,
+          "unit": "%",
+          "normal_range_low": 0.08,
+          "normal_range_high": 0.3,
+          "status": "Adequate",
+          "build_up_factor": 0.0
+        }
+      ]
+    }
+  ]
+}
