@@ -5,9 +5,31 @@ Handles Material Request generation and stock netting.
 
 import frappe
 from frappe.utils import flt, today, getdate
+from frappe.query_builder.functions import Sum
 
 MONTHS = ["January", "February", "March", "April", "May", "June",
           "July", "August", "September", "October", "November", "December"]
+
+
+def get_grouped_sum(doctype, sum_field, group_field, filters=None):
+    """Sum `sum_field` grouped by `group_field`, respecting `filters` (same
+    shape as frappe.get_all's filters dict) - returns {group_value: total}.
+    Replaces the "sum(x) as x" string-in-fields pattern: newer Frappe
+    versions reject raw SQL function strings in a get_all fields list
+    outright, so aggregates have to go through the query builder instead."""
+    table = frappe.qb.DocType(doctype)
+    query = (
+        frappe.qb.from_(table)
+        .select(table[group_field], Sum(table[sum_field]).as_(sum_field))
+        .groupby(table[group_field])
+    )
+    for field, value in (filters or {}).items():
+        column = table[field]
+        if isinstance(value, (list, tuple)) and len(value) == 2 and value[0] == "in":
+            query = query.where(column.isin(value[1]))
+        else:
+            query = query.where(column == value)
+    return {row[group_field]: flt(row[sum_field]) for row in query.run(as_dict=True)}
 
 
 def get_stock_qty(item_code, warehouse=None):
@@ -182,8 +204,7 @@ def calculate_shortfalls(programme):
         bin_filters = {"item_code": ["in", list(requirements.keys())]}
         if warehouse:
             bin_filters["warehouse"] = warehouse
-        for row in frappe.get_all("Bin", filters=bin_filters, fields=["item_code", "sum(actual_qty) as actual_qty"], group_by="item_code"):
-            stock_by_product[row.item_code] = flt(row.actual_qty)
+        stock_by_product = get_grouped_sum("Bin", "actual_qty", "item_code", bin_filters)
 
     shortfalls = {}
     for product, req in requirements.items():

@@ -6,6 +6,7 @@ These reuse the existing DocType logic so the workflow stays consistent.
 import frappe
 from frappe.utils import flt, today
 from upandecnp.upandecnp.utils.farm_permissions import resolve_farm_scope
+from upandecnp.upandecnp.utils.integration import get_grouped_sum
 
 
 def _current_employee():
@@ -737,10 +738,7 @@ def get_stock_levels(farm=None):
     bin_filters = {"item_code": ["in", products]}
     if warehouse:
         bin_filters["warehouse"] = warehouse
-    stock_by_code = {
-        row.item_code: flt(row.actual_qty)
-        for row in frappe.get_all("Bin", filters=bin_filters, fields=["item_code", "sum(actual_qty) as actual_qty"], group_by="item_code")
-    }
+    stock_by_code = get_grouped_sum("Bin", "actual_qty", "item_code", bin_filters)
 
     result = []
     for code in products:
@@ -865,13 +863,10 @@ def get_stock_coverage(season=None, farm=None):
     programme_names = frappe.get_all("Fertilizer Programme", filters=prog_filter, pluck="name")
     required = {}
     if programme_names:
-        for row in frappe.get_all(
-            "Fertilizer Programme Line",
-            filters={"parent": ["in", programme_names]},
-            fields=["fertilizer_product", "sum(total_kg) as total_kg"],
-            group_by="fertilizer_product",
-        ):
-            required[row.fertilizer_product] = flt(row.total_kg)
+        required = get_grouped_sum(
+            "Fertilizer Programme Line", "total_kg", "fertilizer_product",
+            {"parent": ["in", programme_names]},
+        )
 
     warehouse = frappe.db.get_value("CNP Farm", farm, "warehouse") if farm else None
     stock_by_product = {}
@@ -879,8 +874,7 @@ def get_stock_coverage(season=None, farm=None):
         bin_filters = {"item_code": ["in", list(required.keys())]}
         if warehouse:
             bin_filters["warehouse"] = warehouse
-        for row in frappe.get_all("Bin", filters=bin_filters, fields=["item_code", "sum(actual_qty) as actual_qty"], group_by="item_code"):
-            stock_by_product[row.item_code] = flt(row.actual_qty)
+        stock_by_product = get_grouped_sum("Bin", "actual_qty", "item_code", bin_filters)
 
     result = []
     for product, need in required.items():
@@ -1462,13 +1456,10 @@ def get_computed_budget(farm=None, season=None):
 
     required = {}
     if programme_names:
-        for row in frappe.get_all(
-            "Fertilizer Programme Line",
-            filters={"parent": ["in", programme_names]},
-            fields=["fertilizer_product", "sum(total_kg) as total_kg"],
-            group_by="fertilizer_product",
-        ):
-            required[row.fertilizer_product] = flt(row.total_kg)
+        required = get_grouped_sum(
+            "Fertilizer Programme Line", "total_kg", "fertilizer_product",
+            {"parent": ["in", programme_names]},
+        )
 
     prices = {}
     if required:
