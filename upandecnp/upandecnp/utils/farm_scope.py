@@ -29,6 +29,9 @@ def set_company_from_farm(doc, method=None):
 	"""doc_events target for any doctype carrying both a `farm` link and a
 	`company` field. Run after whichever hook (if any) resolves `farm` on that
 	doctype, so the company always reflects the farm's parent Company for
-	per-company accounting/reporting."""
+	per-company accounting/reporting. CNP Farm has no company field of its
+	own - warehouse is the only reliable source, same as everywhere else in
+	the app that needs a farm's company."""
 	if doc.get("farm"):
-		doc.company = frappe.db.get_value("CNP Farm", doc.farm, "company")
+		warehouse = frappe.db.get_value("CNP Farm", doc.farm, "warehouse")
+		doc.company = frappe.db.get_value("Warehouse", warehouse, "company") if warehouse else None
