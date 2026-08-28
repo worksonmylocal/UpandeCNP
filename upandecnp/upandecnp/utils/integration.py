@@ -53,6 +53,14 @@ def get_farm_warehouse(farm):
     return frappe.db.get_value("CNP Farm", farm, "warehouse") if farm else None
 
 
+def get_farm_company(farm):
+    """CNP Farm has no company field of its own - the warehouse is the only
+    reliable source, same pattern used everywhere else in the app (see
+    utils/farm_scope.py's set_company_from_farm)."""
+    warehouse = get_farm_warehouse(farm)
+    return frappe.db.get_value("Warehouse", warehouse, "company") if warehouse else None
+
+
 def get_business_unit_for_farm(farm_doc):
     """Business Unit isn't linked to Farm in the schema - match on the farm
     name appearing in the business unit label, scoped to the same company.
@@ -60,7 +68,7 @@ def get_business_unit_for_farm(farm_doc):
     rather than guessing."""
     return frappe.db.get_value(
         "Business Unit",
-        {"company": farm_doc.company, "business_unit": ["like", f"%{farm_doc.name}%"]},
+        {"company": get_farm_company(farm_doc.name), "business_unit": ["like", f"%{farm_doc.name}%"]},
         "name",
     )
 
@@ -90,7 +98,7 @@ def create_material_issue_request(block_fertilizer_plan, quantity, employee=None
         "title": f"Material Issue Request for {item_name}",
         "transaction_date": today(),
         "schedule_date": today(),
-        "company": farm_doc.company,
+        "company": get_farm_company(farm_doc.name),
         "set_warehouse": farm_doc.warehouse,
         "custom_farm": farm_doc.name,
         "custom_business_unit": get_business_unit_for_farm(farm_doc),
@@ -248,7 +256,7 @@ def create_material_requests_for_programme(programme_name):
         "material_request_type": "Purchase",
         "transaction_date": today(),
         "schedule_date": min(i["schedule_date"] for i in items),
-        "company": farm_doc.company if farm_doc else None,
+        "company": get_farm_company(farm_doc.name) if farm_doc else None,
         "custom_farm": farm_doc.name if farm_doc else None,
         "custom_business_unit": get_business_unit_for_farm(farm_doc) if farm_doc else None,
         "custom_request_type": "Fertiliser Issuing",
