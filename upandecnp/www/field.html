@@ -1,14 +1,14 @@
-{% extends "templates/web.html" %}
-
-{% block title %}Field Fertilizer{% endblock %}
-
-{% block head_include %}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Field Fertilizer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/upandecnp/css/dashboard.css">
 <style>
-    body{background:var(--bg)}
+    body{background:var(--bg);margin:0}
     .field-app{max-width:480px;margin:0 auto;padding:16px 16px 40px}
     .field-header{display:flex;align-items:center;gap:12px;padding:12px 4px;margin-bottom:8px}
     .field-header img{height:26px}
@@ -121,9 +121,8 @@
         font:600 15px var(--sans);cursor:pointer;display:grid;place-items:center;line-height:1;padding:0;flex-shrink:0}
     .add-chip:active{transform:scale(0.9)}
 </style>
-{% endblock %}
-
-{% block page_content %}
+</head>
+<body>
 <div class="overlay" id="overlay" onclick="closeDrawer()"></div>
 <div class="drawer" id="drawer">
     <div class="drawer__brand">
@@ -417,21 +416,6 @@ function renderPickList(containerId, items, opts) {
 }
 
 // --- Drawer ---
-// Frappe's page template nests page_content several levels deep inside
-// <main>/wrapper divs. If any ancestor ever picks up a transform/filter
-// (common in themed sites), position:fixed stops being relative to the
-// viewport and the drawer renders off-screen or clipped while the overlay
-// still looks fine (it's big enough to still cover most of the screen).
-// Re-parenting both onto <body> once, on load, sidesteps that entirely.
-window.addEventListener("load", () => {
-    const overlayEl = document.getElementById("overlay");
-    const drawerEl = document.getElementById("drawer");
-    if (overlayEl && drawerEl) {
-        document.body.appendChild(overlayEl);
-        document.body.appendChild(drawerEl);
-    }
-});
-
 function openDrawer() { document.getElementById("drawer").classList.add("open"); document.getElementById("overlay").classList.add("open"); }
 function closeDrawer() { document.getElementById("drawer").classList.remove("open"); document.getElementById("overlay").classList.remove("open"); }
 
@@ -951,4 +935,5 @@ function selectRecordBlock(block) {
 
 window.addEventListener("load", () => setTimeout(() => { navigate("home"); flushQueue(); updateSyncBadge(); }, 150));
 </script>
-{% endblock %}
+</body>
+</html>
