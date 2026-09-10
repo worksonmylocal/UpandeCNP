@@ -27,6 +27,18 @@ def _block_scope_guard(block):
     resolve_farm_scope(frappe.session.user, farm)
 
 
+def _is_issued(request):
+    """Whether the stores have actually issued a submitted Material Request.
+
+    ERPNext sets per_ordered to 100 and flips status to "Issued" once a Stock
+    Entry covers the requested quantity; this site's own stores tooling also
+    stamps qty_issued on the item rows. Accept any of them - they all mean the
+    fertilizer has left the store, and relying on one alone makes the field
+    app's "ready to record" state hostage to which route the storekeeper
+    happened to use."""
+    return flt(request.get("per_ordered")) >= 100 or request.get("status") == "Issued"
+
+
 def _attach_product_names(rows, code_field="fertilizer_product"):
     """Item codes ("1010100032") mean nothing to a supervisor in the field -
     attach the readable Item name alongside every code so the field app can
@@ -246,6 +258,56 @@ def get_blocks_in_section(section):
 
 
 @frappe.whitelist()
+def get_home_metrics(farm=None):
+    """Every figure the field app's home screen shows, in one call - a phone
+    on a patchy orchard connection shouldn't make five round trips to fill
+    one screen.
+
+    "Mine" is deliberately the applications this supervisor recorded, not the
+    farm's total, so the number means something personal next to the
+    farm-wide ones."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
+
+    plan_filter = {"docstatus": 1}
+    if farm:
+        plan_filter["farm"] = farm
+    plans = frappe.get_all("Block Fertilizer Plan", filters=plan_filter, fields=["status"])
+
+    total = len(plans)
+    applied = sum(1 for p in plans if p.status in ("Applied", "Verified"))
+    # What is still owed to the field: planned or issued but not yet applied.
+    pending = sum(1 for p in plans if p.status in ("Planned", "Issued"))
+    ready = sum(1 for p in plans if p.status == "Issued")
+
+    app_filter = {"docstatus": 1}
+    if farm:
+        app_filter["farm"] = farm
+    mine = frappe.db.count("Fertilizer Application",
+                           dict(app_filter, owner=frappe.session.user))
+
+    today_count = frappe.db.count("Fertilizer Application",
+                                  dict(app_filter, application_date=today()))
+
+    request_filter = {"custom_fertilizer_programme": ["is", "set"],
+                      "docstatus": ["<", 2], "status": ["!=", "Issued"],
+                      "per_ordered": ["<", 100]}
+    if farm:
+        request_filter["custom_farm"] = farm
+    pending_requests = frappe.db.count("Material Request", request_filter)
+
+    return {
+        "pending_applications": pending,
+        "ready_to_record": ready,
+        "progress_pct": round(applied / total * 100, 1) if total else 0,
+        "applied": applied,
+        "total_plans": total,
+        "my_applications": mine,
+        "applications_today": today_count,
+        "pending_requests": pending_requests,
+    }
+
+
+@frappe.whitelist()
 def get_applications_today(farm=None):
     """Count of Fertilizer Applications recorded today - the field app's
     home-screen headline stat."""
@@ -305,7 +367,9 @@ def get_store_requests(farm=None):
     result = []
     for r in requests:
         plan = plans.get(r.custom_block_fertilizer_plan)
-        if r.docstatus == 1 and flt(r.per_ordered) >= 100:
+        if r.docstatus == 1 and _is_issued(r):
+            # The workflow itself stops at Approved - "the stores have issued
+            # it" shows up on the request, so it has to be read separately.
             category = "Issued"
         else:
             category = categorize_request_status(r.workflow_state or r.status)

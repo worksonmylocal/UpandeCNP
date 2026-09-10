@@ -18,6 +18,10 @@
     .hamburger{width:40px;height:40px;border:0;background:var(--surface-2);border-radius:50%;
         display:grid;place-items:center;cursor:pointer;box-shadow:var(--shadow-card);flex-shrink:0}
     .hamburger svg{stroke:var(--ink)}
+    .homebtn{width:36px;height:36px;border:0;background:var(--surface-2);border-radius:50%;
+        display:grid;place-items:center;cursor:pointer;box-shadow:var(--shadow-card);
+        flex-shrink:0;color:var(--ink-3);margin-left:8px}
+    .homebtn:active{transform:scale(0.92)}
 
     .card{padding:18px 20px}
     .card h3{margin:0 0 4px;font:600 16px var(--sans);color:var(--ink)}
@@ -115,6 +119,11 @@
     .roster-row .att-btns{display:flex;gap:6px}
     .roster-row .att-btn{border:0;border-radius:8px;padding:8px 10px;font:600 11px var(--sans);cursor:pointer}
 
+    .filter-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px}
+    .filter-select{margin:0;padding:12px 14px;font-size:14px;appearance:none;
+        background-image:linear-gradient(45deg,transparent 50%,var(--ink-mute) 50%),linear-gradient(135deg,var(--ink-mute) 50%,transparent 50%);
+        background-position:calc(100% - 18px) calc(50% + 2px),calc(100% - 13px) calc(50% + 2px);
+        background-size:5px 5px,5px 5px;background-repeat:no-repeat}
     .block-subhead{display:flex;align-items:center;justify-content:space-between;padding:10px 4px 6px;margin-top:4px}
     .block-subhead span{font:600 12px var(--sans);color:var(--ink-4);text-transform:uppercase;letter-spacing:.4px}
     .add-chip{width:26px;height:26px;border:0;border-radius:50%;background:var(--grad-ink);color:#fafaf6;
@@ -151,13 +160,28 @@
             <p id="header-sub">Home</p>
         </div>
         <span class="pill warn sync-badge" id="sync-badge" style="display:none;"></span>
+        <button class="homebtn" id="home-btn" style="display:none;" onclick="navigate('home')" title="Back to home" aria-label="Back to home">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+        </button>
     </div>
 
     <!-- HOME -->
     <div id="view-home">
         <div class="greeting" id="home-greeting">Hello</div>
         <div class="greeting-sub">Here's what's happening today.</div>
+        <div class="card" style="margin-bottom:14px;">
+            <div class="card__head" style="display:flex;justify-content:space-between;align-items:baseline;">
+                <h3 style="margin:0;">Season progress</h3>
+                <span id="stat-progress-pct" style="font:600 15px var(--sans);color:var(--ink);">–</span>
+            </div>
+            <div class="bigbar"><div class="bigbar__fill" id="progress-bar" style="width:0%">0%</div></div>
+            <div class="meta" id="stat-progress-sub" style="margin:8px 0 0;">–</div>
+        </div>
         <div class="stat-grid">
+            <div class="stat-card"><div class="stat-card__label">Pending Applications</div><div class="stat-card__value" id="stat-pending-applications">–</div></div>
+            <div class="stat-card"><div class="stat-card__label">Ready to Record</div><div class="stat-card__value" id="stat-ready">–</div></div>
+            <div class="stat-card"><div class="stat-card__label">Pending Store Requests</div><div class="stat-card__value" id="stat-pending-requests">–</div></div>
+            <div class="stat-card"><div class="stat-card__label">Recorded by You</div><div class="stat-card__value" id="stat-my-applications">–</div></div>
             <div class="stat-card"><div class="stat-card__label">Applications Today</div><div class="stat-card__value" id="stat-applications-today">–</div></div>
             <div class="stat-card"><div class="stat-card__label">Upcoming Blocks</div><div class="stat-card__value" id="stat-upcoming-blocks">–</div></div>
         </div>
@@ -181,6 +205,7 @@
     <div id="view-section-plans" style="display:none;">
         <span class="back-link" onclick="navigate('upcoming')">← Back to sections</span>
         <div id="section-plans-title" class="card" style="background:var(--grad-ink);color:#fff;"></div>
+        <div id="section-filters"></div>
         <div id="section-plans-list"></div>
     </div>
 
@@ -442,6 +467,8 @@ let currentPlan = null;
 function navigate(view) {
     closeDrawer();
     currentView = view;
+    // The home button is a no-op on home itself, so don't offer it there.
+    document.getElementById("home-btn").style.display = view === "home" ? "none" : "grid";
     VIEWS.forEach(v => document.getElementById("view-" + v).style.display = v === view ? "block" : "none");
     document.querySelectorAll(".drawer__item").forEach(b => b.classList.toggle("on", b.dataset.nav === view));
     document.getElementById("header-sub").textContent = TITLES[view] || "";
@@ -463,7 +490,23 @@ function refreshCurrentView() { navigate(currentView); }
 async function loadHome() {
     const user = "{{ frappe.session.user }}";
     document.getElementById("home-greeting").textContent = "Hello, " + (user.split("@")[0] || "there");
-    call("get_applications_today", {}).then(n => document.getElementById("stat-applications-today").textContent = n).catch(() => {});
+
+    call("get_home_metrics", {}).then(m => {
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+        set("stat-pending-applications", m.pending_applications);
+        set("stat-ready", m.ready_to_record);
+        set("stat-pending-requests", m.pending_requests);
+        set("stat-my-applications", m.my_applications);
+        set("stat-applications-today", m.applications_today);
+        set("stat-progress-pct", m.progress_pct + "%");
+        set("stat-progress-sub", `${m.applied} of ${m.total_plans} applications done across the farm`);
+        const bar = document.getElementById("progress-bar");
+        bar.style.width = m.progress_pct + "%";
+        bar.textContent = m.progress_pct + "%";
+    }).catch(err => {
+        document.getElementById("stat-progress-sub").textContent = err.message || "Could not load metrics.";
+    });
+
     call("get_upcoming_and_overdue", {}).then(d => {
         document.getElementById("stat-upcoming-blocks").textContent = (d.upcoming || []).length;
     }).catch(() => {});
@@ -474,6 +517,7 @@ async function loadAllBlocks() {
     const list = document.getElementById("blocks-list");
     list.innerHTML = '<div class="spinner">Loading blocks…</div>';
     call("get_block_progress", {}).then(sections => {
+        openBlockGroup = null;
         if (!sections || !sections.length) { list.innerHTML = '<div class="empty">No blocks in this programme yet.</div>'; return; }
         const pillFor = s => s === "Completed" ? "good" : s === "Behind Schedule" ? "bad" : s === "In Progress" ? "info" : "mute";
         list.innerHTML = sections.map((sec, i) => `
@@ -492,12 +536,26 @@ async function loadAllBlocks() {
             </div>`).join("");
     }).catch(err => { list.innerHTML = `<div class="empty">${err.message || "Could not load. Please refresh."}</div>`; });
 }
+// Accordion: only one section stays open. With 78 blocks across four
+// sections, leaving them all expanded buries the list under a lot of
+// scrolling, so opening one collapses whatever was open before.
+let openBlockGroup = null;
+
 function toggleBlockGroup(i) {
     const body = document.getElementById("grp-" + i);
     const chev = document.getElementById("chev-" + i);
     const opening = body.style.display === "none";
+
+    if (opening && openBlockGroup !== null && openBlockGroup !== i) {
+        const prev = document.getElementById("grp-" + openBlockGroup);
+        const prevChev = document.getElementById("chev-" + openBlockGroup);
+        if (prev) prev.style.display = "none";
+        if (prevChev) prevChev.style.transform = "rotate(0deg)";
+    }
+
     body.style.display = opening ? "block" : "none";
     chev.style.transform = opening ? "rotate(90deg)" : "rotate(0deg)";
+    openBlockGroup = opening ? i : null;
 }
 
 // --- Upcoming Applications: sections -> plans -> action ---
@@ -520,39 +578,86 @@ function openSection(section) {
     document.getElementById("header-sub").textContent = section;
     document.getElementById("section-plans-title").innerHTML = `<h3 style="color:#fff;margin:0;">${section}</h3>`;
     const list = document.getElementById("section-plans-list");
+    document.getElementById("section-filters").innerHTML = "";
     list.innerHTML = '<div class="spinner">Loading…</div>';
     call("get_pending_plans_for_section", { section }).then(plans => {
-        if (!plans || !plans.length) { list.innerHTML = '<div class="empty">Nothing pending in this section.</div>'; return; }
-        list.innerHTML = plans.map(p => {
-            let pill, btn;
-            if (p.status === "Issued") {
-                pill = '<span class="pill info">Issued — ready to apply</span>';
-                btn = `<button class="btn-big btn-warn" onclick='openPlanAction(${JSON.stringify(p)}, "record")'>Record application</button>`;
-            } else if (p.request_status === "Requested") {
-                pill = '<span class="pill warn">Requested — pending approval</span>';
-                btn = `<button class="btn-big btn-grey" onclick='openPlanAction(${JSON.stringify(p)}, "status")'>Show status</button>`;
-            } else if (p.request_status === "Approved") {
-                pill = '<span class="pill info">Approved — awaiting issue</span>';
-                btn = `<button class="btn-big btn-grey" onclick='openPlanAction(${JSON.stringify(p)}, "status")'>Show status</button>`;
-            } else if (p.request_status === "Rejected") {
-                pill = '<span class="pill bad">Rejected</span>';
-                btn = `<button class="btn-big btn-ink" onclick='openPlanAction(${JSON.stringify(p)}, "request")'>Request again</button>`;
-            } else if (p.request_status === "Cancelled") {
-                pill = '<span class="pill mute">Cancelled</span>';
-                btn = `<button class="btn-big btn-ink" onclick='openPlanAction(${JSON.stringify(p)}, "request")'>Request again</button>`;
-            } else {
-                pill = '<span class="pill mute">Planned</span>';
-                btn = `<button class="btn-big btn-ink" onclick='openPlanAction(${JSON.stringify(p)}, "request")'>Request from store</button>`;
-            }
-            return `<div class="card" style="box-shadow:var(--shadow-card);margin-bottom:10px;">
-                ${pill}
-                <h3>${p.block} · ${productName(p)}</h3>
-                <div class="meta">${productCode(p)} · ${p.application_month} · ${p.total_kg_required} Kg planned</div>
-                ${btn}
-            </div>`;
-        }).join("");
-    });
+        sectionPlans = plans || [];
+        if (!sectionPlans.length) { list.innerHTML = '<div class="empty">Nothing pending in this section.</div>'; return; }
+        renderSectionFilters();
+        drawSectionPlans();
+    }).catch(err => { list.innerHTML = `<div class="empty">${err.message || "Could not load. Please refresh."}</div>`; });
 }
+
+// A section can hold dozens of plans across several products, so let the
+// supervisor narrow to the block in front of them or the product they are
+// carrying before the list starts.
+let sectionPlans = [];
+
+function renderSectionFilters() {
+    const blocks = [...new Set(sectionPlans.map(p => p.block).filter(Boolean))].sort();
+    const products = [...new Set(sectionPlans.map(p => productCode(p)).filter(Boolean))]
+        .map(code => ({ code, name: productName(sectionPlans.find(p => productCode(p) === code)) }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+    document.getElementById("section-filters").innerHTML = `
+        <div class="filter-row">
+            <select class="field-input filter-select" id="filter-block" onchange="drawSectionPlans()">
+                <option value="">All blocks (${blocks.length})</option>
+                ${blocks.map(b => `<option value="${b}">${b}</option>`).join("")}
+            </select>
+            <select class="field-input filter-select" id="filter-product" onchange="drawSectionPlans()">
+                <option value="">All products (${products.length})</option>
+                ${products.map(p => `<option value="${p.code}">${p.name}</option>`).join("")}
+            </select>
+        </div>`;
+}
+
+function drawSectionPlans() {
+    const list = document.getElementById("section-plans-list");
+    const blockFilter = (document.getElementById("filter-block") || {}).value || "";
+    const productFilter = (document.getElementById("filter-product") || {}).value || "";
+    const rows = sectionPlans.filter(p =>
+        (!blockFilter || p.block === blockFilter) &&
+        (!productFilter || productCode(p) === productFilter));
+
+    if (!rows.length) {
+        list.innerHTML = '<div class="empty">Nothing matches this filter.</div>';
+        return;
+    }
+
+    list.innerHTML = rows.map(p => {
+        let pill, btn;
+        if (p.status === "Issued") {
+            pill = '<span class="pill good">Issued — ready to apply</span>';
+            btn = `<button class="btn-big btn-warn" onclick='openPlanAction(${JSON.stringify(p)}, "record")'>Record application</button>`;
+        } else if (p.request_status === "Pending Approval") {
+            pill = '<span class="pill warn">Pending approval</span>';
+            btn = `<button class="btn-big btn-grey" onclick='openPlanAction(${JSON.stringify(p)}, "status")'>Show status</button>`;
+        } else if (p.request_status === "Approved") {
+            pill = '<span class="pill info">Approved — awaiting store issue</span>';
+            btn = `<button class="btn-big btn-grey" onclick='openPlanAction(${JSON.stringify(p)}, "status")'>Show status</button>`;
+        } else if (p.request_status === "Draft") {
+            pill = '<span class="pill warn">Draft — not submitted</span>';
+            btn = `<button class="btn-big btn-grey" onclick='openPlanAction(${JSON.stringify(p)}, "status")'>Show status</button>`;
+        } else if (p.request_status === "Rejected") {
+            pill = '<span class="pill bad">Rejected</span>';
+            btn = `<button class="btn-big btn-ink" onclick='openPlanAction(${JSON.stringify(p)}, "request")'>Request again</button>`;
+        } else if (p.request_status === "Cancelled") {
+            pill = '<span class="pill mute">Cancelled</span>';
+            btn = `<button class="btn-big btn-ink" onclick='openPlanAction(${JSON.stringify(p)}, "request")'>Request again</button>`;
+        } else {
+            pill = '<span class="pill mute">Planned</span>';
+            btn = `<button class="btn-big btn-ink" onclick='openPlanAction(${JSON.stringify(p)}, "request")'>Request from store</button>`;
+        }
+        return `<div class="card" style="box-shadow:var(--shadow-card);margin-bottom:10px;">
+            ${pill}
+            <h3>${p.block} · ${productName(p)}</h3>
+            <div class="meta">${productCode(p)} · ${p.application_month} · ${p.total_kg_required} Kg planned</div>
+            ${btn}
+        </div>`;
+    }).join("");
+}
+
 
 function backToSectionPlans() {
     VIEWS.forEach(v => document.getElementById("view-" + v).style.display = v === "section-plans" ? "block" : "none");
@@ -572,10 +677,12 @@ function openPlanAction(plan, mode, returnFn) {
     const box = document.getElementById("plan-action-content");
     if (mode === "status") {
         const labels = {
-            "Requested": "⏳ Requested — waiting for the farm manager to approve.",
-            "Approved":  "✅ Approved — waiting for the store to issue the fertilizer.",
-            "Rejected":  "❌ Rejected — raise a new request if it is still needed.",
-            "Cancelled": "🚫 Cancelled — this request was cancelled. Raise a new one if it is still needed.",
+            "Draft":            "📝 Draft — not yet submitted for approval.",
+            "Pending Approval": "⏳ Pending approval — waiting for the farm manager.",
+            "Approved":         "✅ Approved — waiting for the store to issue the fertilizer.",
+            "Issued":           "📦 Issued — collect it from the store and record the application.",
+            "Rejected":         "❌ Rejected — raise a new request if it is still needed.",
+            "Cancelled":        "🚫 Cancelled — raise a new one if it is still needed.",
         };
         box.innerHTML = `<h3>${plan.block} · ${productName(plan)}</h3><p class="meta">${productCode(plan)}</p><p class="meta">${labels[plan.request_status] || plan.request_status}</p>
             <button class="btn-big btn-grey" onclick="planActionReturn()">Back</button>`;
@@ -716,7 +823,7 @@ async function loadStoreRequests() {
     call("get_store_requests", {}).then(reqs => {
         if (!reqs || !reqs.length) { list.innerHTML = '<div class="empty">No store requests yet.</div>'; return; }
         const pillFor = s => s === "Issued" ? "good" : s === "Approved" ? "info"
-            : s === "Rejected" ? "bad" : s === "Cancelled" ? "mute" : "warn";
+            : s === "Rejected" ? "bad" : (s === "Cancelled" || s === "Draft") ? "mute" : "warn";
         list.innerHTML = reqs.map(r => `
             <div class="request-row">
                 <div>

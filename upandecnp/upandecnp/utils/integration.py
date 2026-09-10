@@ -105,16 +105,21 @@ def create_material_issue_request(block_fertilizer_plan, quantity, employee=None
         "custom_request_type": "Fertiliser Issuing",
         "custom_fertilizer_programme": plan.fertilizer_programme,
         "custom_block_fertilizer_plan": plan.name,
-        "custom_employee": employee,
-        "custom_employee_name": frappe.db.get_value("Employee", employee, "employee_name") if employee else None,
         "items": [{
             "item_code": plan.fertilizer_product,
             "qty": flt(quantity),
             "uom": "Kg",
             "warehouse": farm_doc.warehouse,
             "schedule_date": today(),
-            "custom_purpose": f"Fertilizer issued for application - {plan.block} ({plan.application_month})",
+            # Purpose, requesting employee and cost center all live on the
+            # item row on this site, not the parent. Purpose is the standard
+            # category the stores team sorts by; the block's own cost center
+            # is what carries the charge, so block 1's fertilizer lands on
+            # block 1's cost center.
+            "custom_purpose": "Fertilizer Application",
             "cost_center": cost_center,
+            "employee": employee,
+            "employee_name": frappe.db.get_value("Employee", employee, "employee_name") if employee else None,
         }],
     })
     mr.insert(ignore_permissions=True)
@@ -153,12 +158,14 @@ def advance_to_approval(mr):
 
 
 def categorize_request_status(state):
-    """Collapse a Material Request workflow state into the handful of buckets
-    the field app's UI actually branches on.
+    """Collapse a Material Request workflow state into the buckets the field
+    app shows, mirroring the real journey a request travels:
 
-    Two different workflows are in play across the sites this app runs on, and
-    their state names have nothing in common, so match against both rather
-    than assuming either:
+        Draft -> Pending Approval -> Approved -> Issued
+                                   -> Rejected / Cancelled
+
+    Two different workflows are in play across the sites this app runs on and
+    their state names have nothing in common, so match against both:
 
       farm-specific  "Farm Manager to Approve", "Request Approved by Lokitela
                       Farm Manager", "Rejected by Saboti Farm Manager"
@@ -166,10 +173,14 @@ def categorize_request_status(state):
                       Approval", "Approved", "Rejected", "Cancelled",
                       "Submitted"
 
-    Anything still moving through an approval chain is "Requested" - the
+    "Issued" is not a workflow state on either - the workflow stops at
+    Approved and the stores step shows up on the request itself - so it is
+    determined separately by the caller (see get_store_requests).
+
+    Any mid-chain approval state collapses to "Pending Approval": the
     supervisor only needs to know it is not theirs to act on yet."""
     if not state:
-        return "Requested"
+        return "Pending Approval"
 
     s = state.strip().lower()
     if s.startswith("cancel"):
@@ -182,7 +193,11 @@ def categorize_request_status(state):
     # which are still waiting on somebody.
     if s.startswith("approved") or s.startswith("request approved") or s == "submitted":
         return "Approved"
-    return "Requested"
+    if s == "draft":
+        # Should not normally happen - the app advances a new request out of
+        # Draft immediately - so surface it rather than hiding it as pending.
+        return "Draft"
+    return "Pending Approval"
 
 
 def mark_plan_issued_from_stock_entry(doc, method=None):
