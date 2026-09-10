@@ -378,6 +378,13 @@ function initials(name) {
     return ((parts[0]||"")[0] || "?").toUpperCase() + ((parts[1]||"")[0] || "").toUpperCase();
 }
 
+// Item codes ("1010100032") are what the store and the plan documents run on,
+// but they mean nothing to a supervisor in the field. Lead with the fertilizer
+// name everywhere, and keep the code beside it so it can still be checked
+// against store paperwork. Falls back to the code when there's no name.
+function productName(p) { return (p && (p.fertilizer_product_name || p.fertilizer_product)) || ""; }
+function productCode(p) { return (p && p.fertilizer_product) || ""; }
+
 // Generic searchable pick list - renders a search box + a list of rows into
 // `containerId`, filtering live. Used everywhere a supervisor picks one of
 // a section / block / employee, so search is available everywhere instead
@@ -536,8 +543,8 @@ function openSection(section) {
             }
             return `<div class="card" style="box-shadow:var(--shadow-card);margin-bottom:10px;">
                 ${pill}
-                <h3>${p.block} · ${p.fertilizer_product}</h3>
-                <div class="meta">${p.application_month} · ${p.total_kg_required} Kg planned</div>
+                <h3>${p.block} · ${productName(p)}</h3>
+                <div class="meta">${productCode(p)} · ${p.application_month} · ${p.total_kg_required} Kg planned</div>
                 ${btn}
             </div>`;
         }).join("");
@@ -565,12 +572,12 @@ function openPlanAction(plan, mode, returnFn) {
             "Requested": "⏳ Requested — waiting for the storekeeper to review.",
             "Approved":  "✅ Approved — waiting for the store to issue the fertilizer.",
         };
-        box.innerHTML = `<h3>${plan.block} · ${plan.fertilizer_product}</h3><p class="meta">${labels[plan.request_status] || plan.request_status}</p>
+        box.innerHTML = `<h3>${plan.block} · ${productName(plan)}</h3><p class="meta">${productCode(plan)}</p><p class="meta">${labels[plan.request_status] || plan.request_status}</p>
             <button class="btn-big btn-grey" onclick="planActionReturn()">Back</button>`;
     } else if (mode === "request") {
         box.innerHTML = `
-            <h3>Request ${plan.fertilizer_product}</h3>
-            <div class="meta">${plan.block} · ${plan.application_month}</div>
+            <h3>Request ${productName(plan)}</h3>
+            <div class="meta">${productCode(plan)} · ${plan.block} · ${plan.application_month}</div>
             <label style="font-size:13px;color:var(--ink-4);">Quantity to request (Kg)</label>
             <input class="field-input" id="req-qty" type="number" value="${plan.total_kg_required}">
             <button class="btn-big btn-ink" onclick="submitRequest()">Send request to store</button>`;
@@ -611,7 +618,7 @@ function loadOperatorPicker() {
         selectedOperators = operatorRoster.map(a => a.name);
         box.innerHTML = `
             <h3>Who applied this?</h3>
-            <div class="meta">${currentPlan.block} · ${currentPlan.fertilizer_product} · everyone assigned to this block is pre-selected — adjust if needed</div>
+            <div class="meta">${currentPlan.block} · ${productName(currentPlan)} · everyone assigned to this block is pre-selected — adjust if needed</div>
             ${operatorRoster.length > 6 ? `<input class="field-input" id="operator-search" type="text" placeholder="Search applicators…" oninput="drawOperatorPicker(this.value)">` : ""}
             <div id="operator-picker"></div>
             <button class="btn-big btn-warn" id="op-continue" onclick="openRecordQty()"></button>`;
@@ -652,8 +659,8 @@ function toggleOperator(name) {
 function openRecordQty() {
     const plan = currentPlan;
     document.getElementById("plan-action-content").innerHTML = `
-        <h3>Record ${plan.fertilizer_product}</h3>
-        <div class="meta">${plan.block} · ${plan.application_month} · ${plan.total_kg_required} Kg planned</div>
+        <h3>Record ${productName(plan)}</h3>
+        <div class="meta">${productCode(plan)} · ${plan.block} · ${plan.application_month} · ${plan.total_kg_required} Kg planned</div>
         <label style="font-size:13px;color:var(--ink-4);">Actual quantity applied (Kg)</label>
         <input class="field-input" id="act-qty" type="number" value="${plan.total_kg_required}">
         <div class="toggle-row">
@@ -708,7 +715,7 @@ async function loadStoreRequests() {
             <div class="request-row">
                 <div>
                     <div class="name">${r.block || "—"}</div>
-                    <div class="meta">${r.fertilizer_product || ""}${r.date ? " · " + r.date : ""}</div>
+                    <div class="meta">${productName(r)}${productCode(r) ? " · " + productCode(r) : ""}${r.date ? " · " + r.date : ""}</div>
                 </div>
                 <span class="pill ${pillFor(r.status)}">${r.status}</span>
             </div>`).join("");
@@ -922,8 +929,8 @@ function selectRecordBlock(block) {
             navigate("record-plans");
             renderPickList("record-plans-box", issued, {
                 placeholder: "Search products…",
-                getLabel: p => p.fertilizer_product,
-                getSub: p => `${p.application_month} · ${p.total_kg_required} Kg`,
+                getLabel: p => productName(p),
+                getSub: p => `${productCode(p)} · ${p.application_month} · ${p.total_kg_required} Kg`,
                 onSelect: p => openPlanAction(p, "record", () => navigate("record-plans")),
                 emptyText: "Nothing to record on this block.",
             });

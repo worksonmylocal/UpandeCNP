@@ -27,6 +27,28 @@ def _block_scope_guard(block):
     resolve_farm_scope(frappe.session.user, farm)
 
 
+def _attach_product_names(rows, code_field="fertilizer_product"):
+    """Item codes ("1010100032") mean nothing to a supervisor in the field -
+    attach the readable Item name alongside every code so the field app can
+    lead with the name and keep the code for cross-checking against store
+    paperwork. Batched into one query rather than a lookup per row. Falls
+    back to the code itself when an item has no name."""
+    codes = list({r.get(code_field) for r in rows if r.get(code_field)})
+    if not codes:
+        return rows
+    names = {
+        row.name: row.item_name
+        for row in frappe.get_all(
+            "Item", filters={"name": ["in", codes]}, fields=["name", "item_name"]
+        )
+    }
+    for r in rows:
+        code = r.get(code_field)
+        if code:
+            r[code_field + "_name"] = names.get(code) or code
+    return rows
+
+
 @frappe.whitelist(allow_guest=True)
 def mobile_login(usr, pwd):
     """Token login for the bundled mobile app. Session cookies don't survive
@@ -102,7 +124,7 @@ def get_pending_plans_for_block(block):
             p["request_name"] = None
             p["request_status"] = None
 
-    return plans
+    return _attach_product_names(plans)
 
 
 @frappe.whitelist()
@@ -157,7 +179,7 @@ def get_pending_plans_for_section(section):
             p["request_name"] = None
             p["request_status"] = None
 
-    return plans
+    return _attach_product_names(plans)
 
 
 @frappe.whitelist()
@@ -290,7 +312,7 @@ def get_store_requests(farm=None):
             "date": r.transaction_date,
             "status": category,
         })
-    return result
+    return _attach_product_names(result)
 
 
 @frappe.whitelist()
