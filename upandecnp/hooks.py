@@ -127,6 +127,9 @@ permission_query_conditions = {
     "Leaf Analysis": "upandecnp.upandecnp.utils.farm_permissions.leaf_analysis_query",
     "Farm Block": "upandecnp.upandecnp.utils.farm_permissions.farm_block_query",
     "Section": "upandecnp.upandecnp.utils.farm_permissions.section_query",
+    "Field Attendance": "upandecnp.upandecnp.utils.farm_permissions.field_attendance_query",
+    "Fertilizer Store Request": "upandecnp.upandecnp.utils.farm_permissions.fertilizer_store_request_query",
+    "CNP Farm": "upandecnp.upandecnp.utils.farm_permissions.cnp_farm_query",
 }
 
 has_permission = {
@@ -139,6 +142,9 @@ has_permission = {
     "Leaf Analysis": "upandecnp.upandecnp.utils.farm_permissions.has_farm_permission",
     "Farm Block": "upandecnp.upandecnp.utils.farm_permissions.has_farm_permission",
     "Section": "upandecnp.upandecnp.utils.farm_permissions.has_farm_permission",
+    "Field Attendance": "upandecnp.upandecnp.utils.farm_permissions.has_farm_permission",
+    "Fertilizer Store Request": "upandecnp.upandecnp.utils.farm_permissions.has_farm_permission",
+    "CNP Farm": "upandecnp.upandecnp.utils.farm_permissions.has_farm_permission",
 }
 
 # DocType Class

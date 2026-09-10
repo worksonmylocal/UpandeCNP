@@ -52,6 +52,20 @@ def get_manager_farms(user):
 	return farms
 
 
+def get_restricted_farms(user=None):
+	"""Every farm restriction that applies to this user, from both role
+	families combined. This is the single source of truth for "what is this
+	person allowed to see" - the desk permission layer and the dashboard APIs
+	both go through it, so the two can never drift apart and let someone see
+	in a list view what the dashboard would refuse them.
+
+	Empty list means unrestricted. Holding a farm-specific role of either
+	family restricts to that farm, and holding several restricts to the union
+	of them."""
+	user = user or frappe.session.user
+	return list(dict.fromkeys(get_agronomist_farms(user) + get_manager_farms(user)))
+
+
 def is_farm_manager(user=None):
 	"""Whether this user holds any Farm Manager role at all (super or
 	farm-specific) - used to gate access to /manager itself, not just scope
@@ -76,7 +90,7 @@ def resolve_farm_scope(user, requested_farm):
 	if "System Manager" in frappe.get_roles(user):
 		return requested_farm
 
-	farms = list(dict.fromkeys(get_agronomist_farms(user) + get_manager_farms(user)))
+	farms = get_restricted_farms(user)
 	if not farms:
 		return requested_farm
 
@@ -94,7 +108,7 @@ def _condition(doctype, fieldname, user):
 	if "System Manager" in frappe.get_roles(user):
 		return ""
 
-	farms = get_agronomist_farms(user)
+	farms = get_restricted_farms(user)
 	if not farms:
 		return ""
 
@@ -109,9 +123,13 @@ def has_farm_permission(doc, ptype=None, user=None):
 	if "System Manager" in frappe.get_roles(user):
 		return True
 
-	farms = get_agronomist_farms(user)
+	farms = get_restricted_farms(user)
 	if not farms:
 		return True
+
+	# CNP Farm has no farm field - it *is* the farm, keyed by its own name.
+	if doc.doctype == "CNP Farm":
+		return doc.name in farms
 
 	fieldname = "custom_farm" if doc.doctype == "Material Request" else "farm"
 	if doc.get(fieldname) not in farms:
@@ -174,3 +192,25 @@ def farm_block_query(user):
 
 def section_query(user):
 	return _condition("Section", "farm", user)
+
+
+def field_attendance_query(user):
+	return _condition("Field Attendance", "farm", user)
+
+
+def fertilizer_store_request_query(user):
+	return _condition("Fertilizer Store Request", "farm", user)
+
+
+def cnp_farm_query(user):
+	"""CNP Farm is the one scoped doctype with no farm field - it is keyed by
+	its own name. A restricted user shouldn't even see that the other farms
+	exist, so scope on name rather than leaving the list wide open."""
+	user = user or frappe.session.user
+	if "System Manager" in frappe.get_roles(user):
+		return ""
+	farms = get_restricted_farms(user)
+	if not farms:
+		return ""
+	values = ", ".join(frappe.db.escape(f) for f in farms)
+	return f"`tabCNP Farm`.`name` in ({values})"
