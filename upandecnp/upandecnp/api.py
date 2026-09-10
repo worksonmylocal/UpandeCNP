@@ -76,11 +76,25 @@ def mobile_login(usr, pwd):
         frappe.throw("Incorrect user or password.", frappe.AuthenticationError)
 
     user_doc = frappe.get_doc("User", result["name"])
+
+    # Reuse the user's existing credentials rather than minting new ones on
+    # every login. Regenerating api_secret here would silently revoke it
+    # everywhere else it is already in use - a supervisor's second phone
+    # would log the first one out, and any server-to-server integration
+    # authenticating as this user would start failing on its next call.
+    dirty = False
     if not user_doc.api_key:
         user_doc.api_key = frappe.generate_hash(length=15)
-    api_secret = frappe.generate_hash(length=15)
-    user_doc.api_secret = api_secret
-    user_doc.save(ignore_permissions=True)
+        dirty = True
+
+    api_secret = user_doc.get_password("api_secret", raise_exception=False)
+    if not api_secret:
+        api_secret = frappe.generate_hash(length=15)
+        user_doc.api_secret = api_secret
+        dirty = True
+
+    if dirty:
+        user_doc.save(ignore_permissions=True)
     # api_secret is a Password field - it's masked on user_doc in-memory as
     # soon as save() runs, so the plaintext above (not user_doc.api_secret)
     # is the only copy left to return.
@@ -630,6 +644,12 @@ def mark_attendance(employee, status):
     if not _is_my_applicator(employee, supervisor):
         frappe.throw("This employee is not on your team.", frappe.PermissionError)
 
+    # Stamp the block explicitly rather than leaving it to fetch_from: an
+    # applicator can be reassigned later, and the register should say where
+    # they were on the day, not where they are now.
+    block = frappe.db.get_value("Employee", employee, "custom_assigned_block")
+    farm = frappe.db.get_value("Farm Block", block, "farm") if block else None
+
     existing = frappe.db.exists("Field Attendance", {
         "employee": employee,
         "attendance_date": today(),
@@ -638,6 +658,8 @@ def mark_attendance(employee, status):
         doc = frappe.get_doc("Field Attendance", existing)
         doc.status = status
         doc.marked_by = supervisor
+        doc.block = block
+        doc.farm = farm
         doc.save(ignore_permissions=True)
     else:
         doc = frappe.get_doc({
@@ -646,9 +668,67 @@ def mark_attendance(employee, status):
             "attendance_date": today(),
             "status": status,
             "marked_by": supervisor,
+            "block": block,
+            "farm": farm,
         })
         doc.insert(ignore_permissions=True)
     return {"name": doc.name, "status": doc.status}
+
+
+@frappe.whitelist()
+def get_attendance_by_block(attendance_date=None):
+    """Today's register for the current supervisor's own applicators, grouped
+    by the block each is assigned to.
+
+    Deliberately scoped to this supervisor's team - a supervisor marks and
+    reviews the people they added, not the whole farm's labour."""
+    supervisor = _current_employee()
+    if not supervisor:
+        return []
+
+    on_date = attendance_date or today()
+    applicators = frappe.get_all(
+        "Employee",
+        filters={"custom_field_supervisor": supervisor, "status": "Active"},
+        fields=["name", "employee_name", "employee_number", "custom_assigned_block"],
+        order_by="employee_name",
+    )
+    if not applicators:
+        return []
+
+    marked = {
+        a.employee: a.status
+        for a in frappe.get_all(
+            "Field Attendance",
+            filters={"employee": ["in", [a.name for a in applicators]],
+                     "attendance_date": on_date},
+            fields=["employee", "status"],
+        )
+    }
+
+    groups = {}
+    for a in applicators:
+        block = a.custom_assigned_block or "No block assigned"
+        groups.setdefault(block, []).append({
+            "name": a.name,
+            "employee_name": a.employee_name,
+            "employee_number": a.employee_number,
+            "block": a.custom_assigned_block,
+            "status": marked.get(a.name),
+        })
+
+    result = []
+    for block, people in groups.items():
+        result.append({
+            "block": block,
+            "applicators": people,
+            "present": sum(1 for p in people if p["status"] == "Present"),
+            "absent": sum(1 for p in people if p["status"] == "Absent"),
+            "unmarked": sum(1 for p in people if not p["status"]),
+        })
+    # Blocks first, the unassigned bucket last - it is an exception, not a place.
+    result.sort(key=lambda g: (g["block"] == "No block assigned", g["block"]))
+    return result
 
 
 @frappe.whitelist(allow_guest=False)

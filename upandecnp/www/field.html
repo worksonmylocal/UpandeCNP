@@ -129,6 +129,26 @@
     .add-chip{width:26px;height:26px;border:0;border-radius:50%;background:var(--grad-ink);color:#fafaf6;
         font:600 15px var(--sans);cursor:pointer;display:grid;place-items:center;line-height:1;padding:0;flex-shrink:0}
     .add-chip:active{transform:scale(0.9)}
+
+    /* Bottom quick bar */
+    .bnav{position:fixed;left:0;right:0;bottom:0;z-index:99997;display:flex;
+        background:var(--surface-2);border-top:1px solid var(--hairline);
+        box-shadow:0 -4px 18px rgba(10,10,10,0.06);
+        padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px))}
+    .bnav__item{flex:1;border:0;background:transparent;cursor:pointer;
+        display:flex;flex-direction:column;align-items:center;gap:3px;
+        padding:7px 2px;border-radius:12px;color:var(--ink-mute);
+        font:600 10px var(--sans);letter-spacing:.2px}
+    .bnav__item svg{width:20px;height:20px}
+    .bnav__item.on{color:var(--ink);background:rgba(10,10,10,0.05)}
+    .bnav__item:active{transform:scale(0.94)}
+
+    /* Bigger targets for gloved hands - opt-in from Settings */
+    body.big-touch .btn-big{padding:20px;font-size:16px}
+    body.big-touch .att-btn{padding:12px 16px;font-size:13px}
+    body.big-touch .pick-row,body.big-touch .roster-row{padding:18px 16px}
+    body.big-touch .bnav__item{padding:11px 2px}
+    body.big-touch .bnav__item svg{width:23px;height:23px}
 </style>
 </head>
 <body>
@@ -144,8 +164,10 @@
         <button class="drawer__item" data-nav="upcoming" onclick="navigate('upcoming')">⏳&nbsp; Upcoming Applications</button>
         <button class="drawer__item" data-nav="store-requests" onclick="navigate('store-requests')">📦&nbsp; Store Requests</button>
         <button class="drawer__item" data-nav="team" onclick="navigate('team')">👷&nbsp; Manage Team</button>
+        <button class="drawer__item" data-nav="attendance" onclick="navigate('attendance')">🗓️&nbsp; Attendance</button>
         <button class="drawer__item" data-nav="record-section" onclick="navigate('record-section')">📝&nbsp; Record Application</button>
         <button class="drawer__item" data-nav="correction" onclick="navigate('correction')">🛠️&nbsp; Correction</button>
+        <button class="drawer__item" data-nav="settings" onclick="navigate('settings')">⚙️&nbsp; Settings</button>
     </div>
     <div class="drawer__footer">Signed in as {{ frappe.session.user }}</div>
 </div>
@@ -267,6 +289,17 @@
         <div id="record-plans-box"></div>
     </div>
 
+    <!-- ATTENDANCE -->
+    <div id="view-attendance" style="display:none;">
+        <div id="attendance-summary"></div>
+        <div id="attendance-list"><div class="spinner">Loading your team…</div></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="view-settings" style="display:none;">
+        <div id="settings-box"></div>
+    </div>
+
     <!-- CORRECTION -->
     <div id="view-correction" style="display:none;">
         <div class="card">
@@ -275,6 +308,8 @@
         </div>
     </div>
 </div>
+
+<nav class="bnav" id="bottom-nav"></nav>
 
 <div id="toast" class="toast"></div>
 
@@ -453,13 +488,14 @@ function closeDrawer() { document.getElementById("drawer").classList.remove("ope
 
 // --- Navigation ---
 const VIEWS = ["home", "blocks", "upcoming", "section-plans", "plan-action", "store-requests",
-    "team", "applicator-detail", "pick-section", "pick-block", "add-employee",
-    "record-section", "record-block", "record-plans", "correction"];
+    "team", "attendance", "applicator-detail", "pick-section", "pick-block", "add-employee",
+    "record-section", "record-block", "record-plans", "correction", "settings"];
 const TITLES = { home: "Home", blocks: "All Blocks", upcoming: "Upcoming Applications", "section-plans": "Section",
     "plan-action": "Application", "store-requests": "Store Requests", team: "Manage Team",
     "applicator-detail": "Applicator", "pick-section": "Choose Section", "pick-block": "Choose Block",
     "add-employee": "Choose Applicator", "record-section": "Record Application", "record-block": "Choose Block",
-    "record-plans": "Choose Product", correction: "Correction" };
+    "record-plans": "Choose Product", correction: "Correction",
+    attendance: "Attendance", settings: "Settings" };
 let currentView = "home";
 let currentSection = null;
 let currentPlan = null;
@@ -482,6 +518,9 @@ function navigate(view) {
     else if (view === "add-employee") loadAddApplicatorList();
     else if (view === "record-section") loadRecordSections();
     else if (view === "record-block") loadRecordBlocks();
+    else if (view === "attendance") loadAttendance();
+    else if (view === "settings") loadSettings();
+    syncBottomNav(view);
 }
 
 function refreshCurrentView() { navigate(currentView); }
@@ -816,6 +855,155 @@ function submitRecord() {
     });
 }
 
+// --- Attendance ---
+// The supervisor's own applicators only, grouped by the block they work.
+function loadAttendance() {
+    const list = document.getElementById("attendance-list");
+    const summary = document.getElementById("attendance-summary");
+    summary.innerHTML = "";
+    list.innerHTML = '<div class="spinner">Loading your team…</div>';
+    call("get_attendance_by_block", {}).then(groups => {
+        if (!groups || !groups.length) {
+            list.innerHTML = '<div class="empty">No applicators on your team yet. Add them under Manage Team.</div>';
+            return;
+        }
+        const present = groups.reduce((n, g) => n + g.present, 0);
+        const absent = groups.reduce((n, g) => n + g.absent, 0);
+        const unmarked = groups.reduce((n, g) => n + g.unmarked, 0);
+        summary.innerHTML = `
+            <div class="stat-grid" style="grid-template-columns:1fr 1fr 1fr;">
+                <div class="stat-card"><div class="stat-card__label">Present</div><div class="stat-card__value good">${present}</div></div>
+                <div class="stat-card"><div class="stat-card__label">Absent</div><div class="stat-card__value bad">${absent}</div></div>
+                <div class="stat-card"><div class="stat-card__label">Not marked</div><div class="stat-card__value">${unmarked}</div></div>
+            </div>`;
+
+        list.innerHTML = groups.map(g => `
+            <div class="section-group">
+                <div class="section-group__head" style="cursor:default;">
+                    <div><b>${g.block}</b><div class="count">${g.present} present · ${g.absent} absent · ${g.unmarked} not marked</div></div>
+                </div>
+                <div class="section-group__body">
+                    ${g.applicators.map(a => `
+                        <div class="roster-row">
+                            <div class="initial">${initials(a.employee_name)}</div>
+                            <div class="info">
+                                <div class="name">${a.employee_name}</div>
+                                <div class="block-tag">${a.employee_number || "no employee number"}</div>
+                            </div>
+                            <div class="att-btns">
+                                <button class="att-btn ${a.status === 'Present' ? 'btn-good' : 'btn-grey'}" onclick="setAttendanceFrom('attendance','${a.name}','Present')">In</button>
+                                <button class="att-btn ${a.status === 'Absent' ? 'btn-bad' : 'btn-grey'}" onclick="setAttendanceFrom('attendance','${a.name}','Absent')">Out</button>
+                            </div>
+                        </div>`).join("")}
+                </div>
+            </div>`).join("");
+    }).catch(err => { list.innerHTML = `<div class="empty">${err.message || "Could not load. Please refresh."}</div>`; });
+}
+
+// Shared by Manage Team and Attendance so both refresh the screen you're on.
+function setAttendanceFrom(origin, employee, status) {
+    writeCall("mark_attendance", { employee, status })
+        .then(() => { toast(status + " marked"); origin === "attendance" ? loadAttendance() : loadTeam(); })
+        .catch(err => toast(err.message));
+}
+
+// --- Settings ---
+// Kept on the device: these are per-person display preferences, not farm data,
+// and a supervisor changing text size shouldn't write to the database.
+const SETTINGS_KEY = "uc_settings";
+const DEFAULT_SETTINGS = { fontScale: 100, bigTouch: false, bottomNav: true, confirmSubmit: false };
+
+function getSettings() {
+    try { return Object.assign({}, DEFAULT_SETTINGS, JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}")); }
+    catch (e) { return Object.assign({}, DEFAULT_SETTINGS); }
+}
+function saveSettings(s) {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+    applySettings();
+}
+function applySettings() {
+    const s = getSettings();
+    document.documentElement.style.fontSize = (16 * s.fontScale / 100) + "px";
+    document.body.classList.toggle("big-touch", !!s.bigTouch);
+    const nav = document.getElementById("bottom-nav");
+    if (nav) nav.style.display = s.bottomNav ? "flex" : "none";
+    document.body.style.paddingBottom = s.bottomNav ? "72px" : "0";
+}
+
+function loadSettings() {
+    const s = getSettings();
+    document.getElementById("settings-box").innerHTML = `
+        <div class="card">
+            <h3>Display</h3>
+            <p class="meta">Saved on this phone only — it won't change anything for anyone else.</p>
+
+            <label style="font-size:13px;color:var(--ink-4);">Text size — <b id="font-val">${s.fontScale}%</b></label>
+            <input type="range" min="85" max="145" step="5" value="${s.fontScale}" id="set-font"
+                   style="width:100%;margin:10px 0 4px;" oninput="onFontInput(this.value)">
+            <div class="meta" style="display:flex;justify-content:space-between;margin:0 0 14px;">
+                <span>Smaller</span><span>Larger</span>
+            </div>
+
+            <div class="toggle-row">
+                <input type="checkbox" id="set-touch" ${s.bigTouch ? "checked" : ""} onchange="onSettingToggle('bigTouch', this.checked)">
+                <label for="set-touch">Bigger buttons — easier with gloves on</label>
+            </div>
+            <div class="toggle-row">
+                <input type="checkbox" id="set-nav" ${s.bottomNav ? "checked" : ""} onchange="onSettingToggle('bottomNav', this.checked)">
+                <label for="set-nav">Show the quick bar at the bottom</label>
+            </div>
+            <div class="toggle-row">
+                <input type="checkbox" id="set-confirm" ${s.confirmSubmit ? "checked" : ""} onchange="onSettingToggle('confirmSubmit', this.checked)">
+                <label for="set-confirm">Ask me to confirm before submitting</label>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>This device</h3>
+            <div class="meta">Signed in as {{ frappe.session.user }}</div>
+            <div class="meta" id="settings-queue"></div>
+            <button class="btn-big btn-grey" onclick="resetSettings()">Reset display settings</button>
+            <button class="btn-big btn-warn" onclick="flushQueue()">Sync pending items now</button>
+        </div>`;
+    const q = getQueue().length;
+    document.getElementById("settings-queue").textContent =
+        q ? `${q} item${q > 1 ? "s" : ""} waiting to sync` : "Everything is synced";
+}
+
+function onFontInput(v) {
+    document.getElementById("font-val").textContent = v + "%";
+    const s = getSettings(); s.fontScale = parseInt(v, 10); saveSettings(s);
+}
+function onSettingToggle(key, val) {
+    const s = getSettings(); s[key] = val; saveSettings(s);
+}
+function resetSettings() {
+    localStorage.removeItem(SETTINGS_KEY);
+    applySettings(); loadSettings(); toast("Display settings reset");
+}
+
+// --- Bottom quick bar ---
+const BOTTOM_NAV = [
+    { view: "home",           label: "Home",     icon: "M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" },
+    { view: "upcoming",       label: "Upcoming", icon: "M12 8v4l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" },
+    { view: "record-section", label: "Record",   icon: "M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" },
+    { view: "team",           label: "Team",     icon: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" },
+    { view: "attendance",     label: "Register", icon: "M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" },
+];
+
+function renderBottomNav() {
+    document.getElementById("bottom-nav").innerHTML = BOTTOM_NAV.map(n => `
+        <button class="bnav__item" data-bnav="${n.view}" onclick="navigate('${n.view}')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${n.icon}"/></svg>
+            <span>${n.label}</span>
+        </button>`).join("");
+}
+
+function syncBottomNav(view) {
+    document.querySelectorAll(".bnav__item").forEach(b =>
+        b.classList.toggle("on", b.dataset.bnav === view));
+}
+
 // --- Store Requests status ---
 async function loadStoreRequests() {
     const list = document.getElementById("store-requests-list");
@@ -879,11 +1067,7 @@ function loadTeam() {
 }
 
 function setAttendance(employee, status) {
-    writeCall("mark_attendance", { employee, status })
-        .then(() => { toast(status + " marked"); loadTeam(); })
-        .catch(err => {
-            toast(err.message);
-        });
+    setAttendanceFrom("team", employee, status);
 }
 
 // --- Applicator detail + reassign ---
@@ -1053,7 +1237,11 @@ function selectRecordBlock(block) {
     });
 }
 
-window.addEventListener("load", () => setTimeout(() => { navigate("home"); flushQueue(); updateSyncBadge(); }, 150));
+window.addEventListener("load", () => {
+    renderBottomNav();
+    applySettings();
+    setTimeout(() => { navigate("home"); flushQueue(); updateSyncBadge(); }, 150);
+});
 </script>
 </body>
 </html>

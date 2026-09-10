@@ -8,11 +8,14 @@
  "field_order": [
   "employee",
   "employee_name",
+  "employee_number",
   "attendance_date",
   "status",
   "column_break_1",
+  "block",
   "farm",
-  "marked_by"
+  "marked_by",
+  "marked_by_name"
  ],
  "fields": [
   {
@@ -62,6 +65,30 @@
    "fieldtype": "Link",
    "label": "Marked By",
    "options": "Employee",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "employee.employee_number",
+   "fieldname": "employee_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Employee Number",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "employee.custom_assigned_block",
+   "fieldname": "block",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Block",
+   "options": "Farm Block",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "marked_by.employee_name",
+   "fieldname": "marked_by_name",
+   "fieldtype": "Data",
+   "label": "Supervisor Name",
    "read_only": 1
   }
  ],
