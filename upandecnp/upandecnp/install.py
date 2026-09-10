@@ -29,11 +29,24 @@ def seed_demo_data():
 
 
 def create_roles():
-    """Create the Field Worker, Storekeeper and per-farm Agronomist roles if
-    missing. A role named "<Farm> Agronomist" restricts whoever holds it to
-    that Farm's data only (see utils/farm_permissions.py) - onboarding a new
-    farm's agronomist just needs a matching Role, no code change."""
-    roles = ["Field Worker", "Storekeeper", "Lokitela Agronomist", "Endebess Agronomist"]
+    """Create the module's roles if missing.
+
+    Access is split in two, because the two questions are different:
+
+      "CNP Agronomist"    - may use the module at all. This is the role the
+                            doctypes actually grant permissions to, so it is
+                            what puts the workspace in someone's sidebar.
+      "<Farm> Agronomist" - restricts whoever holds it to that farm's rows
+                            (see utils/farm_permissions.py).
+
+    They are separate because the per-farm roles are open-ended - one per
+    farm, added as farms are onboarded - and a doctype's permission list
+    cannot name a role that does not exist yet. So a farm agronomist holds
+    both: "CNP Agronomist" to get in, "<Farm> Agronomist" to be scoped.
+    Onboarding a new farm still needs no code change, only a matching Role.
+    """
+    roles = ["Field Worker", "Storekeeper", "CNP Agronomist",
+             "Lokitela Agronomist", "Endebess Agronomist"]
     for role_name in roles:
         if not frappe.db.exists("Role", role_name):
             frappe.get_doc({

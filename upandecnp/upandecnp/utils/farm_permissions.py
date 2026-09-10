@@ -1,6 +1,18 @@
 """
 Role-based farm data segregation.
 
+Access to this module is two roles, answering two different questions:
+
+  "CNP Agronomist"    - may this person use the module at all? This is the
+                        role the doctypes grant permissions to, so it is what
+                        puts the workspace in someone's sidebar. Granting it
+                        alone gives access to every farm.
+  "<Farm> Agronomist" - which farm's rows may they see? That is this file.
+
+A farm agronomist holds both. They are separate because the per-farm roles
+are open-ended - one per farm, created as farms are onboarded - and a
+doctype's permission list cannot name a role that does not exist yet.
+
 A role named "<Farm> Agronomist" (e.g. "Lokitela Agronomist", "Endebess
 Agronomist") restricts whoever holds it to records for that Farm only, on
 every farm-scoped doctype below - no per-user setup needed. Assigning the
