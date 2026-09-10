@@ -277,7 +277,11 @@ def get_store_requests(farm=None):
     from upandecnp.upandecnp.utils.integration import categorize_request_status
 
     farm = resolve_farm_scope(frappe.session.user, farm)
-    filters = {"custom_request_type": "Fertiliser Issuing"}
+    # Identify this app's requests by the link fields it sets itself, not by
+    # the site-wide custom_request_type category - that field exists on some
+    # sites and not others, and a missing column takes the whole query down.
+    # This screen lists per-plan store issues, so key off the plan link.
+    filters = {"custom_block_fertilizer_plan": ["is", "set"]}
     if farm:
         filters["custom_farm"] = farm
 
@@ -639,7 +643,11 @@ def get_dashboard_summary(season=None, farm=None):
     blocks = len(set(p.block for p in plans))
 
     # Pending store requests (Material Requests not yet fully issued from store)
-    request_filter = {"custom_request_type": "Fertiliser Issuing", "per_ordered": ["<", 100]}
+    # Same reasoning as get_store_requests - custom_fertilizer_programme is
+    # set on both request types this app raises (per-plan issues and the
+    # programme's shortfall purchase), so it matches exactly what the old
+    # custom_request_type tag covered.
+    request_filter = {"custom_fertilizer_programme": ["is", "set"], "per_ordered": ["<", 100]}
     if farm:
         request_filter["custom_farm"] = farm
     pending_requests = frappe.db.count("Material Request", request_filter)

@@ -124,9 +124,10 @@ def create_material_issue_request(block_fertilizer_plan, quantity, employee=None
 
 def advance_to_approval(mr):
     """Move a freshly-inserted Material Request out of Draft into the farm's
-    real approval queue (e.g. "Farm Manager to Approve"), using the same
-    Workflow ("Item Requisition") the desk approval screens already use for
-    every other store-issue category on this site - otherwise it silently
+    real approval queue, using whichever Material Request Workflow the site
+    has active (named "Item Requisition" on some, "Requisition Workflow" on
+    others) - the same one the desk approval screens already use for every
+    other store-issue category on this site - otherwise it silently
     sits in Draft forever and the field app has no way to show real
     approval progress. The workflow's own transitions are gated by roles
     (Stock User) that field-app supervisors don't hold, so this writes the
@@ -152,15 +153,34 @@ def advance_to_approval(mr):
 
 
 def categorize_request_status(state):
-    """Collapse the shared, farm-specific "Item Requisition" workflow's many
-    state names (e.g. "Request Approved by Lokitela Farm Manager", "Approved
-    by Saboti Farm Manager") into the handful of buckets the field app's UI
-    actually branches on."""
-    if not state or state.lower().endswith("to approve"):
+    """Collapse a Material Request workflow state into the handful of buckets
+    the field app's UI actually branches on.
+
+    Two different workflows are in play across the sites this app runs on, and
+    their state names have nothing in common, so match against both rather
+    than assuming either:
+
+      farm-specific  "Farm Manager to Approve", "Request Approved by Lokitela
+                      Farm Manager", "Rejected by Saboti Farm Manager"
+      generic        "Draft", "Pending Verification", "Verified", "Pending
+                      Approval", "Approved", "Rejected", "Cancelled",
+                      "Submitted"
+
+    Anything still moving through an approval chain is "Requested" - the
+    supervisor only needs to know it is not theirs to act on yet."""
+    if not state:
         return "Requested"
-    if state.startswith("Rejected"):
+
+    s = state.strip().lower()
+    if s.startswith("cancel"):
+        return "Cancelled"
+    if s.startswith("reject"):
         return "Rejected"
-    if state.startswith("Approved") or state.startswith("Request Approved"):
+    # "Approved", "Approved by <Farm> Farm Manager", "Request Approved by ..."
+    # and "Submitted" (a final, docstatus-1 state on some of the workflow's
+    # other paths). Deliberately not "Pending Approval" or "... to Approve",
+    # which are still waiting on somebody.
+    if s.startswith("approved") or s.startswith("request approved") or s == "submitted":
         return "Approved"
     return "Requested"
 

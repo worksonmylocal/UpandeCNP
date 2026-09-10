@@ -537,6 +537,9 @@ function openSection(section) {
             } else if (p.request_status === "Rejected") {
                 pill = '<span class="pill bad">Rejected</span>';
                 btn = `<button class="btn-big btn-ink" onclick='openPlanAction(${JSON.stringify(p)}, "request")'>Request again</button>`;
+            } else if (p.request_status === "Cancelled") {
+                pill = '<span class="pill mute">Cancelled</span>';
+                btn = `<button class="btn-big btn-ink" onclick='openPlanAction(${JSON.stringify(p)}, "request")'>Request again</button>`;
             } else {
                 pill = '<span class="pill mute">Planned</span>';
                 btn = `<button class="btn-big btn-ink" onclick='openPlanAction(${JSON.stringify(p)}, "request")'>Request from store</button>`;
@@ -569,8 +572,10 @@ function openPlanAction(plan, mode, returnFn) {
     const box = document.getElementById("plan-action-content");
     if (mode === "status") {
         const labels = {
-            "Requested": "⏳ Requested — waiting for the storekeeper to review.",
+            "Requested": "⏳ Requested — waiting for the farm manager to approve.",
             "Approved":  "✅ Approved — waiting for the store to issue the fertilizer.",
+            "Rejected":  "❌ Rejected — raise a new request if it is still needed.",
+            "Cancelled": "🚫 Cancelled — this request was cancelled. Raise a new one if it is still needed.",
         };
         box.innerHTML = `<h3>${plan.block} · ${productName(plan)}</h3><p class="meta">${productCode(plan)}</p><p class="meta">${labels[plan.request_status] || plan.request_status}</p>
             <button class="btn-big btn-grey" onclick="planActionReturn()">Back</button>`;
@@ -710,7 +715,8 @@ async function loadStoreRequests() {
     list.innerHTML = '<div class="spinner">Loading…</div>';
     call("get_store_requests", {}).then(reqs => {
         if (!reqs || !reqs.length) { list.innerHTML = '<div class="empty">No store requests yet.</div>'; return; }
-        const pillFor = s => s === "Issued" ? "good" : s === "Approved" ? "info" : s === "Rejected" ? "bad" : "warn";
+        const pillFor = s => s === "Issued" ? "good" : s === "Approved" ? "info"
+            : s === "Rejected" ? "bad" : s === "Cancelled" ? "mute" : "warn";
         list.innerHTML = reqs.map(r => `
             <div class="request-row">
                 <div>

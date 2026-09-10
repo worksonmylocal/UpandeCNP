@@ -117,7 +117,7 @@ def has_farm_permission(doc, ptype=None, user=None):
 	if doc.get(fieldname) not in farms:
 		return False
 
-	if doc.doctype == "Material Request" and doc.get("custom_request_type") != "Fertiliser Issuing":
+	if doc.doctype == "Material Request" and not doc.get("custom_fertilizer_programme"):
 		return False
 
 	return True
@@ -127,13 +127,20 @@ def material_request_query(user):
 	"""Material Request is shared across every department on the site (fuel,
 	chemicals, other purchases) - farm-scoping alone isn't enough, an
 	Agronomist should only see the two agronomy-generated categories
-	(fertilizer purchase and field-application issue), both tagged
-	custom_request_type="Fertiliser Issuing" by upandecnp's own
-	integration.py, not every Material Request tagged to their farm."""
+	(fertilizer purchase and field-application issue), not every Material
+	Request tagged to their farm.
+
+	Both are identified by custom_fertilizer_programme, which upandecnp's own
+	integration.py sets on each. The site-wide custom_request_type category is
+	deliberately not used: it exists on some sites and not others, and a
+	missing column here would take down every Material Request list view for
+	anyone this condition applies to."""
 	base = _condition("Material Request", "custom_farm", user)
 	if not base:
 		return ""
-	category = "`tabMaterial Request`.`custom_request_type` = 'Fertiliser Issuing'"
+	category = (
+		"ifnull(`tabMaterial Request`.`custom_fertilizer_programme`, '') != ''"
+	)
 	return f"({base}) and {category}"
 
 
