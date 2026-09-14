@@ -21,12 +21,55 @@ Algorithm (per the agronomist's spec, reproduced exactly):
      Programme's potassium_source feeds into programme_lines.
   5. Annual per-block totals are split across months using the Production
      Calendar's Fertilizer Schedule (unchanged from the old engine).
+  6. A programme may cover only part of the year. Rounds scheduled outside
+     the window are dropped, NOT redistributed into it - running Jan-May
+     should apply five months of nutrition, not a year's worth compressed.
+  7. The Item each rule actually draws from comes from the programme's
+     product_selections, so the same rule can be met from whichever of the
+     site's near-duplicate Items ("MOP" vs "MURATE OF POTASIUM (MOP)")
+     actually has stock this season.
 """
 
 import frappe
 from frappe.utils import cint, flt
 
 from upandecnp.upandecnp.utils.rounding import round_half_up
+
+MONTHS = [
+	"January", "February", "March", "April", "May", "June",
+	"July", "August", "September", "October", "November", "December",
+]
+
+
+def months_in_window(start_month, end_month):
+	"""The months a Custom Period covers, inclusive. A window whose end month
+	precedes its start (e.g. November to February) wraps through December
+	rather than coming back empty - seasons here straddle the year end."""
+	if not start_month or not end_month:
+		return list(MONTHS)
+	s, e = MONTHS.index(start_month), MONTHS.index(end_month)
+	if s <= e:
+		return MONTHS[s:e + 1]
+	return MONTHS[s:] + MONTHS[:e + 1]
+
+
+def resolve_products(programme):
+	"""product code -> chosen Item, from the programme's selections."""
+	return {
+		row.product: row.fertilizer_item
+		for row in programme.get("product_selections", [])
+		if row.product and row.fertilizer_item
+	}
+
+
+def item_for_rule(rule, chosen):
+	"""Which Item this rule draws from. The programme's pick for the rule's
+	product wins; a rule with no product (or a programme that hasn't picked
+	one) falls back to the Item named on the rule itself, so existing crops
+	keep calculating exactly as before."""
+	if rule.get("product") and chosen.get(rule.get("product")):
+		return chosen[rule.get("product")]
+	return rule.fertilizer_product
 
 
 def get_yield_tier(crop_doc, yield_kg_ha):
@@ -116,7 +159,7 @@ def calculate_product_for_group(rule, tier_tonnage, group_area_ha, leaf_adjustme
 	}
 
 
-def distribute_to_blocks(blocks, final_product_kg_per_ha, fertilizer_product, yield_tier, section):
+def distribute_to_blocks(blocks, final_product_kg_per_ha, fertilizer_product, yield_tier, section, product=None):
 	lines = []
 	for block in blocks:
 		block_total_kg = block["area_ha"] * final_product_kg_per_ha
@@ -128,6 +171,7 @@ def distribute_to_blocks(blocks, final_product_kg_per_ha, fertilizer_product, yi
 			"block": block["block"],
 			"section": section,
 			"fertilizer_product": fertilizer_product,
+			"product": product,
 			"yield_tier": yield_tier,
 			"kg_per_ha_rate": round_half_up(final_product_kg_per_ha, 2),
 			"total_kg": round_half_up(block_total_kg, 2),
@@ -136,22 +180,32 @@ def distribute_to_blocks(blocks, final_product_kg_per_ha, fertilizer_product, yi
 	return lines
 
 
-def apply_monthly_schedule(annual_lines, calendar_doc):
+def apply_monthly_schedule(annual_lines, calendar_doc, allowed_months=None):
 	schedule_map = {}
 	for row in calendar_doc.get("fertilizer_schedule", []):
 		schedule_map.setdefault(row.fertilizer_product, []).append(
 			(row.application_month, flt(row.percentage) / 100.0)
 		)
 
+	allowed = set(allowed_months) if allowed_months else None
+
 	monthly_lines = []
 	for line in annual_lines:
 		schedule = schedule_map.get(line["fertilizer_product"])
+		if schedule is None:
+			# The calendar is written against whichever Item was current when
+			# it was set up. If this programme swapped to a different Item for
+			# the same product, fall back to the schedule of the Item the rule
+			# names, so swapping Items doesn't silently break the split.
+			schedule = schedule_map.get(line.get("scheduled_as"))
 		if not schedule:
 			frappe.throw(
 				f"No monthly application schedule configured for {line['fertilizer_product']} "
 				f"on Production Calendar {calendar_doc.name}."
 			)
 		for month, fraction in schedule:
+			if allowed is not None and month not in allowed:
+				continue
 			monthly_lines.append({
 				**line,
 				"application_month": month,
@@ -183,6 +237,7 @@ def calculate_programme(programme_name):
 	}
 
 	groups = group_blocks_by_section_tier(programme, crop_doc)
+	chosen = resolve_products(programme)
 
 	annual_lines = []
 	potassium_candidates = []
@@ -215,12 +270,29 @@ def calculate_programme(programme_name):
 				if rule.fertilizer_product != programme.potassium_source:
 					continue
 
-			annual_lines += distribute_to_blocks(
+			lines = distribute_to_blocks(
 				group["blocks"], result["final_product_kg_per_ha"],
-				rule.fertilizer_product, tier_label, section,
+				item_for_rule(rule, chosen), tier_label, section,
+				product=rule.get("product"),
 			)
+			# Remember the Item the rule names, so apply_monthly_schedule can
+			# still find a schedule if this programme swapped to another Item.
+			for line in lines:
+				line["scheduled_as"] = rule.fertilizer_product
+			annual_lines += lines
 
-	monthly_lines = apply_monthly_schedule(annual_lines, calendar_doc)
+	allowed_months = (
+		months_in_window(programme.start_month, programme.end_month)
+		if programme.period_type == "Custom Period" else None
+	)
+	monthly_lines = apply_monthly_schedule(annual_lines, calendar_doc, allowed_months)
+
+	if not monthly_lines:
+		frappe.throw(
+			"That period contains no scheduled applications. The Production "
+			f"Calendar {calendar_doc.name} schedules nothing between "
+			f"{programme.start_month} and {programme.end_month}."
+		)
 
 	programme.set("programme_lines", [])
 	for line in monthly_lines:
@@ -230,5 +302,32 @@ def calculate_programme(programme_name):
 	for candidate in potassium_candidates:
 		programme.append("potassium_candidates", candidate)
 
+	update_product_requirements(programme, monthly_lines)
+
 	programme.save()
 	return len(monthly_lines)
+
+
+def update_product_requirements(programme, monthly_lines):
+	"""Total each selected Item up across the whole programme and compare it
+	with stock on hand, so the agronomist can see a shortfall before the
+	season starts rather than when a store request bounces."""
+	required = {}
+	for line in monthly_lines:
+		item = line["fertilizer_product"]
+		required[item] = required.get(item, 0) + flt(line["total_kg"])
+
+	for row in programme.get("product_selections", []):
+		if not row.fertilizer_item:
+			continue
+		row.required_qty = round_half_up(required.get(row.fertilizer_item, 0), 2)
+		row.available_qty = round_half_up(get_stock(row.fertilizer_item), 2)
+		row.shortfall = round_half_up(max(row.required_qty - row.available_qty, 0), 2)
+
+
+def get_stock(item_code):
+	"""Stock on hand across every warehouse."""
+	total = frappe.db.sql(
+		"select sum(actual_qty) from `tabBin` where item_code = %s", item_code
+	)
+	return flt(total[0][0]) if total and total[0] else 0.0

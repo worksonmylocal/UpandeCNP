@@ -15,6 +15,26 @@ frappe.ui.form.on("Fertilizer Programme", {
                 });
             }, __("Actions"));
 
+            frm.add_custom_button(__("Load Products"), function() {
+                if (!frm.doc.crop) {
+                    frappe.msgprint("Please set the Crop first.");
+                    return;
+                }
+                frappe.call({
+                    method: "upandecnp.upandecnp.api.load_programme_products",
+                    args: { programme: frm.doc.name },
+                    callback(r) {
+                        if (r.message) {
+                            frm.reload_doc();
+                            frappe.show_alert({
+                                message: `Loaded ${r.message} products. Check the Item picked for each.`,
+                                indicator: "green"
+                            });
+                        }
+                    }
+                });
+            }, __("Actions"));
+
             frm.add_custom_button(__("Run Calculation Engine"), function() {
                 if (!frm.doc.block_yield_data || frm.doc.block_yield_data.length === 0) {
                     frappe.msgprint("Please pull block yield data before running the calculation.");
@@ -68,6 +88,44 @@ frappe.ui.form.on("Programme Block Yield", {
             frappe.model.set_value(cdt, cdn, "area_ha", block.area_ha);
             frappe.model.set_value(cdt, cdn, "tree_count", block.tree_count);
             frappe.model.set_value(cdt, cdn, "yield_kg_ha", block.previous_year_yield_kg_ha);
+        });
+    }
+});
+
+
+frappe.ui.form.on("Fertilizer Programme Product", {
+    product(frm, cdt, cdn) {
+        const row = locals[cdt][cdn];
+        if (!row.product) return;
+        // Pre-select the candidate holding the most stock - that is almost
+        // always the one meant, and it is still editable.
+        frappe.call({
+            method: "upandecnp.upandecnp.api.get_product_items",
+            args: { product: row.product },
+            callback(r) {
+                const options = r.message || [];
+                if (!options.length) {
+                    frappe.msgprint(
+                        `No Items in the fertilizer group match the search terms on ${row.product}.`
+                    );
+                    return;
+                }
+                frappe.model.set_value(cdt, cdn, "fertilizer_item", options[0].item_code);
+                frappe.model.set_value(cdt, cdn, "available_qty", options[0].stock_qty);
+            }
+        });
+    },
+
+    fertilizer_item(frm, cdt, cdn) {
+        const row = locals[cdt][cdn];
+        if (!row.product || !row.fertilizer_item) return;
+        frappe.call({
+            method: "upandecnp.upandecnp.api.get_product_items",
+            args: { product: row.product },
+            callback(r) {
+                const hit = (r.message || []).find((o) => o.item_code === row.fertilizer_item);
+                frappe.model.set_value(cdt, cdn, "available_qty", hit ? hit.stock_qty : 0);
+            }
         });
     }
 });

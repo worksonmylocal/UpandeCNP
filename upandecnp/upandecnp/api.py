@@ -4,7 +4,8 @@ These reuse the existing DocType logic so the workflow stays consistent.
 """
 
 import frappe
-from frappe.utils import flt, today
+from frappe.utils import cint, flt, today
+from upandecnp.upandecnp.utils.calculation_engine import MONTHS
 from upandecnp.upandecnp.utils.farm_permissions import resolve_farm_scope
 from upandecnp.upandecnp.utils.integration import get_grouped_sum
 
@@ -1664,3 +1665,166 @@ def get_available_farms():
         ORDER BY custom_farm
     """, as_dict=True)
     return [f.custom_farm for f in farms]
+
+# --------------------------------------------------------------- Fertilizer products
+
+@frappe.whitelist()
+def get_product_items(product):
+    """Candidate Items for a Fertilizer Product, with stock on hand.
+
+    The site keeps several Items per real-world product, spelled
+    inconsistently ("MOP" and "MURATE OF POTASIUM (MOP)", "POTASIUM
+    SULPHATE" and "POTASSIUM SULPHATE"), with the stock sitting on only one
+    of them. So the agronomist picks the Item, and sees the stock while
+    picking it.
+    """
+    doc = frappe.get_doc("Fertilizer Product", product)
+    terms = doc.terms()
+    if not terms:
+        return []
+
+    conditions = []
+    values = {"item_group": doc.item_group or "Fertilizer"}
+    for i, term in enumerate(terms):
+        conditions.append(f"(i.item_name like %(t{i})s or i.name like %(t{i})s)")
+        values[f"t{i}"] = f"%{term}%"
+
+    sql = f"""
+        select i.name as item_code, i.item_name, i.stock_uom,
+               coalesce((select sum(b.actual_qty) from `tabBin` b
+                         where b.item_code = i.name), 0) as stock_qty
+        from `tabItem` i
+        where i.item_group = %(item_group)s
+          and i.disabled = 0
+          and ({" or ".join(conditions)})
+        order by stock_qty desc, i.item_name asc
+    """
+    rows = frappe.db.sql(sql, values, as_dict=True)
+
+    excludes = [e.lower() for e in doc.excludes()]
+    if excludes:
+        rows = [
+            r for r in rows
+            if not any(e in (r.item_name or "").lower() or e in (r.item_code or "").lower()
+                       for e in excludes)
+        ]
+    return rows
+
+
+@frappe.whitelist()
+def load_programme_products(programme):
+    """Fill the programme's product table from its crop's nutrient rules.
+
+    Pre-selects, per product, the candidate Item holding the most stock -
+    which is the one the agronomist would pick by hand nine times out of ten.
+    They can still change it; nothing is decided for them irreversibly.
+    """
+    doc = frappe.get_doc("Fertilizer Programme", programme)
+    if doc.docstatus == 1:
+        frappe.throw("Cannot change products on a submitted programme.")
+
+    crop = frappe.get_doc("Crop", doc.crop)
+    products, seen = [], set()
+    for rule in crop.get("nutrient_rules", []):
+        if rule.product and rule.product not in seen:
+            seen.add(rule.product)
+            products.append(rule.product)
+
+    if not products:
+        frappe.throw(
+            f"No nutrient rule on crop {doc.crop} names a Fertilizer Product yet. "
+            "Set the Fertilizer Product field on the crop's nutrient rules first."
+        )
+
+    already = {r.product: r.fertilizer_item for r in doc.get("product_selections", [])}
+    doc.set("product_selections", [])
+    for product in products:
+        options = get_product_items(product)
+        chosen = already.get(product) or (options[0]["item_code"] if options else None)
+        stock = next((o["stock_qty"] for o in options if o["item_code"] == chosen), 0)
+        doc.append("product_selections", {
+            "product": product,
+            "fertilizer_item": chosen,
+            "available_qty": stock,
+        })
+    doc.save()
+    return len(products)
+
+
+# --------------------------------------------------------------- Pushed applications
+
+@frappe.whitelist()
+def push_application(plan, reason=None, scope="product"):
+    """Push a round that didn't happen, and everything after it, one month on.
+
+    Weather stops an application; the nutrition still has to happen, so the
+    whole remaining chain slides rather than one round doubling up or being
+    lost. December rolls into January of the next year - that is what
+    application_year is for, and it is why the programme can finish later
+    than its end month.
+
+    scope="product" slides only this block's rounds of this same product,
+    which is the usual case. scope="block" slides every product for the
+    block, for when the block itself could not be worked at all.
+    """
+    doc = frappe.get_doc("Block Fertilizer Plan", plan)
+    if doc.status in ("Applied", "Verified"):
+        frappe.throw(f"{plan} is already {doc.status} - there is nothing to push.")
+
+    filters = {
+        "fertilizer_programme": doc.fertilizer_programme,
+        "block": doc.block,
+        "docstatus": ["<", 2],
+        "status": ["in", ["Planned", "Issued"]],
+    }
+    if scope == "product":
+        filters["fertilizer_product"] = doc.fertilizer_product
+
+    siblings = frappe.get_all(
+        "Block Fertilizer Plan", filters=filters,
+        fields=["name", "application_month", "application_year"],
+    )
+
+    base_year = cint(doc.application_year) or _season_start_year(doc.season)
+    # Order by real calendar position so "everything after it" is unambiguous
+    # even once part of the chain has already rolled into the next year.
+    def position(row):
+        year = cint(row.application_year) or base_year
+        return (year, MONTHS.index(row.application_month) if row.application_month in MONTHS else 0)
+
+    here = position(frappe._dict({
+        "application_month": doc.application_month,
+        "application_year": doc.application_year or base_year,
+    }))
+    affected = sorted(
+        [r for r in siblings if position(r) >= here], key=position, reverse=True
+    )
+
+    moved = 0
+    for row in affected:
+        target = frappe.get_doc("Block Fertilizer Plan", row.name)
+        year = cint(target.application_year) or base_year
+        index = MONTHS.index(target.application_month) if target.application_month in MONTHS else 0
+        index += 1
+        if index > 11:
+            index, year = 0, year + 1
+
+        if not target.original_month:
+            target.original_month = target.application_month
+        target.application_month = MONTHS[index]
+        target.application_year = year
+        target.times_pushed = cint(target.times_pushed) + 1
+        if target.name == doc.name and reason:
+            target.push_reason = reason
+        target.save(ignore_permissions=True)
+        moved += 1
+
+    frappe.db.commit()
+    return {"moved": moved, "scope": scope}
+
+
+def _season_start_year(season):
+    """Seasons read "2025/2026"; the first year is the one the months start in."""
+    import re
+    match = re.search(r"(\d{4})", season or "")
+    return cint(match.group(1)) if match else cint(frappe.utils.nowdate()[:4])

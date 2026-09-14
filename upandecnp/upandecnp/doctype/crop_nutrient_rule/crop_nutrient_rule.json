@@ -8,6 +8,7 @@
  "field_order": [
   "section_break_cnr",
   "fertilizer_product",
+  "product",
   "nutrient",
   "rate_per_tonne",
   "column_break_cnr",
@@ -68,10 +69,18 @@
    "label": "Net Off Compost"
   },
   {
+   "description": "Rows sharing the same group are alternative sources of the same nutrient (e.g. MOP vs K2SO4 for potassium). The engine computes all of them in parallel; the programme picks one.",
    "fieldname": "nutrient_source_group",
    "fieldtype": "Data",
-   "label": "Nutrient Source Group",
-   "description": "Rows sharing the same group are alternative sources of the same nutrient (e.g. MOP vs K2SO4 for potassium). The engine computes all of them in parallel; the programme picks one."
+   "label": "Nutrient Source Group"
+  },
+  {
+   "description": "Which product group this rule draws from. The programme picks the actual Item per group; if this is empty the rule falls back to the Item in Fertilizer Product above.",
+   "fieldname": "product",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Fertilizer Product",
+   "options": "Fertilizer Product"
   }
  ],
  "grid_page_length": 50,

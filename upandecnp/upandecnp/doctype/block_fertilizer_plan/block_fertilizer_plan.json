@@ -18,6 +18,10 @@
   "section",
   "fertilizer_product",
   "application_month",
+  "application_year",
+  "original_month",
+  "times_pushed",
+  "push_reason",
   "yield_tier",
   "application_rate_kg_ha",
   "dose_per_tree_g",
@@ -93,6 +97,7 @@
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "application_month",
    "fieldtype": "Select",
    "in_list_view": 1,
@@ -141,6 +146,38 @@
    "label": "Fertilizer Product",
    "options": "Item",
    "reqd": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "description": "Set so a round pushed past December lands in January of the following year.",
+   "fieldname": "application_year",
+   "fieldtype": "Int",
+   "label": "Application Year",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "description": "The month this round was first scheduled for. Set only once, the first time it is pushed.",
+   "fieldname": "original_month",
+   "fieldtype": "Select",
+   "label": "Originally Planned For",
+   "options": "January\nFebruary\nMarch\nApril\nMay\nJune\nJuly\nAugust\nSeptember\nOctober\nNovember\nDecember",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "times_pushed",
+   "fieldtype": "Int",
+   "label": "Times Pushed",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "push_reason",
+   "fieldtype": "Small Text",
+   "label": "Reason for Pushing",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
@@ -167,25 +204,25 @@
    "write": 1
   },
   {
-   "role": "CNP Agronomist",
-   "read": 1,
-   "report": 1,
+   "amend": 1,
+   "cancel": 1,
+   "email": 1,
    "export": 1,
    "print": 1,
-   "email": 1,
+   "read": 1,
+   "report": 1,
+   "role": "CNP Agronomist",
    "share": 1,
-   "write": 1,
    "submit": 1,
-   "cancel": 1,
-   "amend": 1
+   "write": 1
   },
   {
-   "role": "Field Worker",
-   "read": 1,
-   "report": 1,
+   "email": 1,
    "export": 1,
    "print": 1,
-   "email": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Field Worker",
    "share": 1
   }
  ],

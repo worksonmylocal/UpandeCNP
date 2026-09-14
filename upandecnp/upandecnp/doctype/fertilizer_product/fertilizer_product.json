@@ -1,0 +1,124 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:product_code",
+ "creation": "2026-09-14 09:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_fp",
+  "product_code",
+  "product_name",
+  "nutrient",
+  "disabled",
+  "column_break_fp",
+  "item_group",
+  "search_terms",
+  "exclude_terms"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_fp",
+   "fieldtype": "Section Break"
+  },
+  {
+   "description": "Short name the agronomist knows it by, e.g. CAN, MOP, K2SO4, TSP.",
+   "fieldname": "product_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Product Code",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "description": "Full name, e.g. Calcium Ammonium Nitrate.",
+   "fieldname": "product_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Product Name"
+  },
+  {
+   "fieldname": "nutrient",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Nutrient Supplied",
+   "options": "N\nP\nK\nCa\nMg\nS\nMn\nB\nMo\nZn"
+  },
+  {
+   "default": "0",
+   "fieldname": "disabled",
+   "fieldtype": "Check",
+   "label": "Disabled"
+  },
+  {
+   "fieldname": "column_break_fp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Fertilizer",
+   "description": "Only Items in this group are offered as candidates.",
+   "fieldname": "item_group",
+   "fieldtype": "Link",
+   "label": "Item Group",
+   "options": "Item Group"
+  },
+  {
+   "description": "One per line, or comma separated. An Item matches if its code or name contains ANY of these. Spellings on site are inconsistent (POTASIUM, MURATE, TRIPPLE), so list every variant.",
+   "fieldname": "search_terms",
+   "fieldtype": "Small Text",
+   "label": "Search Terms",
+   "reqd": 1
+  },
+  {
+   "description": "Optional. An Item matching any of these is dropped even if it matched above.",
+   "fieldname": "exclude_terms",
+   "fieldtype": "Small Text",
+   "label": "Exclude Terms"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 0,
+ "links": [],
+ "modified": "2026-09-14 09:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "UpandeCNP",
+ "name": "Fertilizer Product",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "CNP Agronomist",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Field Worker"
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

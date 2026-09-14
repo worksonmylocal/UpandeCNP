@@ -1,8 +1,47 @@
 import frappe
 from frappe.model.document import Document
+from frappe.utils import flt
 
 
 class FertilizerProgramme(Document):
+
+	def validate(self):
+		self.validate_period()
+		self.warn_on_stock_shortfall()
+
+	def validate_period(self):
+		if self.period_type != "Custom Period":
+			# Leave the months set but inert, so switching back and forth
+			# doesn't lose what the agronomist typed.
+			return
+		if not self.start_month or not self.end_month:
+			frappe.throw("A Custom Period needs both a start and an end month.")
+
+	def warn_on_stock_shortfall(self):
+		"""Flag products whose selected Item can't cover the programme, but
+		never block on it - fertilizer is routinely ordered against a
+		programme rather than the other way round, so refusing to submit
+		would stop legitimate forward planning. The agronomist is told, and
+		decides."""
+		short = [
+			row for row in self.get("product_selections", [])
+			if row.fertilizer_item and flt(row.shortfall) > 0
+		]
+		if not short:
+			return
+
+		lines = "".join(
+			f"<li><b>{row.product}</b> ({row.fertilizer_item}): needs "
+			f"{flt(row.required_qty):,.0f} kg, {flt(row.available_qty):,.0f} kg in stock "
+			f"- short {flt(row.shortfall):,.0f} kg</li>"
+			for row in short
+		)
+		frappe.msgprint(
+			f"<p>This programme needs more than the store currently holds:</p><ul>{lines}</ul>"
+			"<p>You can still submit - order the balance before those months fall due.</p>",
+			title="Not enough stock",
+			indicator="orange",
+		)
 
 	def on_submit(self):
 		self.create_block_fertilizer_plans()
@@ -56,6 +95,7 @@ class FertilizerProgramme(Document):
 				"block": line.block,
 				"fertilizer_product": line.fertilizer_product,
 				"application_month": line.application_month,
+				"application_year": self.season_start_year(),
 				"yield_tier": line.yield_tier,
 				"application_rate_kg_ha": line.kg_per_ha_rate,
 				"dose_per_tree_g": line.dose_per_tree_g,
@@ -68,6 +108,14 @@ class FertilizerProgramme(Document):
 			created += 1
 
 		frappe.msgprint(f"{created} Block Fertilizer Plans created.", alert=True)
+
+	def season_start_year(self):
+		"""Seasons read "2025/2026"; months run from the first of the two
+		years. Plans carry the year explicitly so a round pushed past
+		December can roll into January without ambiguity."""
+		import re
+		match = re.search(r"(\d{4})", self.season or "")
+		return int(match.group(1)) if match else int(frappe.utils.nowdate()[:4])
 
 	def create_material_requests(self):
 		from upandecnp.upandecnp.utils.integration import create_material_requests_for_programme

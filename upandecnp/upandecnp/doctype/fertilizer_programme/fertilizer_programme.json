@@ -14,7 +14,12 @@
   "crop",
   "production_calendar",
   "potassium_source",
+  "section_break_products",
+  "product_selections",
   "status",
+  "period_type",
+  "start_month",
+  "end_month",
   "section_break_byd",
   "block_yield_data",
   "section_break_lines",
@@ -74,11 +79,11 @@
    "options": "Draft\nSubmitted\nApproved\nActive"
   },
   {
+   "description": "Which of the crop's alternative potassium products (e.g. MOP vs K2SO4) actually feeds into the plan. Both are always computed for comparison.",
    "fieldname": "potassium_source",
    "fieldtype": "Link",
    "label": "Potassium Source",
-   "options": "Item",
-   "description": "Which of the crop's alternative potassium products (e.g. MOP vs K2SO4) actually feeds into the plan. Both are always computed for comparison."
+   "options": "Item"
   },
   {
    "fieldname": "section_break_byd",
@@ -116,6 +121,43 @@
    "label": "Production Calendar",
    "options": "Production Calendar",
    "reqd": 1
+  },
+  {
+   "default": "Full Year",
+   "description": "Custom Period generates only the rounds the Production Calendar schedules inside the window - the annual total reduces accordingly, it is not compressed into the window.",
+   "fieldname": "period_type",
+   "fieldtype": "Select",
+   "label": "Programme Period",
+   "options": "Full Year\nCustom Period",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.period_type=='Custom Period'",
+   "fieldname": "start_month",
+   "fieldtype": "Select",
+   "label": "Start Month",
+   "mandatory_depends_on": "eval:doc.period_type=='Custom Period'",
+   "options": "January\nFebruary\nMarch\nApril\nMay\nJune\nJuly\nAugust\nSeptember\nOctober\nNovember\nDecember"
+  },
+  {
+   "depends_on": "eval:doc.period_type=='Custom Period'",
+   "fieldname": "end_month",
+   "fieldtype": "Select",
+   "label": "End Month",
+   "mandatory_depends_on": "eval:doc.period_type=='Custom Period'",
+   "options": "January\nFebruary\nMarch\nApril\nMay\nJune\nJuly\nAugust\nSeptember\nOctober\nNovember\nDecember"
+  },
+  {
+   "fieldname": "section_break_products",
+   "fieldtype": "Section Break",
+   "label": "Fertilizer Products"
+  },
+  {
+   "description": "Which actual Item each product is drawn from this season. Use \"Load Products\" to fill this from the crop's nutrient rules, then pick an Item for each - stock is shown so you don't plan against an empty store.",
+   "fieldname": "product_selections",
+   "fieldtype": "Table",
+   "label": "Product Selections",
+   "options": "Fertilizer Programme Product"
   }
  ],
  "grid_page_length": 50,
@@ -143,19 +185,19 @@
    "write": 1
   },
   {
-   "role": "CNP Agronomist",
-   "read": 1,
-   "report": 1,
-   "export": 1,
-   "print": 1,
-   "email": 1,
-   "share": 1,
-   "write": 1,
+   "amend": 1,
+   "cancel": 1,
    "create": 1,
    "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "CNP Agronomist",
+   "share": 1,
    "submit": 1,
-   "cancel": 1,
-   "amend": 1
+   "write": 1
   }
  ],
  "row_format": "Dynamic",
