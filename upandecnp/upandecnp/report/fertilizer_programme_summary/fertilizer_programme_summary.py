@@ -1,5 +1,6 @@
 import frappe
 from frappe.utils import flt
+from upandecnp.upandecnp.utils.product_labels import label_products
 
 MONTH_ORDER = [
     "January", "February", "March", "April", "May", "June",
@@ -30,7 +31,7 @@ def execute(filters=None):
 
     columns = get_columns(ordered_months)
     data = get_data(matrix, ordered_months)
-    return columns, data
+    return label_products(columns, data)
 
 
 def get_columns(ordered_months):

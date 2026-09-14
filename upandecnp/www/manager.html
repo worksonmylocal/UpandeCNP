@@ -99,6 +99,13 @@
 </div>
 
 <script>
+
+// Item codes mean nothing to a manager reading this; the API sends the Item
+// name alongside every code. Prefer the name, fall back to the code.
+function productLabel(row, codeField) {
+    const code = row[codeField];
+    return row[codeField + "_name"] || row.product_name || code || "";
+}
 async function call(method, args) {
     const res = await fetch("/api/method/upandecnp.upandecnp.api." + method, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -241,7 +248,7 @@ async function loadComputedBudget() {
         <div class="kpi__value" style="margin-bottom:16px;">Ksh ${d.total_cost.toLocaleString()}<span class="kpi__unit" style="display:inline;margin-left:8px;">estimated season cost</span></div>
         <table class="dtable">
             <tr><th>Product</th><th class="num">Qty (Kg)</th><th class="num">Unit Price</th><th class="num">Cost (Ksh)</th></tr>
-            ${d.lines.map(l => `<tr><td>${l.product}</td><td class="num">${l.qty_kg.toLocaleString()}</td>
+            ${d.lines.map(l => `<tr><td>${l.product_name || l.product}</td><td class="num">${l.qty_kg.toLocaleString()}</td>
                 <td class="num">${l.unit_price.toLocaleString()}</td><td class="num">${l.cost.toLocaleString()}</td></tr>`).join("")}
         </table>`;
 }
@@ -286,7 +293,7 @@ async function loadCoverage() {
     if (!data.length) { document.getElementById("coverage-panel").innerHTML = '<div class="empty">No data.</div>'; return; }
     document.getElementById("coverage-panel").innerHTML = `<table class="dtable">
         <tr><th>Product</th><th class="num">Need</th><th class="num">Stock</th><th>Status</th></tr>
-        ${data.map(d => `<tr><td>${d.product}</td><td class="num">${d.need.toLocaleString()}</td>
+        ${data.map(d => `<tr><td>${d.product_name || d.product}</td><td class="num">${d.need.toLocaleString()}</td>
             <td class="num">${d.stock.toLocaleString()}</td>
             <td>${d.covered ? '<span class="pill good">Covered</span>'
                 : '<span class="pill bad">Short '+d.shortfall.toLocaleString()+'</span>'}</td></tr>`).join("")}
@@ -298,8 +305,8 @@ async function loadAttention() {
     const d = await call("get_upcoming_and_overdue", { farm: farm() });
     const od = d.overdue || [], up = d.upcoming || [];
     let html = "";
-    if (od.length) html += od.slice(0,6).map(o => `<div class="alert-row"><span class="alert-row__main">${o.block} · ${o.fertilizer_product}</span><span class="pill bad">Overdue</span></div>`).join("");
-    if (up.length) html += up.slice(0,6).map(u => `<div class="alert-row"><span class="alert-row__main">${u.block} · ${u.fertilizer_product}</span><span class="pill warn">${u.days}d</span></div>`).join("");
+    if (od.length) html += od.slice(0,6).map(o => `<div class="alert-row"><span class="alert-row__main">${o.block} · ${productLabel(o, "fertilizer_product")}</span><span class="pill bad">Overdue</span></div>`).join("");
+    if (up.length) html += up.slice(0,6).map(u => `<div class="alert-row"><span class="alert-row__main">${u.block} · ${productLabel(u, "fertilizer_product")}</span><span class="pill warn">${u.days}d</span></div>`).join("");
     document.getElementById("attention-panel").innerHTML = html || '<div class="empty">All clear.</div>';
     updateAttentionBadge(od.length + up.length);
 }
@@ -319,7 +326,7 @@ function renderBadge() {
 async function loadVariance() {
     const data = await call("get_variance_alerts", { season: season(), farm: farm() });
     document.getElementById("variance-panel").innerHTML = data.length ? data.map(a => `
-        <div class="alert-row"><span class="alert-row__main">${a.block} · ${a.fertilizer_product}</span>
+        <div class="alert-row"><span class="alert-row__main">${a.block} · ${productLabel(a, "fertilizer_product")}</span>
         <span class="pill bad">${a.variance_pct}%</span></div>`).join("")
         : '<div class="empty">No significant deviations.</div>';
     attnCounts.variance = data.length; renderBadge();
@@ -328,7 +335,7 @@ async function loadVariance() {
 async function loadPartial() {
     const data = await call("get_partial_applications", { season: season(), farm: farm() });
     document.getElementById("partial-panel").innerHTML = data.length ? data.map(a => `
-        <div class="alert-row"><span class="alert-row__main">${a.block} · ${a.fertilizer_product}</span>
+        <div class="alert-row"><span class="alert-row__main">${a.block} · ${productLabel(a, "fertilizer_product")}</span>
         <span class="pill warn">Partial</span></div>`).join("")
         : '<div class="empty">None.</div>';
     attnCounts.partial = data.length; renderBadge();

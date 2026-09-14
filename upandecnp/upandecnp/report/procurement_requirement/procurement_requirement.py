@@ -1,11 +1,12 @@
 import frappe
 from frappe.utils import flt
 import math
+from upandecnp.upandecnp.utils.product_labels import label_products
 
 
 def execute(filters=None):
     filters = filters or {}
-    return get_columns(), get_data(filters)
+    return label_products(get_columns(), get_data(filters))
 
 
 def get_columns():

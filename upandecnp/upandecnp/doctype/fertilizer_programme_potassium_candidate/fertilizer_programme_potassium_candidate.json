@@ -10,6 +10,7 @@
   "section",
   "yield_tier",
   "fertilizer_product",
+  "fertilizer_product_name",
   "nutrient",
   "column_break_fppc",
   "product_kg_per_ha",
@@ -37,7 +38,7 @@
   {
    "fieldname": "fertilizer_product",
    "fieldtype": "Link",
-   "in_list_view": 1,
+   "in_list_view": 0,
    "label": "Fertilizer Product",
    "options": "Item"
   },
@@ -69,6 +70,14 @@
    "fieldtype": "Check",
    "in_list_view": 1,
    "label": "Selected",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "fertilizer_product.item_name",
+   "fieldname": "fertilizer_product_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Product Name",
    "read_only": 1
   }
  ],

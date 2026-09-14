@@ -1,4 +1,5 @@
 import frappe
+from upandecnp.upandecnp.utils.product_labels import label_products
 
 MONTH_ORDER = [
     "January", "February", "March", "April", "May", "June",
@@ -12,7 +13,7 @@ def execute(filters=None):
     if not programme_name:
         frappe.throw("Please select a Fertilizer Programme")
 
-    return get_columns(), get_data(filters)
+    return label_products(get_columns(), get_data(filters))
 
 
 def get_columns():

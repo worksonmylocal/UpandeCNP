@@ -10,6 +10,7 @@
   "block",
   "section",
   "fertilizer_product",
+  "fertilizer_product_name",
   "application_month",
   "yield_tier",
   "kg_per_ha_rate",
@@ -38,7 +39,7 @@
   {
    "fieldname": "fertilizer_product",
    "fieldtype": "Link",
-   "in_list_view": 1,
+   "in_list_view": 0,
    "label": "Fertilizer Product",
    "options": "Item",
    "reqd": 1
@@ -71,6 +72,14 @@
    "fieldname": "dose_per_tree_g",
    "fieldtype": "Float",
    "label": "Dose Per Tree (g)"
+  },
+  {
+   "fetch_from": "fertilizer_product.item_name",
+   "fieldname": "fertilizer_product_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Product Name",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,

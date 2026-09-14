@@ -1,5 +1,6 @@
 import frappe
 from frappe.utils import flt
+from upandecnp.upandecnp.utils.product_labels import label_products
 
 MONTH_ORDER = [
     "January", "February", "March", "April", "May", "June",
@@ -14,7 +15,7 @@ def execute(filters=None):
         frappe.throw("Please select a Fertilizer Programme")
 
     programme = frappe.get_doc("Fertilizer Programme", programme_name)
-    return get_columns(), get_data(programme, filters)
+    return label_products(get_columns(), get_data(programme, filters))
 
 
 def get_columns():

@@ -8,6 +8,7 @@
  "field_order": [
   "section_break_dp3q",
   "fertilizer_product",
+  "fertilizer_product_name",
   "planned_quantity_kg",
   "budgeted_unit_price",
   "budgeted_total_cost",
@@ -26,7 +27,7 @@
   {
    "fieldname": "fertilizer_product",
    "fieldtype": "Link",
-   "in_list_view": 1,
+   "in_list_view": 0,
    "label": "Fertilizer Product",
    "options": "Item",
    "reqd": 1
@@ -81,6 +82,14 @@
    "fieldname": "total_variance_ksh",
    "fieldtype": "Currency",
    "label": "Total Variance (Ksh)"
+  },
+  {
+   "fetch_from": "fertilizer_product.item_name",
+   "fieldname": "fertilizer_product_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Product Name",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,

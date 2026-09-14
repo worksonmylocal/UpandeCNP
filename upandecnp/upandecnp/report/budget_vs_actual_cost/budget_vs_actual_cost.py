@@ -1,5 +1,6 @@
 import frappe
 from frappe.utils import flt
+from upandecnp.upandecnp.utils.product_labels import label_products
 
 
 def execute(filters=None):
@@ -9,7 +10,7 @@ def execute(filters=None):
         frappe.throw("Please select a Fertilizer Budget")
 
     budget = frappe.get_doc("Fertilizer Budget", budget_name)
-    return get_columns(), get_data(budget)
+    return label_products(get_columns(), get_data(budget))
 
 
 def get_columns():

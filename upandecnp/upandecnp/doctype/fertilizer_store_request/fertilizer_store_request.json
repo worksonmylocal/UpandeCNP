@@ -13,6 +13,7 @@
   "farm",
   "company",
   "fertilizer_product",
+  "fertilizer_product_name",
   "application_month",
   "quantity_requested_kg",
   "requested_by",
@@ -71,7 +72,7 @@
   {
    "fieldname": "fertilizer_product",
    "fieldtype": "Link",
-   "in_list_view": 1,
+   "in_list_view": 0,
    "label": "Fertilizer Product",
    "options": "Item",
    "read_only": 1,
@@ -130,6 +131,14 @@
    "fieldname": "rejection_reason",
    "fieldtype": "Small Text",
    "label": "Rejection Reason"
+  },
+  {
+   "fetch_from": "fertilizer_product.item_name",
+   "fieldname": "fertilizer_product_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Product Name",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
@@ -156,25 +165,25 @@
    "write": 1
   },
   {
-   "role": "CNP Agronomist",
-   "read": 1,
-   "report": 1,
+   "cancel": 1,
+   "create": 1,
+   "email": 1,
    "export": 1,
    "print": 1,
-   "email": 1,
+   "read": 1,
+   "report": 1,
+   "role": "CNP Agronomist",
    "share": 1,
-   "write": 1,
-   "create": 1,
    "submit": 1,
-   "cancel": 1
+   "write": 1
   },
   {
-   "role": "Field Worker",
-   "read": 1,
-   "report": 1,
+   "email": 1,
    "export": 1,
    "print": 1,
-   "email": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Field Worker",
    "share": 1
   }
  ],

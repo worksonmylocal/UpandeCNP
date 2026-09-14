@@ -131,6 +131,15 @@ async function call(method, args) {
 }
 
 let monthlyChart, productChart;
+
+// Item codes ("1010100032") are meaningless to anyone reading a dashboard;
+// the API now sends the Item name alongside every code. Prefer the name and
+// fall back to the code so a product whose Item has gone still renders.
+function productLabel(row, codeField) {
+    const code = row[codeField];
+    return row[codeField + "_name"] || row.product_name || code || "";
+}
+
 function farm() { const v = document.getElementById("farm-select").value; return v === "__all__" ? null : v; }
 function season() { return document.getElementById("season-select").value; }
 
@@ -199,7 +208,7 @@ async function loadProducts() {
     if (productChart) productChart.destroy();
     const colors = ["#0a0a0a","#228883","#5a5a52","#b9770e","#2c6bb3","#73b3a0","#8a8780","#c4302b"];
     productChart = new Chart(ctx, { type: "doughnut",
-        data: { labels: data.map(d => d.product),
+        data: { labels: data.map(d => d.product_name || d.product),
             datasets: [{ data: data.map(d => d.qty), backgroundColor: colors, borderWidth: 0 }] },
         options: { plugins: { legend: { position: "right", labels: { boxWidth: 12, font: { size: 11, family: "Poppins" }, color: "#5a5a52" } } } } });
 }
@@ -270,7 +279,7 @@ async function loadStock() {
     const max = Math.max(...data.map(d => d.qty), 1);
     document.getElementById("stock-list").innerHTML = data.map(d => `
         <div class="hb">
-            <div class="hb__name">${d.product}</div>
+            <div class="hb__name">${d.product_name || d.product}</div>
             <div class="hb__lane"><div class="hb__est"></div><div class="hb__act" style="width:${(d.qty/max*100)}%"></div></div>
             <div class="hb__pct">${d.qty.toLocaleString()}</div>
         </div>`).join("");
@@ -283,7 +292,7 @@ async function loadActivity() {
         <table class="dtable">
             <tr><th>Date</th><th>Block</th><th>Product</th><th class="num">Kg</th></tr>
             ${data.map(a => `<tr>
-                <td>${a.application_date || ""}</td><td>${a.block}</td><td>${a.fertilizer_product}</td>
+                <td>${a.application_date || ""}</td><td>${a.block}</td><td>${productLabel(a, "fertilizer_product")}</td>
                 <td class="num">${a.actual_quantity_applied_kg}</td>
             </tr>`).join("")}
         </table>`;
@@ -296,7 +305,7 @@ async function loadPartial() {
         <table class="dtable">
             <tr><th>Block</th><th>Product</th><th class="num">Kg</th><th>Reason</th></tr>
             ${data.map(a => `<tr>
-                <td>${a.block}</td><td>${a.fertilizer_product}</td>
+                <td>${a.block}</td><td>${productLabel(a, "fertilizer_product")}</td>
                 <td class="num">${a.actual_quantity_applied_kg} / ${a.planned_quantity_kg}</td>
                 <td style="color:var(--warn);">${a.partial_reason || "—"}</td>
             </tr>`).join("")}
@@ -317,12 +326,12 @@ async function loadUpcomingOverdue() {
     const up = d.upcoming || [], od = d.overdue || [];
     document.getElementById("upcoming-list").innerHTML = up.length ? `
         <table class="dtable"><tr><th>Block</th><th>Product</th><th>Month</th><th>Due in</th></tr>
-        ${up.map(u => `<tr><td>${u.block}</td><td>${u.fertilizer_product}</td><td>${u.application_month}</td>
+        ${up.map(u => `<tr><td>${u.block}</td><td>${productLabel(u, "fertilizer_product")}</td><td>${u.application_month}</td>
             <td><span class="pill info">${u.days}d</span></td></tr>`).join("")}</table>`
         : '<div class="empty">Nothing due soon.</div>';
     document.getElementById("overdue-list").innerHTML = od.length ? `
         <table class="dtable"><tr><th>Block</th><th>Product</th><th>Month</th></tr>
-        ${od.map(o => `<tr><td>${o.block}</td><td>${o.fertilizer_product}</td><td>${o.application_month}</td></tr>`).join("")}</table>`
+        ${od.map(o => `<tr><td>${o.block}</td><td>${productLabel(o, "fertilizer_product")}</td><td>${o.application_month}</td></tr>`).join("")}</table>`
         : '<div class="empty">Nothing overdue.</div>';
 }
 
@@ -331,7 +340,7 @@ async function loadVarianceAlerts() {
     if (!data.length) { document.getElementById("variance-list").innerHTML = '<div class="empty">No significant deviations.</div>'; return; }
     document.getElementById("variance-list").innerHTML = data.map(a => `
         <div class="alert-row">
-            <div class="alert-row__main"><b>${a.block}</b> · ${a.fertilizer_product} · ${a.application_date || ""}</div>
+            <div class="alert-row__main"><b>${a.block}</b> · ${productLabel(a, "fertilizer_product")} · ${a.application_date || ""}</div>
             <div style="text-align:right;">
                 <div style="font-size:12px;color:var(--ink-mute);margin-bottom:3px;">${a.actual_quantity_applied_kg} / ${a.planned_quantity_kg} Kg</div>
                 <span class="pill bad">${a.variance_pct}% variance</span>
@@ -347,7 +356,7 @@ async function loadCoverage() {
         const label = d.covered ? `${d.stock.toLocaleString()} / ${d.need.toLocaleString()} ✓`
             : `${d.stock.toLocaleString()} / ${d.need.toLocaleString()} (short ${d.shortfall.toLocaleString()})`;
         return `<div class="hb">
-            <div class="hb__name">${d.product}</div>
+            <div class="hb__name">${d.product_name || d.product}</div>
             <div class="hb__lane"><div class="hb__est"></div><div class="hb__act ${d.covered ? '' : 'bad'}" style="width:${(d.stock/max*100)}%"></div></div>
             <div class="hb__pct">${label}</div>
         </div>`;
@@ -380,7 +389,7 @@ async function loadComputedBudget() {
         <div class="kpi__value" style="margin-bottom:16px;">Ksh ${d.total_cost.toLocaleString()}<span class="kpi__unit" style="display:inline;margin-left:8px;">estimated season cost</span></div>
         <table class="dtable">
             <tr><th>Product</th><th class="num">Qty (Kg)</th><th class="num">Unit Price</th><th class="num">Cost (Ksh)</th></tr>
-            ${d.lines.map(l => `<tr><td>${l.product}</td><td class="num">${l.qty_kg.toLocaleString()}</td>
+            ${d.lines.map(l => `<tr><td>${l.product_name || l.product}</td><td class="num">${l.qty_kg.toLocaleString()}</td>
                 <td class="num">${l.unit_price.toLocaleString()}</td><td class="num">${l.cost.toLocaleString()}</td></tr>`).join("")}
         </table>`;
 }

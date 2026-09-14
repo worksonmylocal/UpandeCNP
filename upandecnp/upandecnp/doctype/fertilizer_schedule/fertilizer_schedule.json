@@ -8,6 +8,7 @@
  "field_order": [
   "section_break_fujp",
   "fertilizer_product",
+  "fertilizer_product_name",
   "application_month",
   "percentage"
  ],
@@ -19,7 +20,7 @@
   {
    "fieldname": "fertilizer_product",
    "fieldtype": "Link",
-   "in_list_view": 1,
+   "in_list_view": 0,
    "label": "Fertilizer Product",
    "options": "Item",
    "reqd": 1
@@ -38,6 +39,14 @@
    "in_list_view": 1,
    "label": "Percentage",
    "reqd": 1
+  },
+  {
+   "fetch_from": "fertilizer_product.item_name",
+   "fieldname": "fertilizer_product_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Product Name",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,

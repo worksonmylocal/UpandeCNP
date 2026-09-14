@@ -40,7 +40,7 @@ def _is_issued(request):
     return flt(request.get("per_ordered")) >= 100 or request.get("status") == "Issued"
 
 
-def _attach_product_names(rows, code_field="fertilizer_product"):
+def _attach_product_names(rows, code_field="fertilizer_product", name_field=None):
     """Item codes ("1010100032") mean nothing to a supervisor in the field -
     attach the readable Item name alongside every code so the field app can
     lead with the name and keep the code for cross-checking against store
@@ -55,10 +55,11 @@ def _attach_product_names(rows, code_field="fertilizer_product"):
             "Item", filters={"name": ["in", codes]}, fields=["name", "item_name"]
         )
     }
+    target = name_field or (code_field + "_name")
     for r in rows:
         code = r.get(code_field)
         if code:
-            r[code_field + "_name"] = names.get(code) or code
+            r[target] = names.get(code) or code
     return rows
 
 
@@ -865,8 +866,9 @@ def get_product_breakdown(season=None, farm=None):
         for line in doc.get("programme_lines", []):
             products[line.fertilizer_product] = products.get(line.fertilizer_product, 0) + flt(line.total_kg)
 
-    return [{"product": p, "qty": round(q, 0)} for p, q in
+    rows = [{"product": p, "qty": round(q, 0)} for p, q in
             sorted(products.items(), key=lambda x: x[1], reverse=True)]
+    return _attach_product_names(rows, "product", "product_name")
 
 
 @frappe.whitelist()
@@ -880,7 +882,7 @@ def get_recent_activity(farm=None):
         fields=["block", "fertilizer_product", "actual_quantity_applied_kg",
                 "application_date", "applied_by", "applied_in_full"],
         order_by="creation desc", limit=8)
-    return apps
+    return _attach_product_names(apps)
 
 
 @frappe.whitelist()
@@ -994,6 +996,8 @@ def get_upcoming_and_overdue(farm=None):
             overdue.append(p)
 
     upcoming.sort(key=lambda x: x["days"])
+    _attach_product_names(upcoming)
+    _attach_product_names(overdue)
     return {"upcoming": upcoming[:10], "overdue": overdue[:10]}
 
 
@@ -1061,6 +1065,7 @@ def get_stock_coverage(season=None, farm=None):
             "covered": stock >= need,
             "shortfall": round(max(need - stock, 0), 0),
         })
+    _attach_product_names(result, "product", "product_name")
     return sorted(result, key=lambda x: x["shortfall"], reverse=True)
 
 # ---------------------------------------------------------------------------
@@ -1495,7 +1500,7 @@ def get_partial_applications(farm=None, season=None):
         plan_names = set(frappe.get_all("Block Fertilizer Plan", filters={"season": season}, pluck="name"))
         apps = [a for a in apps if a.block_fertilizer_plan in plan_names]
 
-    return apps
+    return _attach_product_names(apps)
 
 
 @frappe.whitelist()
@@ -1611,6 +1616,7 @@ def get_variance_alerts(farm=None, season=None):
         if pct > threshold:
             alerts.append({**a, "variance_pct": round(pct, 1)})
 
+    _attach_product_names(alerts)
     return sorted(alerts, key=lambda x: x["variance_pct"], reverse=True)
 
 
@@ -1653,6 +1659,7 @@ def get_computed_budget(farm=None, season=None):
         total += cost
         lines.append({"product": product, "qty_kg": round(qty, 1), "unit_price": rate, "cost": round(cost, 0)})
 
+    _attach_product_names(lines, "product", "product_name")
     return {"total_cost": round(total, 0), "lines": sorted(lines, key=lambda x: x["cost"], reverse=True)}
 
 
