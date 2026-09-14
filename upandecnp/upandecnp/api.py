@@ -5,7 +5,7 @@ These reuse the existing DocType logic so the workflow stays consistent.
 
 import frappe
 from frappe.utils import cint, flt, today
-from upandecnp.upandecnp.utils.calculation_engine import MONTHS
+from upandecnp.upandecnp.utils.calculation_engine import MONTHS, get_stock
 from upandecnp.upandecnp.utils.farm_permissions import resolve_farm_scope
 from upandecnp.upandecnp.utils.integration import get_grouped_sum
 
@@ -1713,11 +1713,14 @@ def get_product_items(product):
 
 @frappe.whitelist()
 def load_programme_products(programme):
-    """Fill the programme's product table from its crop's nutrient rules.
+    """List the products this crop needs, leaving the Item for each unchosen.
 
-    Pre-selects, per product, the candidate Item holding the most stock -
-    which is the one the agronomist would pick by hand nine times out of ten.
-    They can still change it; nothing is decided for them irreversibly.
+    Deliberately does NOT pick an Item. Which of several near-identical Items
+    to draw from is the agronomist's call - they know what is actually in the
+    store, what is reserved, and what the last delivery was like. Pre-filling
+    it made that decision invisible: the table looked answered when nobody
+    had answered it. Existing choices are preserved, so re-running this after
+    a crop change never discards work.
     """
     doc = frappe.get_doc("Fertilizer Programme", programme)
     if doc.docstatus == 1:
@@ -1736,19 +1739,88 @@ def load_programme_products(programme):
             "Set the Fertilizer Product field on the crop's nutrient rules first."
         )
 
-    already = {r.product: r.fertilizer_item for r in doc.get("product_selections", [])}
+    already = {
+        r.product: r.fertilizer_item
+        for r in doc.get("product_selections", []) if r.fertilizer_item
+    }
     doc.set("product_selections", [])
     for product in products:
-        options = get_product_items(product)
-        chosen = already.get(product) or (options[0]["item_code"] if options else None)
-        stock = next((o["stock_qty"] for o in options if o["item_code"] == chosen), 0)
+        chosen = already.get(product)
         doc.append("product_selections", {
             "product": product,
             "fertilizer_item": chosen,
-            "available_qty": stock,
+            "available_qty": get_stock(chosen) if chosen else 0,
         })
     doc.save()
-    return len(products)
+    return {"products": products, "already_chosen": len(already)}
+
+
+@frappe.whitelist()
+def get_product_choices(programme, product):
+    """Everything needed to choose an Item for one product: the candidates
+    with their stock, and the nutrient rule the engine will apply to
+    whichever is picked.
+
+    The rule travels with the product, not the Item - so switching from
+    "MOP" to "MURATE OF POTASIUM (MOP)" changes which bin the fertilizer
+    comes out of, and nothing else about the calculation. Showing the rule
+    next to the choice is what makes that obvious at the point of deciding.
+    """
+    doc = frappe.get_doc("Fertilizer Programme", programme)
+    crop = frappe.get_doc("Crop", doc.crop)
+
+    rule = None
+    for row in crop.get("nutrient_rules", []):
+        if row.product == product:
+            rule = {
+                "nutrient": row.nutrient,
+                "rate_per_tonne": row.rate_per_tonne,
+                "bag_weight_kg": row.bag_weight_kg,
+                "product_nutrient_pct": row.product_nutrient_pct,
+                "apply_compost_netting": row.apply_compost_netting,
+                "nutrient_source_group": row.nutrient_source_group,
+                "rule_item": row.fertilizer_product,
+            }
+            break
+
+    current = next(
+        (r.fertilizer_item for r in doc.get("product_selections", []) if r.product == product),
+        None,
+    )
+    return {
+        "product": product,
+        "rule": rule,
+        "current": current,
+        "options": get_product_items(product),
+    }
+
+
+@frappe.whitelist()
+def set_product_item(programme, product, item):
+    """Record one product's chosen Item, one decision at a time."""
+    doc = frappe.get_doc("Fertilizer Programme", programme)
+    if doc.docstatus == 1:
+        frappe.throw("Cannot change products on a submitted programme.")
+
+    allowed = {o["item_code"] for o in get_product_items(product)}
+    if item not in allowed:
+        frappe.throw(
+            f"{item} is not one of the Items that match {product}. "
+            "Adjust the product's search terms if it should be."
+        )
+
+    for row in doc.get("product_selections", []):
+        if row.product == product:
+            row.fertilizer_item = item
+            row.available_qty = get_stock(item)
+            break
+    else:
+        doc.append("product_selections", {
+            "product": product, "fertilizer_item": item,
+            "available_qty": get_stock(item),
+        })
+    doc.save()
+    return {"item": item, "available_qty": get_stock(item)}
 
 
 # --------------------------------------------------------------- Pushed applications

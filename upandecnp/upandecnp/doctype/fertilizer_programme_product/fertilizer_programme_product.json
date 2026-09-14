@@ -8,6 +8,7 @@
  "field_order": [
   "section_break_fpp",
   "product",
+  "choose",
   "fertilizer_item",
   "item_name",
   "column_break_fpp",
@@ -31,13 +32,14 @@
   },
   {
    "columns": 2,
-   "description": "The specific Item this programme will request and issue.",
+   "description": "Set with the Choose button, so the stock and the nutrient rule are visible when deciding.",
    "fieldname": "fertilizer_item",
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Item",
    "options": "Item",
-   "reqd": 1
+   "read_only": 1,
+   "reqd": 0
   },
   {
    "columns": 2,
@@ -78,6 +80,13 @@
    "in_list_view": 1,
    "label": "Shortfall",
    "read_only": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "choose",
+   "fieldtype": "Button",
+   "in_list_view": 1,
+   "label": "Choose"
   }
  ],
  "grid_page_length": 50,

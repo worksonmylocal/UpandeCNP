@@ -26,9 +26,11 @@ frappe.ui.form.on("Fertilizer Programme", {
                     callback(r) {
                         if (r.message) {
                             frm.reload_doc();
+                            const n = r.message.products.length;
                             frappe.show_alert({
-                                message: `Loaded ${r.message} products. Check the Item picked for each.`,
-                                indicator: "green"
+                                message: `${n} product${n === 1 ? "" : "s"} to choose an Item for. `
+                                    + `Click "Choose" on each row.`,
+                                indicator: "blue"
                             });
                         }
                     }
@@ -93,39 +95,107 @@ frappe.ui.form.on("Programme Block Yield", {
 });
 
 
-frappe.ui.form.on("Fertilizer Programme Product", {
-    product(frm, cdt, cdn) {
-        const row = locals[cdt][cdn];
-        if (!row.product) return;
-        // Pre-select the candidate holding the most stock - that is almost
-        // always the one meant, and it is still editable.
-        frappe.call({
-            method: "upandecnp.upandecnp.api.get_product_items",
-            args: { product: row.product },
-            callback(r) {
-                const options = r.message || [];
-                if (!options.length) {
-                    frappe.msgprint(
-                        `No Items in the fertilizer group match the search terms on ${row.product}.`
-                    );
-                    return;
-                }
-                frappe.model.set_value(cdt, cdn, "fertilizer_item", options[0].item_code);
-                frappe.model.set_value(cdt, cdn, "available_qty", options[0].stock_qty);
+/* ------------------------------------------------------------------ *
+ * Choosing the Item for a product.
+ *
+ * The list is never picked for the agronomist: several Items are the same
+ * fertilizer under different spellings, and only they know which bin is
+ * really usable. The dialog shows stock beside each candidate, and the
+ * nutrient rule that will be applied whichever one they pick - because the
+ * rule follows the product, not the Item, and that is the thing people
+ * assume changes when it doesn't.
+ * ------------------------------------------------------------------ */
+
+function choose_item_for(frm, row) {
+    if (!row.product) {
+        frappe.msgprint(__("Set the Product on this row first."));
+        return;
+    }
+    frappe.call({
+        method: "upandecnp.upandecnp.api.get_product_choices",
+        args: { programme: frm.doc.name, product: row.product },
+        freeze: true,
+        freeze_message: __("Loading {0} items…", [row.product]),
+        callback(r) {
+            const data = r.message || {};
+            const options = data.options || [];
+            if (!options.length) {
+                frappe.msgprint({
+                    title: __("No matching items"),
+                    indicator: "orange",
+                    message: __(
+                        "No Item in the fertilizer group matches the search terms on {0}. "
+                        + "Add the spelling used on site to that Fertilizer Product.",
+                        [row.product]
+                    ),
+                });
+                return;
             }
-        });
+
+            const rule = data.rule;
+            const rule_html = rule
+                ? `<div style="margin-bottom:12px;padding:10px 12px;background:var(--bg-light-gray,#f4f5f6);border-radius:6px">
+                     <b>${__("Nutrient rule applied to whichever you pick")}</b><br>
+                     ${__("Nutrient")}: <b>${frappe.utils.escape_html(rule.nutrient || "-")}</b> &middot;
+                     ${__("Rate")}: <b>${rule.rate_per_tonne || 0}</b> ${__("per tonne")} &middot;
+                     ${__("Bag")}: <b>${rule.bag_weight_kg || 0}</b> kg &middot;
+                     ${__("Nutrient content")}: <b>${rule.product_nutrient_pct || 0}%</b>
+                     ${rule.apply_compost_netting ? " &middot; " + __("compost netted") : ""}
+                   </div>`
+                : `<div class="text-muted" style="margin-bottom:12px">${
+                     __("No nutrient rule on this crop names {0}.", [row.product])}</div>`;
+
+            const d = new frappe.ui.Dialog({
+                title: __("Choose the {0} item", [row.product]),
+                size: "large",
+                fields: [
+                    { fieldtype: "HTML", fieldname: "rule", options: rule_html },
+                    {
+                        fieldtype: "Select", fieldname: "item", reqd: 1,
+                        label: __("Item"),
+                        default: data.current || options[0].item_code,
+                        options: options.map((o) => ({
+                            value: o.item_code,
+                            label: `${o.item_name || o.item_code} — ${__("in stock")}: `
+                                 + `${frappe.format(o.stock_qty, { fieldtype: "Float" })} `
+                                 + `${o.stock_uom || ""}`,
+                        })),
+                    },
+                ],
+                primary_action_label: __("Use this item"),
+                primary_action(values) {
+                    frappe.call({
+                        method: "upandecnp.upandecnp.api.set_product_item",
+                        args: {
+                            programme: frm.doc.name,
+                            product: row.product,
+                            item: values.item,
+                        },
+                        callback() {
+                            d.hide();
+                            frm.reload_doc();
+                            frappe.show_alert({
+                                message: __("{0} will be drawn from {1}.",
+                                            [row.product, values.item]),
+                                indicator: "green",
+                            });
+                        },
+                    });
+                },
+            });
+            d.show();
+        },
+    });
+}
+
+frappe.ui.form.on("Fertilizer Programme Product", {
+    choose(frm, cdt, cdn) {
+        choose_item_for(frm, locals[cdt][cdn]);
     },
 
-    fertilizer_item(frm, cdt, cdn) {
+    // Opening the row form is itself a request to decide, when nothing is set.
+    form_render(frm, cdt, cdn) {
         const row = locals[cdt][cdn];
-        if (!row.product || !row.fertilizer_item) return;
-        frappe.call({
-            method: "upandecnp.upandecnp.api.get_product_items",
-            args: { product: row.product },
-            callback(r) {
-                const hit = (r.message || []).find((o) => o.item_code === row.fertilizer_item);
-                frappe.model.set_value(cdt, cdn, "available_qty", hit ? hit.stock_qty : 0);
-            }
-        });
-    }
+        if (row.product && !row.fertilizer_item) choose_item_for(frm, row);
+    },
 });

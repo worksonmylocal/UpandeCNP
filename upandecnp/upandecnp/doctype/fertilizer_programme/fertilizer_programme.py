@@ -9,6 +9,24 @@ class FertilizerProgramme(Document):
 		self.validate_period()
 		self.warn_on_stock_shortfall()
 
+	def before_submit(self):
+		self.require_product_choices()
+
+	def require_product_choices(self):
+		"""Every listed product needs an Item chosen. Nothing is picked
+		automatically any more, so an empty row means a decision nobody has
+		made - and the engine would quietly fall back to the Item named on
+		the crop's nutrient rule, which is often not the one with stock."""
+		missing = [
+			row.product for row in self.get("product_selections", [])
+			if not row.fertilizer_item
+		]
+		if missing:
+			frappe.throw(
+				"Choose an Item for: <b>" + "</b>, <b>".join(missing) + "</b>.<br>"
+				"Use the Choose button on each row - it shows what is in stock."
+			)
+
 	def validate_period(self):
 		if self.period_type != "Custom Period":
 			# Leave the months set but inert, so switching back and forth

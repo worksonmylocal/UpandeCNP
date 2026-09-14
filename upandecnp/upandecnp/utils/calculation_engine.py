@@ -225,6 +225,16 @@ def calculate_programme(programme_name):
 	if not programme.potassium_source:
 		frappe.throw("Please select a Potassium Source before running the calculation.")
 
+	unchosen = [
+		row.product for row in programme.get("product_selections", [])
+		if not row.fertilizer_item
+	]
+	if unchosen:
+		frappe.throw(
+			"Choose an Item for: <b>" + "</b>, <b>".join(unchosen) + "</b> before "
+			"calculating. Use the Choose button on each Product Selections row."
+		)
+
 	crop_doc = frappe.get_doc("Crop", programme.crop)
 	calendar_doc = frappe.get_doc("Production Calendar", programme.production_calendar)
 	norms = {
