@@ -80,4 +80,26 @@ def execute():
 			                    update_modified=False)
 			print(f"UpandeCNP: nutrient rule {row.name} -> {product}")
 
+	backfill_application_year()
+
 	frappe.db.commit()
+
+
+def backfill_application_year():
+	"""Plans created before this field existed carry 0. push_application()
+	falls back to the season year when it sees that, so nothing breaks - but
+	an untrustworthy column is worth fixing once rather than reasoning about
+	at every read."""
+	rows = frappe.get_all(
+		"Block Fertilizer Plan", filters={"application_year": ["in", [0, None]]},
+		fields=["name", "season"],
+	)
+	if not rows:
+		return
+	import re
+	for row in rows:
+		match = re.search(r"(\d{4})", row.season or "")
+		if match:
+			frappe.db.set_value("Block Fertilizer Plan", row.name, "application_year",
+			                    int(match.group(1)), update_modified=False)
+	print(f"UpandeCNP: backfilled application_year on {len(rows)} block plans")
