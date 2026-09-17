@@ -89,6 +89,12 @@ class FertilizerApplication(Document):
             "doctype": "Stock Entry",
             "stock_entry_type": "Material Issue",
             "purpose": "Material Issue",
+            # Without this the Stock Entry falls back to the site's global
+            # default company (Kaitet Group), while the block's cost centre
+            # belongs to the farm's company (Kaitet Ltd.) - and the entry is
+            # rejected for a cost centre that "does not belong to the company".
+            # This is why recording an application has never once succeeded.
+            "company": self.company,
             "remarks": f"Fertilizer Application: {self.name} | Block: {self.block}",
             "items": [{
                 "item_code": self.fertilizer_product,
