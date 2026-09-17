@@ -334,6 +334,9 @@ scheduler_events = {
 # ignore_translatable_strings_from = []
 
 fixtures = [
+    # The workspace is a single Custom HTML Block; ship the block with it, or a
+    # fresh site syncs a workspace pointing at something that isn't there.
+    {"dt": "Custom HTML Block", "filters": [["name", "=", "UpandeCNP Navigation"]]},
     {"dt": "Workflow", "filters": [["name", "=", "Fertilizer Store Request Workflow"]]},
     {"dt": "Workflow State", "filters": [["name", "in", ["Requested", "Approved", "Issued", "Rejected"]]]},
     {"dt": "Workflow Action Master", "filters": [["name", "in", ["Approve", "Reject", "Issue"]]]},

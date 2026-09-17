@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"type\": \"header\", \"data\": {\"text\": \"<span class='h4'><b>At a Glance</b></span>\", \"col\": 12}}, {\"type\": \"number_card\", \"data\": {\"number_card_name\": \"Blocks Planned\", \"col\": 3}}, {\"type\": \"number_card\", \"data\": {\"number_card_name\": \"Issued (Awaiting Apply)\", \"col\": 3}}, {\"type\": \"number_card\", \"data\": {\"number_card_name\": \"Applications Done\", \"col\": 3}}, {\"type\": \"number_card\", \"data\": {\"number_card_name\": \"Pending Store Requests\", \"col\": 3}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class='h4'><b>Managerial</b></span>\", \"col\": 12}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\\ud83d\\udcc8 Manager Dashboard\", \"col\": 3}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class='h4'><b>Field &amp; Overview</b></span>\", \"col\": 12}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\\ud83d\\udcca Dashboard\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\\ud83d\\udcf1 Field Page\", \"col\": 3}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class='h4'><b>Planning</b></span>\", \"col\": 12}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Fertilizer Programme\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Fertilizer Budget (Estimated)\", \"col\": 3}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class='h4'><b>Field Execution</b></span>\", \"col\": 12}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Material Request (Mine)\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Fertilizer Application\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Block Fertilizer Plan\", \"col\": 3}}, {\"type\": \"header\", \"data\": {\"text\": \"<span class='h4'><b>Master Data</b></span>\", \"col\": 12}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Farm Block\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Leaf Analysis\", \"col\": 3}}, {\"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Production Calendar\", \"col\": 3}}]",
+ "content": "[{\"id\": \"cnpNavBlock\", \"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"UpandeCNP Navigation\", \"col\": 12}}]",
  "creation": "2026-06-23 10:44:18.173377",
  "custom_blocks": [],
  "docstatus": 0,
@@ -151,24 +151,7 @@
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "UpandeCNP",
- "number_cards": [
-  {
-   "label": "Blocks Planned",
-   "number_card_name": "Blocks Planned"
-  },
-  {
-   "label": "Issued (Awaiting Apply)",
-   "number_card_name": "Issued (Awaiting Apply)"
-  },
-  {
-   "label": "Applications Done",
-   "number_card_name": "Applications Done"
-  },
-  {
-   "label": "Pending Store Requests",
-   "number_card_name": "Pending Store Requests"
-  }
- ],
+ "number_cards": [],
  "owner": "Administrator",
  "parent_page": "",
  "public": 1,
@@ -210,8 +193,8 @@
    "doc_view": "List",
    "label": "Material Request (Mine)",
    "link_to": "Material Request",
-   "type": "DocType",
-   "stats_filter": "{\"owner\": frappe.session.user}"
+   "stats_filter": "{\"owner\": frappe.session.user}",
+   "type": "DocType"
   },
   {
    "doc_view": "List",
@@ -244,5 +227,6 @@
    "type": "DocType"
   }
  ],
- "title": "UpandeCNP"
+ "title": "UpandeCNP",
+ "type": "Workspace"
 }
