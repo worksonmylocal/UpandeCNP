@@ -10,7 +10,45 @@ class FertilizerProgramme(Document):
 		self.warn_on_stock_shortfall()
 
 	def before_submit(self):
+		self.require_approval()
 		self.require_product_choices()
+
+	def require_approval(self):
+		"""Submitting is what splits a programme into Block Fertilizer Plans and
+		puts it in front of the field app, so it must only be reachable through
+		the approval chain.
+
+		The desk already hides Submit while a workflow is active, but any code
+		calling doc.submit() walks straight past it: Frappe's
+		set_workflow_state_on_action() then stamps the document "Approved"
+		because that is the state carrying doc_status=1, and 156 block plans
+		appear that no consultant ever saw.
+
+		It stamps that *after* validate_workflow() has passed, so the in-memory
+		state cannot be trusted here. What can is the state still in the
+		database: a genuine approval arrives from a state the workflow allows
+		into Approved, a bypass arrives from Draft.
+		"""
+		from upandecnp.upandecnp.utils.approval import APPROVED, WORKFLOW
+
+		if not frappe.db.get_value("Workflow", WORKFLOW, "is_active"):
+			return
+
+		stored = frappe.db.get_value(self.doctype, self.name, "workflow_state")
+		if not stored:
+			return   # pre-workflow document being submitted by a migration
+
+		allowed_from = frappe.get_all(
+			"Workflow Transition",
+			filters={"parent": WORKFLOW, "next_state": APPROVED},
+			pluck="state",
+		)
+		if stored not in allowed_from:
+			frappe.throw(
+				f"This programme is <b>{stored}</b>. It has to go through "
+				"consultant review and farm-manager approval before it can be "
+				"split into Block Fertilizer Plans."
+			)
 
 	def require_product_choices(self):
 		"""Every listed product needs an Item chosen. Nothing is picked
