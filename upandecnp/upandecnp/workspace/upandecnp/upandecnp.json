@@ -2,7 +2,15 @@
  "charts": [],
  "content": "[{\"id\": \"cnpNavBlock\", \"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"UpandeCNP Navigation\", \"col\": 12}}]",
  "creation": "2026-06-23 10:44:18.173377",
- "custom_blocks": [],
+ "custom_blocks": [
+  {
+   "custom_block_name": "UpandeCNP Navigation",
+   "doctype": "Workspace Custom Block",
+   "label": "UpandeCNP Navigation",
+   "parentfield": "custom_blocks",
+   "parenttype": "Workspace"
+  }
+ ],
  "docstatus": 0,
  "doctype": "Workspace",
  "for_user": "",
