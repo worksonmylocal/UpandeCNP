@@ -117,8 +117,13 @@ before_uninstall = "upandecnp.uninstall.before_uninstall"
 # -----------
 # Permissions evaluated in scripted ways
 
+# Material Request is deliberately absent from both permission hooks below.
+# It is site-wide data - fuel, chemicals, spares, every department - and
+# scoping it by CNP role meant a supervisor opening Material Request saw only
+# the handful of rows this module created, not the requests they actually
+# work with. CNP-only fertilizer requests are reached through their own
+# filtered view on the workspace instead of by hiding everything else.
 permission_query_conditions = {
-    "Material Request": "upandecnp.upandecnp.utils.farm_permissions.material_request_query",
     "Fertilizer Programme": "upandecnp.upandecnp.utils.farm_permissions.fertilizer_programme_query",
     "Block Fertilizer Plan": "upandecnp.upandecnp.utils.farm_permissions.block_fertilizer_plan_query",
     "Fertilizer Budget": "upandecnp.upandecnp.utils.farm_permissions.fertilizer_budget_query",
@@ -133,7 +138,6 @@ permission_query_conditions = {
 }
 
 has_permission = {
-    "Material Request": "upandecnp.upandecnp.utils.farm_permissions.has_farm_permission",
     "Fertilizer Programme": "upandecnp.upandecnp.utils.farm_permissions.has_farm_permission",
     "Block Fertilizer Plan": "upandecnp.upandecnp.utils.farm_permissions.has_farm_permission",
     "Fertilizer Budget": "upandecnp.upandecnp.utils.farm_permissions.has_farm_permission",

@@ -143,35 +143,13 @@ def has_farm_permission(doc, ptype=None, user=None):
 	if doc.doctype == "CNP Farm":
 		return doc.name in farms
 
-	fieldname = "custom_farm" if doc.doctype == "Material Request" else "farm"
-	if doc.get(fieldname) not in farms:
-		return False
-
-	if doc.doctype == "Material Request" and not doc.get("custom_fertilizer_programme"):
+	# Material Request is no longer registered on this hook (see hooks.py), so
+	# the special-casing it needed is gone with it.
+	if doc.get("farm") not in farms:
 		return False
 
 	return True
 
-
-def material_request_query(user):
-	"""Material Request is shared across every department on the site (fuel,
-	chemicals, other purchases) - farm-scoping alone isn't enough, an
-	Agronomist should only see the two agronomy-generated categories
-	(fertilizer purchase and field-application issue), not every Material
-	Request tagged to their farm.
-
-	Both are identified by custom_fertilizer_programme, which upandecnp's own
-	integration.py sets on each. The site-wide custom_request_type category is
-	deliberately not used: it exists on some sites and not others, and a
-	missing column here would take down every Material Request list view for
-	anyone this condition applies to."""
-	base = _condition("Material Request", "custom_farm", user)
-	if not base:
-		return ""
-	category = (
-		"ifnull(`tabMaterial Request`.`custom_fertilizer_programme`, '') != ''"
-	)
-	return f"({base}) and {category}"
 
 
 def fertilizer_programme_query(user):

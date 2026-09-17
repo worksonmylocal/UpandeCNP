@@ -6,49 +6,210 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "section_break_vtee",
-  "amended_from",
+  "section_break_app",
   "block",
   "block_fertilizer_plan",
-  "farm",
-  "company",
   "application_date",
   "fertilizer_product",
   "fertilizer_product_name",
+  "column_break_qty",
   "planned_quantity_kg",
   "actual_quantity_applied_kg",
   "variance_kg",
-  "application_method",
-  "weather_conditions",
-  "applicators",
-  "supervisor",
-  "stock_entry",
-  "notes",
-  "store_request",
   "applied_in_full",
   "partial_reason",
-  "applied_by"
+  "section_break_how",
+  "application_method",
+  "column_break_how",
+  "weather_conditions",
+  "section_break_people",
+  "supervisor",
+  "supervisor_name",
+  "supervisor_employee_number",
+  "column_break_people",
+  "applicators",
+  "section_break_trace",
+  "material_request",
+  "stock_entry",
+  "notes",
+  "column_break_trace",
+  "farm",
+  "company",
+  "amended_from"
  ],
  "fields": [
   {
-   "fieldname": "section_break_vtee",
-   "fieldtype": "Section Break"
+   "fieldname": "section_break_app",
+   "fieldtype": "Section Break",
+   "label": "Application"
   },
   {
-   "fieldname": "amended_from",
+   "fieldname": "block",
    "fieldtype": "Link",
-   "label": "Amended From",
-   "no_copy": 1,
-   "options": "Fertilizer Application",
-   "print_hide": 1,
-   "read_only": 1,
-   "search_index": 1
+   "in_list_view": 1,
+   "label": "Block",
+   "options": "Farm Block",
+   "reqd": 1
   },
   {
+   "description": "The planned round this records. Leaving it empty records an application with no plan behind it.",
    "fieldname": "block_fertilizer_plan",
    "fieldtype": "Link",
    "label": "Block Fertilizer Plan",
    "options": "Block Fertilizer Plan"
+  },
+  {
+   "default": "Today",
+   "fieldname": "application_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Application Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "fertilizer_product",
+   "fieldtype": "Link",
+   "label": "Fertilizer Product",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "fertilizer_product.item_name",
+   "fieldname": "fertilizer_product_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Product Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_qty",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Taken from the Block Fertilizer Plan.",
+   "fieldname": "planned_quantity_kg",
+   "fieldtype": "Float",
+   "label": "Planned Qty (Kg)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "actual_quantity_applied_kg",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Actual Applied Qty (Kg)",
+   "reqd": 1
+  },
+  {
+   "description": "Actual minus planned. Negative means less was applied than planned.",
+   "fieldname": "variance_kg",
+   "fieldtype": "Float",
+   "label": "Variance (Kg)",
+   "read_only": 1
+  },
+  {
+   "default": "1",
+   "description": "Set automatically: ticked when the applied quantity reaches the planned quantity.",
+   "fieldname": "applied_in_full",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Applied In Full",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:!doc.applied_in_full",
+   "fieldname": "partial_reason",
+   "fieldtype": "Small Text",
+   "label": "Reason for Partial Application",
+   "mandatory_depends_on": "eval:!doc.applied_in_full"
+  },
+  {
+   "fieldname": "section_break_how",
+   "fieldtype": "Section Break",
+   "label": "How It Was Applied"
+  },
+  {
+   "fieldname": "application_method",
+   "fieldtype": "Select",
+   "label": "Application Method",
+   "options": "Broadcast\nBranding\nDrip Fertigation\nFoliar Spray\nOther"
+  },
+  {
+   "fieldname": "column_break_how",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "weather_conditions",
+   "fieldtype": "Select",
+   "label": "Weather Conditions",
+   "options": "Dry / Sunny\nLight Cloud\nLight Rain\nWet"
+  },
+  {
+   "fieldname": "section_break_people",
+   "fieldtype": "Section Break",
+   "label": "People"
+  },
+  {
+   "description": "The supervisor who recorded this - the logged-in user's Employee when it comes from the field app.",
+   "fieldname": "supervisor",
+   "fieldtype": "Link",
+   "label": "Supervisor",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "supervisor.employee_name",
+   "fieldname": "supervisor_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Supervisor Name",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "supervisor.employee_number",
+   "fieldname": "supervisor_employee_number",
+   "fieldtype": "Data",
+   "label": "Employee Number",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_people",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Who actually did the work. A block is usually too big for one person.",
+   "fieldname": "applicators",
+   "fieldtype": "Table",
+   "label": "Applicators",
+   "options": "Fertilizer Application Applicator"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_trace",
+   "fieldtype": "Section Break",
+   "label": "Traceability"
+  },
+  {
+   "description": "The request the fertilizer was issued against, when there was one.",
+   "fieldname": "material_request",
+   "fieldtype": "Link",
+   "label": "Material Request",
+   "options": "Material Request"
+  },
+  {
+   "fieldname": "stock_entry",
+   "fieldtype": "Link",
+   "label": "Stock Entry",
+   "options": "Stock Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "column_break_trace",
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "farm",
@@ -65,113 +226,12 @@
    "read_only": 1
   },
   {
-   "fieldname": "application_date",
-   "fieldtype": "Date",
-   "in_list_view": 1,
-   "label": "Application Date",
-   "reqd": 1
-  },
-  {
-   "fieldname": "fertilizer_product",
+   "fieldname": "amended_from",
    "fieldtype": "Link",
-   "in_list_view": 0,
-   "label": "Fertilizer Product",
-   "options": "Item",
-   "reqd": 1
-  },
-  {
-   "fieldname": "planned_quantity_kg",
-   "fieldtype": "Float",
-   "label": "Planned Quantity (Kg)"
-  },
-  {
-   "fieldname": "actual_quantity_applied_kg",
-   "fieldtype": "Float",
-   "in_list_view": 1,
-   "label": "Actual Quantity Applied",
-   "reqd": 1
-  },
-  {
-   "fieldname": "variance_kg",
-   "fieldtype": "Float",
-   "label": "Variance (Kg)"
-  },
-  {
-   "fieldname": "application_method",
-   "fieldtype": "Select",
-   "label": "Application Method",
-   "options": "Broadcast\nBranding\nDrip Fertigation\nFoliar Spray\nOther"
-  },
-  {
-   "fieldname": "weather_conditions",
-   "fieldtype": "Select",
-   "label": "Weather Conditions",
-   "options": "Dry / Sunny\nLight Cloud\nLight Rain\nWet"
-  },
-  {
-   "fieldname": "applicators",
-   "fieldtype": "Table",
-   "label": "Applicators",
-   "options": "Fertilizer Application Applicator"
-  },
-  {
-   "fieldname": "supervisor",
-   "fieldtype": "Link",
-   "label": "Supervisor",
-   "options": "Employee"
-  },
-  {
-   "fieldname": "stock_entry",
-   "fieldtype": "Link",
-   "label": "Stock Entry",
-   "options": "Stock Entry"
-  },
-  {
-   "fieldname": "notes",
-   "fieldtype": "Small Text",
-   "label": "Notes"
-  },
-  {
-   "fieldname": "block",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Block",
-   "options": "Farm Block",
-   "reqd": 1
-  },
-  {
-   "fieldname": "store_request",
-   "fieldtype": "Link",
-   "label": "Store Request",
-   "options": "Material Request",
-   "reqd": 1
-  },
-  {
-   "default": "1",
-   "fieldname": "applied_in_full",
-   "fieldtype": "Check",
-   "label": "Applied In Full",
-   "reqd": 1
-  },
-  {
-   "depends_on": "eval:!doc.applied_in_full",
-   "fieldname": "partial_reason",
-   "fieldtype": "Small Text",
-   "label": "Partial Reason"
-  },
-  {
-   "fieldname": "applied_by",
-   "fieldtype": "Link",
-   "label": "Applied By",
-   "options": "Employee",
-   "reqd": 1
-  },
-  {
-   "fetch_from": "fertilizer_product.item_name",
-   "fieldname": "fertilizer_product_name",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Product Name",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Fertilizer Application",
+   "print_hide": 1,
    "read_only": 1
   }
  ],

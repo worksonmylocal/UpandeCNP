@@ -400,8 +400,10 @@ def get_store_requests(farm=None):
 
 
 @frappe.whitelist()
-def record_application(block_fertilizer_plan, actual_quantity, applied_in_full,
-                       partial_reason=None, employee=None, store_request=None, operators=None):
+def record_application(block_fertilizer_plan, actual_quantity, applied_in_full=None,
+                       partial_reason=None, employee=None, material_request=None,
+                       operators=None, application_method=None, weather_conditions=None,
+                       store_request=None):
     """Create a Fertilizer Application from the field page. `employee` is the
     supervisor recording the entry (defaults to the logged-in user's
     Employee); `operators` is the list of applicators who actually did the
@@ -420,23 +422,29 @@ def record_application(block_fertilizer_plan, actual_quantity, applied_in_full,
         if not _is_my_applicator(op, employee):
             frappe.throw(f"{op} is not on your team.", frappe.PermissionError)
 
-    in_full = 1 if str(applied_in_full) in ("1", "true", "True", "yes") else 0
-
-    if not in_full and not partial_reason:
-        frappe.throw("A reason is required when the application is not done in full.")
+    # applied_in_full is derived from the quantities by the doctype, not taken
+    # from the caller - an app that says "in full" while sending less than the
+    # plan would otherwise write a record that contradicts itself. The argument
+    # is still accepted so older app builds keep working, but it is not used.
+    planned = flt(plan.total_kg_required)
+    short = planned and flt(actual_quantity) < planned - max(planned * 0.01, 0.5)
+    if short and not partial_reason:
+        frappe.throw("A reason is required when less than the planned quantity is applied.")
 
     doc = frappe.get_doc({
         "doctype": "Fertilizer Application",
         "block_fertilizer_plan": block_fertilizer_plan,
-        "store_request": store_request,
+        # store_request is the old argument name; both arrive here as the same
+        # Material Request.
+        "material_request": material_request or store_request,
         "block": plan.block,
         "fertilizer_product": plan.fertilizer_product,
         "application_date": frappe.utils.today(),
-        "planned_quantity_kg": flt(plan.total_kg_required),
+        "planned_quantity_kg": planned,
         "actual_quantity_applied_kg": flt(actual_quantity),
-        "applied_in_full": in_full,
         "partial_reason": partial_reason,
-        "applied_by": employee,
+        "application_method": application_method,
+        "weather_conditions": weather_conditions,
         "supervisor": employee,
         "applicators": [{"employee": op} for op in operators],
     })
@@ -880,7 +888,7 @@ def get_recent_activity(farm=None):
         filters["farm"] = farm
     apps = frappe.get_all("Fertilizer Application", filters=filters,
         fields=["block", "fertilizer_product", "actual_quantity_applied_kg",
-                "application_date", "applied_by", "applied_in_full"],
+                "application_date", "supervisor", "applied_in_full"],
         order_by="creation desc", limit=8)
     return _attach_product_names(apps)
 
@@ -1504,19 +1512,23 @@ def get_partial_applications(farm=None, season=None):
 
 
 @frappe.whitelist()
-def get_operator_activity(farm=None, season=None, employees=None, group_by="applied_by"):
+def get_operator_activity(farm=None, season=None, employees=None, group_by="supervisor"):
     """Applications count and total kg, grouped by Employee. Defaults to
-    `applied_by` (who recorded the entry - used by the dashboards). Pass
+    `supervisor` (who recorded the entry - used by the dashboards). Pass
     group_by="operator" and an `employees` list to get real applicator
     productivity for a supervisor's team roster instead (see
-    get_my_applicators) - `applied_by` is the recording supervisor, not
+    get_my_applicators) - the supervisor is who recorded the entry, not
     necessarily who did the physical work. Since an application can now
     have several applicators (a block is too big for one person), an
     application's kg is counted once per applicator on it when grouping by
     operator - it's a per-person activity count, not a stock ledger."""
     farm = resolve_farm_scope(frappe.session.user, farm)
-    if group_by not in ("applied_by", "operator"):
-        frappe.throw("group_by must be 'applied_by' or 'operator'.")
+    # "applied_by" was this field's name before supervisor absorbed it; accept
+    # it so a cached dashboard page doesn't start erroring mid-session.
+    if group_by == "applied_by":
+        group_by = "supervisor"
+    if group_by not in ("supervisor", "operator"):
+        frappe.throw("group_by must be 'supervisor' or 'operator'.")
 
     if employees and isinstance(employees, str):
         employees = frappe.parse_json(employees)
@@ -1565,9 +1577,9 @@ def get_operator_activity(farm=None, season=None, employees=None, group_by="appl
     if farm:
         filters["farm"] = farm
     if employees:
-        filters["applied_by"] = ["in", employees]
+        filters["supervisor"] = ["in", employees]
     apps = frappe.get_all("Fertilizer Application", filters=filters,
-        fields=["applied_by", "actual_quantity_applied_kg", "block_fertilizer_plan"])
+        fields=["supervisor", "actual_quantity_applied_kg", "block_fertilizer_plan"])
 
     if season:
         plan_names = set(frappe.get_all("Block Fertilizer Plan", filters={"season": season}, pluck="name"))
@@ -1575,13 +1587,13 @@ def get_operator_activity(farm=None, season=None, employees=None, group_by="appl
 
     stats = {}
     for a in apps:
-        key = a.applied_by or "Unassigned"
+        key = a.supervisor or "Unassigned"
         s = stats.setdefault(key, {"applications": 0, "total_kg": 0})
         s["applications"] += 1
         s["total_kg"] += flt(a.actual_quantity_applied_kg)
 
     return sorted(
-        [{"applied_by": k, "applications": v["applications"], "total_kg": round(v["total_kg"], 1)}
+        [{"supervisor": k, "applications": v["applications"], "total_kg": round(v["total_kg"], 1)}
          for k, v in stats.items()],
         key=lambda x: x["applications"], reverse=True,
     )

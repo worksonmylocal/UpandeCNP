@@ -317,7 +317,7 @@ async function loadOperators() {
     if (!data.length) { document.getElementById("operator-list").innerHTML = '<div class="empty">No applications recorded yet.</div>'; return; }
     document.getElementById("operator-list").innerHTML = `
         <table class="dtable"><tr><th>Operator</th><th class="num">Applications</th><th class="num">Total Kg</th></tr>
-        ${data.map(o => `<tr><td>${o.applied_by}</td><td class="num">${o.applications}</td><td class="num">${o.total_kg.toLocaleString()}</td></tr>`).join("")}
+        ${data.map(o => `<tr><td>${o.supervisor}</td><td class="num">${o.applications}</td><td class="num">${o.total_kg.toLocaleString()}</td></tr>`).join("")}
         </table>`;
 }
 

@@ -6,8 +6,9 @@ from frappe.utils import flt
 class FertilizerApplication(Document):
 
     def validate(self):
-        self.calculate_variance()
         self.fetch_planned_quantity()
+        self.calculate_variance()
+        self.set_applied_in_full()
         self.validate_partial_reason()
 
     def on_submit(self):
@@ -19,9 +20,28 @@ class FertilizerApplication(Document):
         self.cancel_stock_entry()
         self.revert_block_plan_status()
 
+    def set_applied_in_full(self):
+        """Derived, never typed. Whether the round was finished is a fact about
+        the two quantities, and letting someone tick "in full" while recording
+        less than planned produced records that contradicted themselves.
+
+        With no plan behind it there is nothing to fall short of, so it counts
+        as full. The tolerance keeps a rounding difference on a 4,000 kg round
+        from being reported as a partial application.
+        """
+        planned = flt(self.planned_quantity_kg)
+        if not planned:
+            self.applied_in_full = 1
+            return
+        tolerance = max(planned * 0.01, 0.5)
+        self.applied_in_full = 1 if flt(self.actual_quantity_applied_kg) >= planned - tolerance else 0
+
     def validate_partial_reason(self):
         if not self.applied_in_full and not self.partial_reason:
-            frappe.throw("Please give a reason why the application was not done in full.")
+            frappe.throw(
+                "This records less than the planned quantity, so it is a partial "
+                "application. Please give a reason."
+            )
 
     def fetch_planned_quantity(self):
         if self.block_fertilizer_plan and not self.planned_quantity_kg:
@@ -44,11 +64,19 @@ class FertilizerApplication(Document):
         return warehouse
 
     def create_stock_entry(self):
-        # If the store already issued stock via the Store Request, reuse it - don't double-issue
-        if self.store_request:
-            issued = frappe.db.get_value("Fertilizer Store Request", self.store_request, "stock_entry")
+        # If the store already issued against the Material Request, reuse that
+        # entry rather than issuing the same fertilizer twice. This used to look
+        # the name up in Fertilizer Store Request, which the field stopped
+        # pointing at when store requests were retired - so it never matched and
+        # every application silently issued its own second Stock Entry.
+        if self.material_request:
+            issued = frappe.db.sql("""
+                select parent from `tabStock Entry Detail`
+                where material_request = %s and docstatus = 1
+                limit 1
+            """, self.material_request)
             if issued:
-                self.db_set("stock_entry", issued)
+                self.db_set("stock_entry", issued[0][0])
                 return
 
         if self.stock_entry:
@@ -119,7 +147,7 @@ class FertilizerApplication(Document):
 
     def cancel_stock_entry(self):
         # Only cancel if this application created its own stock entry (not the store request's)
-        if self.stock_entry and not self.store_request:
+        if self.stock_entry and not self.material_request:
             se = frappe.get_doc("Stock Entry", self.stock_entry)
             if se.docstatus == 1:
                 se.cancel()

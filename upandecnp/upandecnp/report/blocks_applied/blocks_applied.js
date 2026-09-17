@@ -23,8 +23,8 @@ frappe.query_reports["Blocks Applied"] = {
             options: "Farm Block"
         },
         {
-            fieldname: "applied_by",
-            label: "Applied By",
+            fieldname: "supervisor",
+            label: "Supervisor",
             fieldtype: "Link",
             options: "Employee"
         },

@@ -19,8 +19,8 @@ def get_columns():
         {"label": "Variance (Kg)","fieldname": "variance_kg",                "fieldtype": "Float", "width": 100},
         {"label": "In Full?",     "fieldname": "in_full",                    "fieldtype": "Data",  "width": 80},
         {"label": "Reason (if partial)", "fieldname": "partial_reason",      "fieldtype": "Data",  "width": 200},
-        {"label": "Applied By",   "fieldname": "applied_by",                 "fieldtype": "Link",  "options": "Employee", "width": 130},
-        {"label": "Store Request","fieldname": "store_request",              "fieldtype": "Link",  "options": "Fertilizer Store Request", "width": 130},
+        {"label": "Supervisor",   "fieldname": "supervisor",                 "fieldtype": "Link",  "options": "Employee", "width": 130},
+        {"label": "Material Request","fieldname": "material_request",        "fieldtype": "Link",  "options": "Material Request", "width": 150},
         {"label": "Record",       "fieldname": "name",                       "fieldtype": "Link",  "options": "Fertilizer Application", "width": 110},
     ]
 
@@ -34,8 +34,8 @@ def get_data(filters):
         conditions["application_date"] = ["between", [filters["from_date"], filters["to_date"]]]
     if filters.get("block"):
         conditions["block"] = filters["block"]
-    if filters.get("applied_by"):
-        conditions["applied_by"] = filters["applied_by"]
+    if filters.get("supervisor"):
+        conditions["supervisor"] = filters["supervisor"]
     if filters.get("only_partial"):
         conditions["applied_in_full"] = 0
 
@@ -45,7 +45,7 @@ def get_data(filters):
         fields=[
             "name", "application_date", "block", "fertilizer_product",
             "planned_quantity_kg", "actual_quantity_applied_kg", "variance_kg",
-            "applied_in_full", "partial_reason", "applied_by", "store_request",
+            "applied_in_full", "partial_reason", "supervisor", "material_request",
         ],
         order_by="application_date desc, block asc",
     )
