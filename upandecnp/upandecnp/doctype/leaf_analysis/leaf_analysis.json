@@ -136,7 +136,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-17 12:00:00.000000",
+ "modified": "2026-09-17 14:00:00.000000",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Leaf Analysis",
@@ -186,7 +186,7 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "CNP Consultant",
+   "role": "General Manager",
    "share": 1
   }
  ],

@@ -1,10 +1,13 @@
-"""Adds the CNP Consultant role for sites that installed upandecnp before the
-Fertilizer Programme approval chain existed.
+"""Adds the roles the Fertilizer Programme approval chain needs, for sites
+that installed upandecnp before it existed.
 
-create_roles() is only called on install, and the earlier role patch has
-already run on these sites, so a patch of its own is what carries the new role
-across. The approval workflow will not generate without it - its transitions
-name the role, and a Workflow Transition's role is a Link.
+create_roles() is only called on install and the earlier role patch has already
+run on these sites, so a patch of its own is what carries new roles across. The
+workflow will not generate without them - a Workflow Transition's role is a
+Link, so every role it names has to exist first.
+
+No consultant role is shipped: that step sits with an existing role until the
+agronomy consultant has an account. See utils/approval.py.
 """
 
 import frappe

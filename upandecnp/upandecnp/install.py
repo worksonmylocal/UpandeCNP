@@ -44,9 +44,10 @@ def create_roles():
                             unreachable - so a farm manager who approves CNP
                             programmes holds this for access and their
                             "Farm Manager <Farm>" role for scope.
-      "CNP Consultant"    - reviews a programme between the agronomist and the
-                            farm manager, and may amend it while it sits with
-                            them.
+    The review step between agronomist and farm manager is held by an
+    existing role (see approval.py) rather than one shipped here, because the
+    consultant has no account yet and a role nobody holds reads like access
+    somebody forgot to grant.
       "<Farm> Agronomist" - restricts whoever holds it to that farm's rows
                             (see utils/farm_permissions.py).
 
@@ -56,7 +57,7 @@ def create_roles():
     both: "CNP Agronomist" to get in, "<Farm> Agronomist" to be scoped.
     Onboarding a new farm still needs no code change, only a matching Role.
     """
-    roles = ["Field Worker", "Storekeeper", "CNP Agronomist", "CNP Consultant",
+    roles = ["Field Worker", "Storekeeper", "CNP Agronomist",
              "CNP Farm Manager", "Lokitela Agronomist", "Endebess Agronomist"]
     for role_name in roles:
         if not frappe.db.exists("Role", role_name):

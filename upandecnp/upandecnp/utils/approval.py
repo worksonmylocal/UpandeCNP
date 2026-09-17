@@ -33,7 +33,14 @@ APPROVED = "Approved"
 REJECTED = "Rejected"
 
 AGRONOMIST = "CNP Agronomist"
-CONSULTANT_ROLE = "CNP Consultant"
+# The agronomy consultant has no account yet, so the review step sits with the
+# General Manager, who does have one. This is the only line that has to change
+# when the consultant is onboarded - the stage, its state and its transitions
+# all stay as they are. Deliberately an existing role rather than a shipped
+# "CNP Consultant" nobody holds: a Workflow Transition's role is a Link, so an
+# unused role would still have to exist, and an empty role in the list reads
+# like access somebody forgot to grant.
+CONSULTANT_ROLE = "General Manager"
 MANAGER_ROLE = "Farm Manager"
 MANAGER_PREFIX = "Farm Manager "
 
@@ -48,8 +55,8 @@ def build_workflow():
 	if not frappe.db.exists("DocType", DOCTYPE):
 		return None
 	if not frappe.db.exists("Role", CONSULTANT_ROLE):
-		# install.py creates it; on a part-migrated site just skip rather than
-		# write a Workflow whose transitions point at a role that isn't there.
+		# Never write a Workflow whose transitions name a role that is not
+		# there - the save fails and leaves no chain at all.
 		return None
 
 	states = [
