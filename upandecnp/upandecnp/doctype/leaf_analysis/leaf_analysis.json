@@ -77,11 +77,11 @@
    "read_only": 1
   },
   {
+   "description": "Informational only - which physical block(s) the sample was drawn from. Not used for calculation; the (Section, Yield Tier) pair above is the actual identity.",
    "fieldname": "block",
    "fieldtype": "Link",
    "label": "Block Sampled (optional)",
-   "options": "Farm Block",
-   "description": "Informational only - which physical block(s) the sample was drawn from. Not used for calculation; the (Section, Yield Tier) pair above is the actual identity."
+   "options": "Farm Block"
   },
   {
    "fieldname": "sampling_date",
@@ -136,7 +136,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-08-10 09:00:00.000000",
+ "modified": "2026-09-17 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Leaf Analysis",
@@ -157,27 +157,36 @@
    "write": 1
   },
   {
-   "role": "CNP Agronomist",
-   "read": 1,
-   "report": 1,
-   "export": 1,
-   "print": 1,
-   "email": 1,
-   "share": 1,
-   "write": 1,
+   "amend": 1,
+   "cancel": 1,
    "create": 1,
    "delete": 1,
-   "submit": 1,
-   "cancel": 1,
-   "amend": 1
-  },
-  {
-   "role": "Field Worker",
-   "read": 1,
-   "report": 1,
+   "email": 1,
    "export": 1,
    "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "CNP Agronomist",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
    "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Field Worker",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "CNP Consultant",
    "share": 1
   }
  ],

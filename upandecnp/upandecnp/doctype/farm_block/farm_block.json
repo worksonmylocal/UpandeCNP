@@ -89,10 +89,10 @@
    "label": "Tree Count"
   },
   {
+   "description": "Refreshed once a year after harvest. Drives yield-tier classification for the next season's Fertilizer Programme.",
    "fieldname": "previous_year_yield_kg_ha",
    "fieldtype": "Float",
-   "label": "Previous Year Yield (Kg/Ha)",
-   "description": "Refreshed once a year after harvest. Drives yield-tier classification for the next season's Fertilizer Programme."
+   "label": "Previous Year Yield (Kg/Ha)"
   },
   {
    "fieldname": "planting_year",
@@ -105,18 +105,18 @@
    "label": "Variety"
   },
   {
+   "description": "The block-level Cost Center under this block's Section in the Kaitet chart of accounts, e.g. LA 5 - KL.",
    "fieldname": "cost_center",
    "fieldtype": "Link",
    "label": "Cost Center",
    "options": "Cost Center",
-   "read_only": 1,
-   "description": "The block-level Cost Center under this block's Section in the Kaitet chart of accounts, e.g. LA 5 - KL."
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-08-10 09:00:00.000000",
+ "modified": "2026-09-17 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Farm Block",
@@ -136,22 +136,31 @@
    "write": 1
   },
   {
-   "role": "CNP Agronomist",
-   "read": 1,
-   "report": 1,
+   "email": 1,
    "export": 1,
    "print": 1,
-   "email": 1,
+   "read": 1,
+   "report": 1,
+   "role": "CNP Agronomist",
    "share": 1,
    "write": 1
   },
   {
-   "role": "Field Worker",
-   "read": 1,
-   "report": 1,
+   "email": 1,
    "export": 1,
    "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Field Worker",
+   "share": 1
+  },
+  {
    "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "CNP Consultant",
    "share": 1
   }
  ],

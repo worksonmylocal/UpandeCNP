@@ -114,7 +114,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-07-02 12:57:53.439040",
+ "modified": "2026-09-17 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Fertilizer Budget",
@@ -135,18 +135,27 @@
    "write": 1
   },
   {
-   "role": "CNP Agronomist",
-   "read": 1,
-   "report": 1,
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "email": 1,
    "export": 1,
    "print": 1,
-   "email": 1,
+   "read": 1,
+   "report": 1,
+   "role": "CNP Agronomist",
    "share": 1,
-   "write": 1,
-   "create": 1,
    "submit": 1,
-   "cancel": 1,
-   "amend": 1
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "CNP Consultant",
+   "share": 1
   }
  ],
  "row_format": "Dynamic",

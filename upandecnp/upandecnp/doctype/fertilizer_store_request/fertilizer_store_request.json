@@ -145,7 +145,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-07-06 17:41:53.736441",
+ "modified": "2026-09-17 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Fertilizer Store Request",
@@ -184,6 +184,15 @@
    "read": 1,
    "report": 1,
    "role": "Field Worker",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "CNP Consultant",
    "share": 1
   }
  ],

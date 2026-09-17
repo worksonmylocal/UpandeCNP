@@ -226,6 +226,10 @@ doc_events = {
 # re-applied since those are exactly what's been observed to get zeroed).
 after_migrate = [
     "upandecnp.patches.seed_lokitela_demo_data.execute",
+    # The approval chain has one transition per farm, so it is rebuilt rather
+    # than frozen into a fixture - a farm added later gets its manager step
+    # without a release.
+    "upandecnp.upandecnp.utils.approval.build_workflow",
 ]
 
 # Scheduled Tasks

@@ -36,6 +36,17 @@ def create_roles():
       "CNP Agronomist"    - may use the module at all. This is the role the
                             doctypes actually grant permissions to, so it is
                             what puts the workspace in someone's sidebar.
+      "CNP Farm Manager"  - the same idea for the approval chain. A programme
+                            is approved by "Farm Manager <Farm>", but that role
+                            family is open-ended, so no doctype can grant it
+                            permissions. Without a grant the approver cannot
+                            open the document and the workflow action is
+                            unreachable - so a farm manager who approves CNP
+                            programmes holds this for access and their
+                            "Farm Manager <Farm>" role for scope.
+      "CNP Consultant"    - reviews a programme between the agronomist and the
+                            farm manager, and may amend it while it sits with
+                            them.
       "<Farm> Agronomist" - restricts whoever holds it to that farm's rows
                             (see utils/farm_permissions.py).
 
@@ -45,8 +56,8 @@ def create_roles():
     both: "CNP Agronomist" to get in, "<Farm> Agronomist" to be scoped.
     Onboarding a new farm still needs no code change, only a matching Role.
     """
-    roles = ["Field Worker", "Storekeeper", "CNP Agronomist",
-             "Lokitela Agronomist", "Endebess Agronomist"]
+    roles = ["Field Worker", "Storekeeper", "CNP Agronomist", "CNP Consultant",
+             "CNP Farm Manager", "Lokitela Agronomist", "Endebess Agronomist"]
     for role_name in roles:
         if not frappe.db.exists("Role", role_name):
             frappe.get_doc({

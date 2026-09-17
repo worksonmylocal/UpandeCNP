@@ -32,22 +32,22 @@
    "unique": 1
   },
   {
+   "description": "The post-production/harvested-produce Item this crop yields, e.g. Hass Avocado -> Item 'Avocado'.",
    "fieldname": "item",
    "fieldtype": "Link",
    "label": "Item",
    "options": "Item",
-   "unique": 1,
-   "description": "The post-production/harvested-produce Item this crop yields, e.g. Hass Avocado -> Item 'Avocado'."
+   "unique": 1
   },
   {
    "fieldname": "column_break_crop_compost",
    "fieldtype": "Column Break"
   },
   {
+   "description": "Flat compost application used to net off the Nitrogen requirement, e.g. 25.",
    "fieldname": "compost_dose_kg",
    "fieldtype": "Float",
-   "label": "Compost Dose (Kg)",
-   "description": "Flat compost application used to net off the Nitrogen requirement, e.g. 25."
+   "label": "Compost Dose (Kg)"
   },
   {
    "fieldname": "compost_n_pct",
@@ -56,10 +56,10 @@
   },
   {
    "default": "10",
+   "description": "Flat adjustment applied when a leaf result is below a nutrient's midpoint (+) or above its high norm (-).",
    "fieldname": "leaf_adjustment_pct",
    "fieldtype": "Percent",
-   "label": "Leaf Analysis Adjustment %",
-   "description": "Flat adjustment applied when a leaf result is below a nutrient's midpoint (+) or above its high norm (-)."
+   "label": "Leaf Analysis Adjustment %"
   },
   {
    "fieldname": "section_break_yield_tiers",
@@ -85,7 +85,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-08-10 09:00:00.000000",
+ "modified": "2026-09-17 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Crop",
@@ -105,14 +105,23 @@
    "write": 1
   },
   {
-   "role": "CNP Agronomist",
-   "read": 1,
-   "report": 1,
+   "email": 1,
    "export": 1,
    "print": 1,
-   "email": 1,
+   "read": 1,
+   "report": 1,
+   "role": "CNP Agronomist",
    "share": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "CNP Consultant",
+   "share": 1
   }
  ],
  "row_format": "Dynamic",

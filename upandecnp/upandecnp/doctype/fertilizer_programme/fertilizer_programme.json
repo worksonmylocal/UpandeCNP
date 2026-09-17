@@ -16,7 +16,6 @@
   "potassium_source",
   "section_break_products",
   "product_selections",
-  "status",
   "period_type",
   "start_month",
   "end_month",
@@ -71,12 +70,6 @@
    "label": "Crop",
    "options": "Crop",
    "reqd": 1
-  },
-  {
-   "fieldname": "status",
-   "fieldtype": "Select",
-   "label": "Status",
-   "options": "Draft\nSubmitted\nApproved\nActive"
   },
   {
    "description": "Which of the crop's alternative potassium products (e.g. MOP vs K2SO4) actually feeds into the plan. Both are always computed for comparison.",
@@ -164,7 +157,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-08-10 09:00:00.000000",
+ "modified": "2026-09-17 13:00:00.000000",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Fertilizer Programme",
@@ -195,6 +188,39 @@
    "read": 1,
    "report": 1,
    "role": "CNP Agronomist",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "CNP Consultant",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Farm Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "CNP Farm Manager",
    "share": 1,
    "submit": 1,
    "write": 1
