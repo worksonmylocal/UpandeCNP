@@ -52,12 +52,14 @@
     <button class="tab" data-tab="requests">Store Requests</button>
     <button class="tab" data-tab="applications">Applications</button>
     <button class="tab" data-tab="stock">Stock</button>
+    <button class="tab" data-tab="setup">Setup &amp; Master Data</button>
   </div>
 
   <div class="tabpanel on" id="tab-programme">
     <div class="row-2">
       <div class="card">
-        <div class="card__head"><h3>Current programme</h3><span class="meta" id="prog-meta"></span></div>
+        <div class="card__head"><h3>Current programme</h3>
+          <span class="meta" id="prog-meta"></span></div>
         <div id="prog-body"><div class="skel"></div></div>
       </div>
       <div class="card">
@@ -66,7 +68,8 @@
       </div>
     </div>
     <div class="card">
-      <div class="card__head"><h3>All programmes</h3></div>
+      <div class="card__head"><h3>All programmes</h3>
+        <button class="btn btn--ink" data-new="programme">New programme</button></div>
       <div class="queue" id="prog-list"><div class="skel"></div></div>
     </div>
   </div>
@@ -95,6 +98,14 @@
         <div class="card__head"><h3>Variance alerts</h3><span class="meta">Beyond the configured threshold</span></div>
         <div class="queue" id="variance"><div class="skel"></div></div>
       </div>
+    </div>
+  </div>
+
+  <div class="tabpanel" id="tab-setup">
+    <div class="card">
+      <div class="card__head"><h3>Everything the engine reads</h3>
+        <span class="meta">Opens here — no need for the doctype forms</span></div>
+      <div class="opengrid" id="setup-grid"></div>
     </div>
   </div>
 

@@ -7,7 +7,8 @@
  "field_order": [
   "section_break_zcrd",
   "upcoming_alert_days",
-  "variance_threshold_pct"
+  "variance_threshold_pct",
+  "require_programme_approval"
  ],
  "fields": [
   {
@@ -25,13 +26,20 @@
    "fieldname": "variance_threshold_pct",
    "fieldtype": "Int",
    "label": "Variance Alert Threshold (%)"
+  },
+  {
+   "default": "0",
+   "description": "Off: the agronomist submits the programme and it takes effect. On: it goes to the consultant and then the farm manager before the block plans are created.",
+   "fieldname": "require_programme_approval",
+   "fieldtype": "Check",
+   "label": "Require Programme Approval"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-09-17 14:00:00.000000",
+ "modified": "2026-10-01 19:00:00.000000",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Crop Nutrition Planning Settings",

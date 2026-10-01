@@ -73,6 +73,463 @@
     toastTimer = setTimeout(() => el.remove(), 4200);
   }
 
+  // --------------------------------------------------------------- frappe client
+  /** Generic document calls. These are Frappe's own whitelisted endpoints, so
+   *  permissions, validation and the doctype's own controller all still run -
+   *  the desk is a nicer way in, not a way round. */
+  async function doc(method, args) {
+    let res, data;
+    try {
+      res = await fetch("/api/method/frappe.client." + method, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json", Accept: "application/json",
+          "X-Frappe-CSRF-Token": cfg.csrf,
+        },
+        credentials: "same-origin",
+        body: JSON.stringify(args),
+      });
+      data = await res.json();
+    } catch (e) {
+      toast("Could not reach the server.", "bad");
+      throw Object.assign(new Error("network"), { handled: true });
+    }
+    if (!res.ok || data.exc) {
+      const msg = serverMessage(data) || `Server error (${res.status}).`;
+      toast(msg, "bad");
+      throw Object.assign(new Error(msg), { handled: true });
+    }
+    return data.message;
+  }
+
+  const getDoc  = (doctype, name) => doc("get", { doctype, name });
+  const listDoc = (doctype, fields, filters, order) =>
+    doc("get_list", {
+      doctype, fields, filters: filters || [],
+      order_by: order || "modified desc", limit_page_length: 200,
+    });
+  const saveDoc = (d) => doc(d.name && !d.__islocal ? "save" : "insert", { doc: d });
+
+  // ----------------------------------------------------------------- modal/form
+  let openModals = 0;
+
+  function modal({ title, sub = "", body = "", foot = [], size = "", onClose }) {
+    const back = document.createElement("div");
+    back.className = "modal-back";
+    back.innerHTML = `<div class="modal ${size ? "modal--" + size : ""}" role="dialog" aria-modal="true">
+      <div class="modal__head"><div><h2>${esc(title)}</h2>${sub ? `<p>${esc(sub)}</p>` : ""}</div>
+      <button class="modal__x" aria-label="Close">&times;</button></div>
+      <div class="modal__body"></div><div class="modal__foot"></div></div>`;
+    document.body.appendChild(back);
+    openModals++;
+    const bodyEl = $(".modal__body", back), footEl = $(".modal__foot", back);
+    if (typeof body === "string") bodyEl.innerHTML = body; else bodyEl.appendChild(body);
+
+    const handle = {
+      el: back, body: bodyEl, foot: footEl,
+      close() {
+        if (!back.isConnected) return;
+        back.remove(); openModals--;
+        document.removeEventListener("keydown", onKey);
+        if (onClose) onClose();
+      },
+      setFoot(buttons) {
+        footEl.innerHTML = "";
+        buttons.forEach((b) => {
+          const btn = document.createElement("button");
+          btn.className = "btn " + (b.cls || "");
+          btn.textContent = b.label;
+          btn.addEventListener("click", async () => {
+            if (!b.onClick) return handle.close();
+            const all = $$("button", footEl);
+            all.forEach((x) => (x.disabled = true));
+            try { await b.onClick(handle); }
+            catch (e) { if (!e.handled) toast(e.message || "Something went wrong.", "bad"); }
+            finally { if (back.isConnected) all.forEach((x) => (x.disabled = false)); }
+          });
+          footEl.appendChild(btn);
+        });
+        footEl.style.display = buttons.length ? "" : "none";
+      },
+    };
+    const onKey = (e) => { if (e.key === "Escape") handle.close(); };
+    document.addEventListener("keydown", onKey);
+    $(".modal__x", back).addEventListener("click", () => handle.close());
+    handle.setFoot(foot);
+    return handle;
+  }
+
+  /** One labelled input. `link` fetches its options once, lazily. */
+  function fieldHtml(f, value) {
+    const v = value == null ? "" : value;
+    const req = f.reqd ? ` <span class="req">*</span>` : "";
+    let input;
+    if (f.type === "select") {
+      input = `<select data-f="${esc(f.name)}">${(f.options || []).map((o) =>
+        `<option value="${esc(o)}"${String(o) === String(v) ? " selected" : ""}>${esc(o)}</option>`).join("")}</select>`;
+    } else if (f.type === "link") {
+      input = `<select data-f="${esc(f.name)}" data-link="${esc(f.doctype)}" data-val="${esc(v)}">
+        <option value="${esc(v)}">${esc(v || "—")}</option></select>`;
+    } else if (f.type === "check") {
+      input = `<input type="checkbox" data-f="${esc(f.name)}"${v ? " checked" : ""}>`;
+    } else if (f.type === "text") {
+      input = `<textarea data-f="${esc(f.name)}">${esc(v)}</textarea>`;
+    } else {
+      const t = f.type === "int" || f.type === "float" ? "number" : f.type === "date" ? "date" : "text";
+      const step = f.type === "float" ? ' step="any"' : "";
+      input = `<input type="${t}"${step} data-f="${esc(f.name)}" value="${esc(v)}">`;
+    }
+    return `<div class="field">
+      <label>${esc(f.label)}${req}</label>${input}
+      ${f.help ? `<small>${esc(f.help)}</small>` : ""}
+    </div>`;
+  }
+
+  /** Fill every link select in a container from its doctype, once. */
+  async function hydrateLinks(root) {
+    const sels = $$("select[data-link]", root);
+    const wanted = Array.from(new Set(sels.map((s) => s.dataset.link)));
+    const lists = {};
+    await Promise.all(wanted.map(async (dt) => {
+      try { lists[dt] = await listDoc(dt, ["name"], [], "name asc"); }
+      catch (e) { lists[dt] = []; }
+    }));
+    sels.forEach((sel) => {
+      const rows = lists[sel.dataset.link] || [];
+      const cur = sel.dataset.val || "";
+      sel.innerHTML = `<option value="">—</option>` + rows.map((r) =>
+        `<option value="${esc(r.name)}"${r.name === cur ? " selected" : ""}>${esc(r.name)}</option>`).join("");
+      sel.value = cur;
+    });
+  }
+
+  /** Read a form back out of the DOM. */
+  function readForm(root, spec) {
+    const out = {};
+    spec.fields.forEach((f) => {
+      const el = $(`[data-f="${f.name}"]`, root);
+      if (!el) return;
+      out[f.name] = f.type === "check" ? (el.checked ? 1 : 0)
+        : (f.type === "int" || f.type === "float") ? (el.value === "" ? 0 : Number(el.value))
+        : el.value;
+    });
+    (spec.tables || []).forEach((t) => {
+      out[t.name] = $$(`tr[data-row="${t.name}"]`, root).map((tr) => {
+        const row = {};
+        t.fields.forEach((f) => {
+          const el = $(`[data-f="${f.name}"]`, tr);
+          if (!el) return;
+          row[f.name] = f.type === "check" ? (el.checked ? 1 : 0)
+            : (f.type === "int" || f.type === "float") ? (el.value === "" ? 0 : Number(el.value))
+            : el.value;
+        });
+        return row;
+      });
+    });
+    return out;
+  }
+
+  function tableHtml(t, rows) {
+    const head = t.fields.map((f) => `<th>${esc(f.label)}</th>`).join("") + "<th></th>";
+    const body = (rows || []).map((r) => rowHtml(t, r)).join("");
+    return `<div class="field"><label>${esc(t.label)}</label>
+      <table class="gridtbl" data-table="${esc(t.name)}">
+        <thead><tr>${head}</tr></thead><tbody>${body}</tbody>
+      </table>
+      <button class="btn" data-addrow="${esc(t.name)}" style="margin-top:8px">Add row</button></div>`;
+  }
+
+  function rowHtml(t, r) {
+    r = r || {};
+    const cells = t.fields.map((f) => {
+      const v = r[f.name] == null ? "" : r[f.name];
+      let input;
+      if (f.type === "select") {
+        input = `<select data-f="${esc(f.name)}">${(f.options || []).map((o) =>
+          `<option value="${esc(o)}"${String(o) === String(v) ? " selected" : ""}>${esc(o)}</option>`).join("")}</select>`;
+      } else if (f.type === "link") {
+        input = `<select data-f="${esc(f.name)}" data-link="${esc(f.doctype)}" data-val="${esc(v)}">
+          <option value="${esc(v)}">${esc(v || "—")}</option></select>`;
+      } else if (f.type === "check") {
+        input = `<input type="checkbox" data-f="${esc(f.name)}"${v ? " checked" : ""}>`;
+      } else {
+        const ty = (f.type === "int" || f.type === "float") ? "number" : "text";
+        const step = f.type === "float" ? ' step="any"' : "";
+        input = `<input type="${ty}"${step} data-f="${esc(f.name)}" value="${esc(v)}">`;
+      }
+      return `<td>${input}</td>`;
+    }).join("");
+    return `<tr data-row="${esc(t.name)}">${cells}<td><button class="x" data-delrow="1">&times;</button></td></tr>`;
+  }
+
+  // ---------------------------------------------------------------- what we edit
+  /* Curated on purpose. A doctype form shows every field in the schema, in
+   * schema order, which is exactly the thing this desk exists to avoid - so
+   * each entry names the fields an agronomist actually fills, in the order
+   * they think about them. Everything else on the record keeps its default or
+   * is set by the controller. */
+  const SPECS = {
+    programme: {
+      doctype: "Fertilizer Programme", title: "Fertilizer Programme",
+      icon: "🗂", tint: "rgba(16,185,129,.13)", colour: "#059669",
+      sub: "The season's plan. Build it, calculate it, submit it.",
+      list: ["name", "season", "farm", "crop", "docstatus"],
+      fields: [
+        { name: "season", label: "Season", reqd: 1, help: "e.g. 2025/2026" },
+        { name: "farm", label: "Farm", type: "link", doctype: "CNP Farm", reqd: 1 },
+        { name: "crop", label: "Crop", type: "link", doctype: "Crop", reqd: 1 },
+        { name: "production_calendar", label: "Production Calendar", type: "link", doctype: "Production Calendar", reqd: 1 },
+        { name: "potassium_source", label: "Potassium Source", type: "link", doctype: "Item",
+          help: "Which of the crop's two potassium rules this season uses." },
+        { name: "period_type", label: "Programme Period", type: "select", options: ["Full Year", "Custom Period"] },
+        { name: "start_month", label: "Start Month", type: "select", options: ["", ...["January","February","March","April","May","June","July","August","September","October","November","December"]] },
+        { name: "end_month", label: "End Month", type: "select", options: ["", ...["January","February","March","April","May","June","July","August","September","October","November","December"]] },
+      ],
+    },
+    farm: {
+      doctype: "CNP Farm", title: "Farm", icon: "🌍", tint: "rgba(100,116,139,.15)", colour: "#64748b",
+      sub: "The farms this module plans for.",
+      list: ["name", "kaitet_farm_code", "default_crop", "is_active"],
+      fields: [
+        { name: "farm_name", label: "Farm Name", reqd: 1 },
+        { name: "kaitet_farm_code", label: "Farm Code" },
+        { name: "default_crop", label: "Default Crop", type: "link", doctype: "Crop" },
+        { name: "farm_manager", label: "Farm Manager", type: "link", doctype: "User" },
+        { name: "warehouse", label: "Warehouse", type: "link", doctype: "Warehouse" },
+        { name: "is_active", label: "Active", type: "check" },
+      ],
+    },
+    section: {
+      doctype: "Section", title: "Section", icon: "🗺", tint: "rgba(100,116,139,.15)", colour: "#64748b",
+      sub: "Blocks are grouped into sections; the engine calculates per section.",
+      list: ["name", "farm", "is_active"],
+      fields: [
+        { name: "section_name", label: "Section Name", reqd: 1 },
+        { name: "farm", label: "Farm", type: "link", doctype: "CNP Farm", reqd: 1 },
+        { name: "is_active", label: "Active", type: "check" },
+      ],
+    },
+    block: {
+      doctype: "Farm Block", title: "Farm Block", icon: "🧱", tint: "rgba(100,116,139,.15)", colour: "#64748b",
+      sub: "Area, trees and last year's yield - what the whole calculation rests on.",
+      list: ["name", "section", "area_ha", "tree_count", "previous_year_yield_kg_ha"],
+      fields: [
+        { name: "block_name", label: "Block Name", reqd: 1 },
+        { name: "block_number", label: "Block Number" },
+        { name: "section", label: "Section", type: "link", doctype: "Section", reqd: 1 },
+        { name: "farm", label: "Farm", type: "link", doctype: "CNP Farm", reqd: 1 },
+        { name: "crop", label: "Crop", type: "link", doctype: "Crop" },
+        { name: "area_ha", label: "Area (Ha)", type: "float", reqd: 1 },
+        { name: "tree_count", label: "Tree Count", type: "int", reqd: 1 },
+        { name: "previous_year_yield_kg_ha", label: "Last Year Yield (Kg/Ha)", type: "float",
+          help: "Decides the block's yield tier." },
+        { name: "planting_year", label: "Planting Year", type: "int" },
+      ],
+    },
+    crop: {
+      doctype: "Crop", title: "Crop", icon: "🌱", tint: "rgba(16,185,129,.13)", colour: "#059669",
+      sub: "Yield tiers and nutrient rules - the engine's master data.",
+      list: ["name", "item", "compost_dose_kg"],
+      fields: [
+        { name: "crop_name", label: "Crop Name", reqd: 1 },
+        { name: "item", label: "Produce Item", type: "link", doctype: "Item",
+          help: "The harvested produce, not a fertilizer." },
+        { name: "compost_dose_kg", label: "Compost Dose (Kg)", type: "float" },
+        { name: "compost_n_pct", label: "Compost N (%)", type: "float" },
+        { name: "leaf_adjustment_pct", label: "Leaf Adjustment (%)", type: "float" },
+      ],
+      tables: [
+        { name: "yield_tiers", label: "Yield Tiers", fields: [
+          { name: "tier_label", label: "Tier" },
+          { name: "tier_tonnage", label: "Tonnage", type: "float" },
+          { name: "min_yield_kg_ha", label: "Min Kg/Ha", type: "float" },
+          { name: "max_yield_kg_ha", label: "Max Kg/Ha", type: "float" },
+          { name: "sort_order", label: "Order", type: "int" },
+        ] },
+        { name: "nutrient_rules", label: "Nutrient Rules", fields: [
+          { name: "product", label: "Product", type: "link", doctype: "Fertilizer Product" },
+          { name: "fertilizer_product", label: "Fallback Item", type: "link", doctype: "Item" },
+          { name: "nutrient", label: "Nutrient", type: "select", options: ["N","P","K","Ca","Mg","S","Mn","B","Mo","Zn"] },
+          { name: "rate_per_tonne", label: "Rate/Tonne", type: "float" },
+          { name: "bag_weight_kg", label: "Bag Kg", type: "float" },
+          { name: "product_nutrient_pct", label: "Nutrient %", type: "float" },
+          { name: "apply_compost_netting", label: "Net Compost", type: "check" },
+          { name: "nutrient_source_group", label: "Source Group" },
+        ] },
+      ],
+    },
+    product: {
+      doctype: "Fertilizer Product", title: "Fertilizer Product", icon: "🧪",
+      tint: "rgba(245,158,11,.13)", colour: "#d97706",
+      sub: "CAN, MOP, K2SO4 — and the spellings each is known by on this site.",
+      list: ["name", "product_name", "nutrient", "disabled"],
+      fields: [
+        { name: "product_code", label: "Product Code", reqd: 1, help: "e.g. CAN" },
+        { name: "product_name", label: "Product Name" },
+        { name: "nutrient", label: "Nutrient", type: "select", options: ["N","P","K","Ca","Mg","S","Mn","B","Mo","Zn"] },
+        { name: "item_group", label: "Item Group", type: "link", doctype: "Item Group" },
+        { name: "search_terms", label: "Search Terms", type: "text", reqd: 1,
+          help: "One per line. List every spelling - POTASIUM and POTASSIUM are different items here." },
+        { name: "exclude_terms", label: "Exclude Terms", type: "text" },
+        { name: "disabled", label: "Disabled", type: "check" },
+      ],
+    },
+    calendar: {
+      doctype: "Production Calendar", title: "Production Calendar", icon: "🗓",
+      tint: "rgba(79,70,229,.13)", colour: "#4f46e5",
+      sub: "Which months each product is applied in, and in what share.",
+      list: ["name", "season", "farm"],
+      fields: [
+        { name: "season", label: "Season", reqd: 1 },
+        { name: "farm", label: "Farm", type: "link", doctype: "CNP Farm", reqd: 1 },
+        { name: "season_notes", label: "Notes", type: "text" },
+      ],
+      tables: [
+        { name: "fertilizer_schedule", label: "Fertilizer Schedule", fields: [
+          { name: "fertilizer_product", label: "Item", type: "link", doctype: "Item" },
+          { name: "application_month", label: "Month", type: "select", options: ["January","February","March","April","May","June","July","August","September","October","November","December"] },
+          { name: "percentage", label: "%", type: "float" },
+        ] },
+      ],
+    },
+    leaf: {
+      doctype: "Leaf Analysis", title: "Leaf Analysis", icon: "🍃",
+      tint: "rgba(34,197,94,.13)", colour: "#16a34a",
+      sub: "Lab results per section, which adjust the calculated rates.",
+      list: ["name", "section", "sampling_date", "yield_tier"],
+      fields: [
+        { name: "section", label: "Section", type: "link", doctype: "Section", reqd: 1 },
+        { name: "farm", label: "Farm", type: "link", doctype: "CNP Farm" },
+        { name: "crop", label: "Crop", type: "link", doctype: "Crop" },
+        { name: "block", label: "Block", type: "link", doctype: "Farm Block" },
+        { name: "sampling_date", label: "Sampling Date", type: "date" },
+        { name: "season", label: "Season" },
+      ],
+      tables: [
+        { name: "nutrient_results", label: "Nutrient Results", fields: [
+          { name: "nutrient", label: "Nutrient", type: "select", options: ["N","P","K","Ca","Mg","S","Mn","B","Mo","Zn"] },
+          { name: "result_value", label: "Result", type: "float" },
+          { name: "unit", label: "Unit", type: "select", options: ["%", "ppm"] },
+        ] },
+      ],
+    },
+    norm: {
+      doctype: "Leaf Analysis Norm", title: "Leaf Analysis Norm", icon: "📏",
+      tint: "rgba(6,182,212,.13)", colour: "#0891b2",
+      sub: "The healthy range per nutrient. A result outside it moves the rate.",
+      list: ["name", "crop", "nutrient", "low", "high", "midpoint"],
+      fields: [
+        { name: "crop", label: "Crop", type: "link", doctype: "Crop", reqd: 1 },
+        { name: "nutrient", label: "Nutrient", type: "select", options: ["N","P","K","Ca","Mg","S","Mn","B","Mo","Zn"], reqd: 1 },
+        { name: "low", label: "Low", type: "float" },
+        { name: "high", label: "High", type: "float" },
+        { name: "midpoint", label: "Midpoint", type: "float" },
+        { name: "unit", label: "Unit", type: "select", options: ["%", "ppm"] },
+      ],
+    },
+    settings: {
+      doctype: "Crop Nutrition Planning Settings", single: true,
+      title: "Module Settings", icon: "⚙", tint: "rgba(100,116,139,.15)", colour: "#64748b",
+      sub: "Module-wide defaults.",
+      fields: [
+        { name: "upcoming_alert_days", label: "Alert Days Before Application", type: "int" },
+        { name: "variance_threshold_pct", label: "Variance Alert Threshold (%)", type: "int" },
+        { name: "require_programme_approval", label: "Require Programme Approval", type: "check",
+          help: "Off: you submit the programme and it takes effect. On: it goes to the consultant, then the farm manager." },
+      ],
+    },
+  };
+
+  // --------------------------------------------------------------- record popups
+  /** Open one record for editing, or a blank one. */
+  async function openRecord(key, name, afterSave) {
+    const spec = SPECS[key];
+    let data = {};
+    if (spec.single) {
+      data = await getDoc(spec.doctype, spec.doctype);
+    } else if (name) {
+      data = await getDoc(spec.doctype, name);
+    }
+
+    const form = document.createElement("div");
+    form.innerHTML = `<div class="fgrid">${spec.fields.map((f) =>
+      fieldHtml(f, data[f.name])).join("")}</div>` +
+      (spec.tables || []).map((t) => tableHtml(t, data[t.name])).join("");
+
+    const m = modal({
+      title: name || spec.single ? `Edit ${spec.title}` : `New ${spec.title}`,
+      sub: spec.sub, body: form, size: (spec.tables || []).length ? "wide" : "",
+      foot: [
+        { label: "Cancel" },
+        { label: "Save", cls: "btn--ink", onClick: async (h) => {
+            const values = readForm(form, spec);
+            const payload = spec.single
+              ? Object.assign({}, data, values, { doctype: spec.doctype, name: spec.doctype })
+              : name
+                ? Object.assign({}, data, values)
+                : Object.assign({ doctype: spec.doctype }, values);
+            const saved = await saveDoc(payload);
+            toast(`${spec.title} saved.`, "good");
+            h.close();
+            if (afterSave) afterSave(saved);
+          } },
+      ],
+    });
+
+    // rows can be added and removed while the popup is open
+    form.addEventListener("click", (e) => {
+      const add = e.target.closest("[data-addrow]");
+      if (add) {
+        const t = (spec.tables || []).find((x) => x.name === add.dataset.addrow);
+        const tb = $(`table[data-table="${t.name}"] tbody`, form);
+        tb.insertAdjacentHTML("beforeend", rowHtml(t, {}));
+        hydrateLinks(tb);
+        return;
+      }
+      const del = e.target.closest("[data-delrow]");
+      if (del) del.closest("tr").remove();
+    });
+
+    await hydrateLinks(form);
+    return m;
+  }
+
+  /** A list of a doctype's records, each opening the editor. */
+  async function openList(key) {
+    const spec = SPECS[key];
+    if (spec.single) return openRecord(key);
+
+    const wrap = document.createElement("div");
+    wrap.innerHTML = `<div class="queue"><div class="skel"></div></div>`;
+    const m = modal({
+      title: spec.title, sub: spec.sub, body: wrap, size: "wide",
+      foot: [{ label: "Close" },
+             { label: `New ${spec.title}`, cls: "btn--ink",
+               onClick: (h) => { h.close(); openRecord(key, null, () => openList(key)); } }],
+    });
+
+    async function draw() {
+      const rows = await listDoc(spec.doctype, spec.list);
+      $(".queue", wrap).innerHTML = rows.map((r) => {
+        const extra = spec.list.slice(1).map((f) =>
+          r[f] === undefined || r[f] === null || r[f] === "" ? null : `${f.replace(/_/g, " ")}: ${r[f]}`)
+          .filter(Boolean).join(" · ");
+        return `<div class="qrow" data-open="${esc(r.name)}" style="cursor:pointer">
+          <div class="qrow__mark">${esc(String(r.name).slice(0, 2))}</div>
+          <div><div class="qrow__name">${esc(r.name)}</div>
+          <div class="qrow__meta">${esc(extra)}</div></div>
+          <div class="qrow__right"><span class="btn">Edit</span></div>
+        </div>`;
+      }).join("") || `<div class="none">Nothing yet. Use “New ${esc(spec.title)}”.</div>`;
+    }
+    wrap.addEventListener("click", (e) => {
+      const row = e.target.closest("[data-open]");
+      if (row) { m.close(); openRecord(key, row.dataset.open, () => openList(key)); }
+    });
+    await draw();
+    return m;
+  }
+
   // ------------------------------------------------------------------- rendering
   function kpi(label, value, cls, unit) {
     return `<div class="kpi">
@@ -146,6 +603,7 @@
       <div class="steps">${steps}</div>
       ${a.blocked ? `<div class="none">${esc(a.blocked)}</div>` : ""}
       <div class="btnrow">
+        <button class="btn" data-edit-prog="${esc(c.name)}">Edit details</button>
         <button class="btn" data-act="pull_blocks" ${a.editable ? "" : "disabled"}>Pull blocks</button>
         <button class="btn" data-act="load_products" ${a.editable ? "" : "disabled"}>Load products</button>
         <button class="btn" data-act="calculate" ${a.editable ? "" : "disabled"}>Run calculation</button>
@@ -305,39 +763,54 @@
     }
   }
 
-  /** Choosing the item a product is drawn from, with stock in view. */
+  /** Choosing the item a product is drawn from, with stock and the rule in view. */
   async function chooseItem(product) {
     const c = state.data && state.data.current;
     if (!c) return;
     let choices;
-    try {
-      choices = await call("get_product_choices", { programme: c.name, product });
-    } catch (e) { return; }
+    try { choices = await call("get_product_choices", { programme: c.name, product }); }
+    catch (e) { return; }
 
     const opts = choices.options || [];
     if (!opts.length) {
       toast(`No item matches the search terms on ${product}.`, "bad");
       return;
     }
-    const rule = choices.rule;
-    const lines = opts.map((o, i) =>
-      `${i + 1}. ${o.item_name || o.item_code} — ${num(o.stock_qty)} ${o.stock_uom || "kg"} in stock`
-    ).join("\n");
-    const ruleText = rule
-      ? `\nThe nutrient rule is the same whichever you pick: ${rule.nutrient}, ` +
-        `${rule.rate_per_tonne}/tonne, ${rule.bag_weight_kg}kg bag, ${rule.product_nutrient_pct}% content.\n`
+    const r = choices.rule;
+    const rule = r
+      ? `<div class="none" style="text-align:left;background:var(--surface);border-radius:14px;padding:14px">
+           <b>The nutrient rule is the same whichever you pick</b><br>
+           ${esc(r.nutrient || "-")} · ${num(r.rate_per_tonne)} per tonne ·
+           ${num(r.bag_weight_kg)} kg bag · ${num(r.product_nutrient_pct)}% content
+           ${r.apply_compost_netting ? " · compost netted" : ""}
+         </div>`
       : "";
-    const answer = prompt(
-      `Which item should ${product} be drawn from?${ruleText}\n${lines}\n\nEnter a number:`,
-      String(1 + opts.findIndex((o) => o.item_code === choices.current)) || "1");
-    if (!answer) return;
-    const pick = opts[parseInt(answer, 10) - 1];
-    if (!pick) { toast("That was not one of the options.", "bad"); return; }
-    try {
-      await call("set_product_item", { programme: c.name, product, item: pick.item_code });
-      toast(`${product} will be drawn from ${pick.item_name || pick.item_code}.`, "good");
-      await load();
-    } catch (e) { /* already surfaced */ }
+    const rows = opts.map((o) => `
+      <div class="qrow" data-pick="${esc(o.item_code)}" style="cursor:pointer">
+        <div class="qrow__mark">${o.item_code === choices.current ? "✓" : ""}</div>
+        <div><div class="qrow__name">${esc(o.item_name || o.item_code)}</div>
+        <div class="qrow__meta">${esc(o.item_code)} · ${num(o.stock_qty)} ${esc(o.stock_uom || "kg")} in stock</div></div>
+        <div class="qrow__right">${o.stock_qty > 0 ? pill("in stock", "good") : pill("empty", "bad")}</div>
+      </div>`).join("");
+
+    const wrap = document.createElement("div");
+    wrap.innerHTML = rule + `<div class="queue" style="margin-top:12px">${rows}</div>`;
+    const m = modal({
+      title: `Which item for ${product}?`,
+      sub: "Tap the one this season should be drawn from.",
+      body: wrap, foot: [{ label: "Cancel" }],
+    });
+    wrap.addEventListener("click", async (e) => {
+      const row = e.target.closest("[data-pick]");
+      if (!row) return;
+      try {
+        await call("set_product_item",
+          { programme: c.name, product, item: row.dataset.pick });
+        toast(`${product} will be drawn from ${row.dataset.pick}.`, "good");
+        m.close();
+        await load();
+      } catch (err) { /* already surfaced */ }
+    });
   }
 
   // ------------------------------------------------------------------ bootstrap
@@ -350,6 +823,7 @@
       if (which === "requests") loadRequests();
       if (which === "applications") loadApplications();
       if (which === "stock") loadStock();
+      if (which === "setup") renderSetup();
     }));
   }
 
@@ -386,6 +860,12 @@
       if (a) return act(a);
       const ch = e.target.closest("[data-choose]");
       if (ch) return chooseItem(ch.dataset.choose);
+      const lst = e.target.closest("[data-open-list]");
+      if (lst) return openList(lst.dataset.openList).catch(() => {});
+      const nw = e.target.closest("[data-new]");
+      if (nw) return openRecord(nw.dataset.new, null, () => load()).catch(() => {});
+      const ed = e.target.closest("[data-edit-prog]");
+      if (ed) return openRecord("programme", ed.dataset.editProg, () => load()).catch(() => {});
     });
 
     load().catch(() => {});

@@ -50,8 +50,29 @@ REJECT = "Reject"
 RESUBMIT = "Re-submit"
 
 
+def approval_required():
+	"""Whether this installation runs the approval chain at all.
+
+	Off by default. The agronomist builds the programme and uses it; an
+	approval step is a second person's time, and nobody asked for one until
+	the farm does. Turning it on in Crop Nutrition Planning Settings activates
+	the generated workflow, and the programme then has to clear the consultant
+	and the farm manager before it becomes block plans.
+	"""
+	if not frappe.db.exists("DocType", "Crop Nutrition Planning Settings"):
+		return False
+	return bool(frappe.db.get_single_value(
+		"Crop Nutrition Planning Settings", "require_programme_approval"))
+
+
 def build_workflow():
-	"""Create or update the workflow. Idempotent - safe on every migrate."""
+	"""Create or update the workflow. Idempotent - safe on every migrate.
+
+	The workflow is always written, but only made active when the setting asks
+	for it: generating it either way means switching approval on is a checkbox
+	rather than a deploy, and switching it off cannot strand a programme that
+	is mid-chain, because the states still exist.
+	"""
 	if not frappe.db.exists("DocType", DOCTYPE):
 		return None
 	if not frappe.db.exists("Role", CONSULTANT_ROLE):
@@ -103,7 +124,7 @@ def build_workflow():
 
 	doc.document_type = DOCTYPE
 	doc.workflow_state_field = STATE_FIELD
-	doc.is_active = 1
+	doc.is_active = 1 if approval_required() else 0
 	doc.send_email_alert = 0
 	# Fertilizer Programme has no `status` field to keep in step any more, and
 	# docstatus is what every query in this app actually gates on.
