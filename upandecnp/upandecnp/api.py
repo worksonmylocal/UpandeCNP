@@ -573,25 +573,95 @@ def get_my_applicators_by_section():
 
 
 @frappe.whitelist()
-def get_available_employees_for_team():
-    """Active, unassigned Employees in the caller's own company - the pick
-    list for Manage Team's "Add Applicator" screen. Scoped to company
-    because this site's Employee list spans unrelated businesses (e.g.
-    Karen Roses) that share the same Frappe instance as upandecnp's own
-    company; without this a supervisor would have to search thousands of
-    irrelevant names. Someone already on a team doesn't show up here;
-    they're removed from their current team first if they need to move."""
+def get_available_employees_for_team(search=None, limit=50):
+    """Active, unassigned Employees the caller could add to their team.
+
+    Searched and capped on the server. This used to return every match -
+    2,462 rows and 139KB on this site - which the phone then filtered
+    locally, so the picker took seconds to appear and did it again on every
+    open. A supervisor is looking for one person whose name they already
+    know, so the useful shape is "the first few that match what I typed".
+
+    Still scoped to the caller's company: this instance hosts unrelated
+    businesses, and without it someone searching "John" wades through other
+    companies' staff. Anyone already on a team is excluded - they are taken
+    off their current team first if they need to move.
+    """
     supervisor = _current_employee()
     filters = {"status": "Active", "custom_field_supervisor": ["is", "not set"]}
     company = frappe.db.get_value("Employee", supervisor, "company") if supervisor else None
     if company:
         filters["company"] = company
+
+    or_filters = None
+    if search and str(search).strip():
+        term = f"%{str(search).strip()}%"
+        # Name or number: people are looked up both ways.
+        or_filters = [
+            ["employee_name", "like", term],
+            ["name", "like", term],
+        ]
+
     return frappe.get_all(
         "Employee",
         filters=filters,
-        fields=["name", "employee_name"],
+        or_filters=or_filters,
+        fields=["name", "employee_name", "designation"],
         order_by="employee_name",
+        limit_page_length=cint(limit) or 50,
     )
+
+
+@frappe.whitelist()
+def add_applicators(employees, block=None):
+    """Add several people to the team at once, optionally onto one block.
+
+    One call for the whole selection. Adding them one at a time meant two
+    round trips per person and a trip back through the picker for the next
+    one, so putting a six-person crew on a block cost twelve requests and
+    six passes over a list that itself took seconds to load.
+
+    Each employee is validated on its own and failures are collected rather
+    than raised, because a crew of six with one person already on somebody
+    else's team should add the other five and say so - not refuse the lot.
+    """
+    if isinstance(employees, str):
+        employees = frappe.parse_json(employees)
+    employees = [e for e in (employees or []) if e]
+    if not employees:
+        frappe.throw("No applicators selected.")
+
+    supervisor = _current_employee()
+    if not supervisor:
+        frappe.throw("You don't have an Employee record linked to your account.")
+
+    if block and not frappe.db.exists("Farm Block", block):
+        frappe.throw(f"Block {block} does not exist.")
+
+    added, failed = [], []
+    for employee in employees:
+        row = frappe.db.get_value(
+            "Employee", employee,
+            ["name", "employee_name", "status", "custom_field_supervisor"],
+            as_dict=True,
+        )
+        if not row or row.status != "Active":
+            failed.append({"employee": employee, "reason": "not an active employee"})
+            continue
+        if row.custom_field_supervisor and row.custom_field_supervisor != supervisor:
+            failed.append({"employee": row.employee_name or employee,
+                           "reason": "already on another supervisor's team"})
+            continue
+
+        frappe.db.set_value("Employee", employee, "custom_field_supervisor", supervisor,
+                            update_modified=False)
+        if block:
+            frappe.db.set_value("Employee", employee, "custom_assigned_block", block,
+                                update_modified=False)
+        added.append(row.employee_name or employee)
+
+    frappe.db.commit()
+    return {"added": added, "failed": failed, "block": block}
 
 
 @frappe.whitelist()
