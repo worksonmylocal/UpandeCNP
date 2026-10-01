@@ -176,3 +176,42 @@ a{color:inherit}
 .empty{text-align:center;padding:30px;color:var(--ink-mute);font-size:13px}
 .skel{background:linear-gradient(90deg,rgba(10,10,10,0.04) 25%,rgba(10,10,10,0.08) 37%,rgba(10,10,10,0.04) 63%);background-size:400% 100%;animation:skel 1.4s ease infinite;border-radius:12px;height:80px}
 @keyframes skel{0%{background-position:100% 50%}100%{background-position:0 50%}}
+
+/* ---------------------------------------------------------------- Work queues
+   Added for the agronomist desk, matching the clinic desk's queue pattern:
+   a row is a piece of work with its state and the action that moves it on. */
+.queue{display:flex;flex-direction:column;max-height:560px;overflow-y:auto}
+.qrow{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;padding:13px 10px;border-bottom:1px solid var(--hairline);border-radius:12px;transition:background .15s}
+.qrow:last-child{border-bottom:0}
+.qrow:hover{background:rgba(10,10,10,0.02)}
+.qrow__mark{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font:600 11px var(--sans);background:rgba(10,10,10,0.05);color:var(--ink-3)}
+.qrow__name{font:600 13.5px var(--sans);color:var(--ink)}
+.qrow__meta{font-size:12px;color:var(--ink-mute);margin-top:2px}
+.qrow__right{display:flex;align-items:center;gap:8px}
+
+/* Step list: the build sequence for a programme, with what is still missing */
+.steps{display:flex;flex-direction:column;gap:2px}
+.step{display:grid;grid-template-columns:26px 1fr auto;gap:12px;align-items:center;padding:11px 8px;border-bottom:1px solid var(--hairline)}
+.step:last-child{border-bottom:0}
+.step__tick{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;background:rgba(10,10,10,0.06);color:var(--ink-mute)}
+.step__tick.on{background:var(--good-bg);color:var(--good)}
+.step__label{font:500 13.5px var(--sans);color:var(--ink-3)}
+.step__detail{font-size:12px;color:var(--ink-mute);margin-top:1px}
+
+/* Buttons used inside cards and queue rows */
+.btn{border:0;border-radius:999px;font:600 12.5px var(--sans);padding:9px 16px;cursor:pointer;background:rgba(10,10,10,0.05);color:var(--ink-3);transition:all .18s;white-space:nowrap}
+.btn:hover:not(:disabled){background:rgba(10,10,10,0.09);color:var(--ink)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn--ink{background:var(--grad-ink);color:#fafaf6}
+.btn--ink:hover:not(:disabled){box-shadow:0 6px 18px rgba(10,10,10,0.22);color:#fff}
+.btn--good{background:var(--good-bg);color:var(--good)}
+.btn--bad{background:var(--bad-bg);color:var(--bad)}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+
+/* Toast */
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:#fafaf6;font:500 13px var(--sans);padding:12px 20px;border-radius:999px;box-shadow:0 12px 32px rgba(10,10,10,.3);z-index:60;max-width:80vw}
+.toast--bad{background:var(--bad)}
+.toast--good{background:var(--good)}
+
+/* Inline empty state inside a card */
+.none{padding:22px 4px;color:var(--ink-mute);font-size:13px;text-align:center}

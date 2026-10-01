@@ -1989,3 +1989,181 @@ def _season_start_year(season):
     import re
     match = re.search(r"(\d{4})", season or "")
     return cint(match.group(1)) if match else cint(frappe.utils.nowdate()[:4])
+
+
+# ----------------------------------------------------------- the agronomist desk
+
+@frappe.whitelist()
+def get_agronomist_desk(farm=None, season=None):
+    """Everything the agronomist's desk needs, in one request.
+
+    The desk exists so the agronomist never has to open a doctype form to do
+    their job - build a programme, pick the products, calculate it, send it for
+    review, then watch the plans and requests it produced. Composing it here
+    rather than letting the page make a dozen calls keeps a farm-office
+    connection from turning one screen into a dozen round trips.
+    """
+    farm = resolve_farm_scope(frappe.session.user, farm)
+
+    prog_filter = {}
+    if farm:
+        prog_filter["farm"] = farm
+    if season and season != "All Seasons":
+        prog_filter["season"] = season
+
+    programmes = frappe.get_all(
+        "Fertilizer Programme", filters=prog_filter,
+        fields=["name", "season", "farm", "crop", "docstatus", "workflow_state",
+                "period_type", "start_month", "end_month", "potassium_source",
+                "production_calendar", "modified"],
+        order_by="modified desc", limit_page_length=20,
+    )
+
+    # The one being worked on: the newest draft, else the newest at all.
+    current = next((p for p in programmes if p.docstatus == 0), None) or (
+        programmes[0] if programmes else None)
+
+    detail = None
+    if current:
+        doc = frappe.get_doc("Fertilizer Programme", current["name"])
+        detail = {
+            "name": doc.name,
+            "season": doc.season,
+            "farm": doc.farm,
+            "crop": doc.crop,
+            "docstatus": doc.docstatus,
+            "workflow_state": doc.workflow_state,
+            "period_type": doc.period_type,
+            "start_month": doc.start_month,
+            "end_month": doc.end_month,
+            "potassium_source": doc.potassium_source,
+            "production_calendar": doc.production_calendar,
+            "blocks": len(doc.get("block_yield_data") or []),
+            "lines": len(doc.get("programme_lines") or []),
+            "products": [
+                {
+                    "product": r.product,
+                    "item": r.fertilizer_item,
+                    "item_name": r.item_name,
+                    "available": flt(r.available_qty),
+                    "required": flt(r.required_qty),
+                    "shortfall": flt(r.shortfall),
+                }
+                for r in doc.get("product_selections") or []
+            ],
+            "actions": _programme_actions(doc),
+        }
+
+    return {
+        "farm": farm,
+        "farms": get_available_farms(),
+        "seasons": get_seasons(),
+        "metrics": get_home_metrics(),
+        "programmes": programmes,
+        "current": detail,
+    }
+
+
+def _programme_actions(doc):
+    """What can be done to this programme right now, and what is blocking the
+    rest. The page renders buttons from this rather than deciding for itself,
+    so the desk and the server can never disagree about what is allowed."""
+    if doc.docstatus != 0:
+        return {
+            "editable": False,
+            "next": None,
+            "blocked": "This programme is approved. Amend it by creating the next one.",
+        }
+
+    blocks = len(doc.get("block_yield_data") or [])
+    products = doc.get("product_selections") or []
+    unchosen = [r.product for r in products if not r.fertilizer_item]
+    lines = len(doc.get("programme_lines") or [])
+
+    steps = []
+    steps.append({"key": "pull_blocks", "label": "Pull blocks from farm",
+                  "done": blocks > 0, "detail": f"{blocks} blocks"})
+    steps.append({"key": "load_products", "label": "Load products",
+                  "done": bool(products),
+                  "detail": f"{len(products)} products" if products else "none yet"})
+    steps.append({"key": "choose_items", "label": "Choose an item per product",
+                  "done": bool(products) and not unchosen,
+                  "detail": ("waiting on products" if not products
+                             else ", ".join(unchosen) if unchosen else "all chosen")})
+    steps.append({"key": "calculate", "label": "Run the calculation",
+                  "done": lines > 0, "detail": f"{lines} lines"})
+
+    nxt = next((s["key"] for s in steps if not s["done"]), None)
+    ready = all(s["done"] for s in steps) and bool(doc.potassium_source)
+
+    return {
+        "editable": True,
+        "steps": steps,
+        "next": nxt,
+        "ready_to_send": ready,
+        "blocked": None if doc.potassium_source else "Select a potassium source first.",
+    }
+
+
+@frappe.whitelist()
+def desk_pull_blocks(programme):
+    """Pull the farm's blocks onto a programme, from the desk."""
+    doc = frappe.get_doc("Fertilizer Programme", programme)
+    count = doc.pull_blocks_from_farm()
+    return {"blocks": count}
+
+
+@frappe.whitelist()
+def desk_calculate(programme):
+    """Run the calculation engine from the desk."""
+    from upandecnp.upandecnp.utils.calculation_engine import calculate_programme
+    return {"lines": calculate_programme(programme)}
+
+
+@frappe.whitelist()
+def desk_send_for_review(programme):
+    """Send a finished programme into the approval chain without opening the
+    form. The workflow decides whether this is allowed and who may do it -
+    this only names the action."""
+    from frappe.model.workflow import apply_workflow
+    from upandecnp.upandecnp.utils.approval import SEND
+
+    doc = frappe.get_doc("Fertilizer Programme", programme)
+    apply_workflow(doc, SEND)
+    doc.reload()
+    return {"workflow_state": doc.workflow_state}
+
+
+@frappe.whitelist()
+def get_plan_queue(farm=None, season=None, limit=200):
+    """Blocks with outstanding rounds, as a queue the desk can render.
+
+    get_blocks_with_pending_work() returns bare block names, takes no farm and
+    is not scoped - fine for the field app's picker, useless for a desk that
+    has to show which section, how much is left and whether the store has
+    issued it. This is that query.
+    """
+    farm = resolve_farm_scope(frappe.session.user, farm)
+
+    conditions = ["p.docstatus = 1", "p.status in ('Planned', 'Issued')"]
+    values = {"limit": cint(limit) or 200}
+    if farm:
+        conditions.append("p.farm = %(farm)s")
+        values["farm"] = farm
+    if season and season != "All Seasons":
+        conditions.append("p.season = %(season)s")
+        values["season"] = season
+
+    rows = frappe.db.sql(f"""
+        select p.block, p.section,
+               count(*) as rounds,
+               sum(case when p.status = 'Issued' then 1 else 0 end) as issued,
+               sum(p.total_kg_required) as total_kg,
+               min(p.application_month) as next_month
+        from `tabBlock Fertilizer Plan` p
+        where {" and ".join(conditions)}
+        group by p.block, p.section
+        order by rounds desc, p.block asc
+        limit %(limit)s
+    """, values, as_dict=True)
+    return rows

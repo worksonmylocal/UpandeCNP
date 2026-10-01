@@ -117,7 +117,24 @@ before_uninstall = "upandecnp.uninstall.before_uninstall"
 # -----------
 # Permissions evaluated in scripted ways
 
-# Material Request is deliberately absent from both permission hooks below.
+# Farm Block and Section are deliberately absent from both hooks below, as is
+# Material Request.
+#
+# Those two are master data - the names, areas and tree counts of places - and
+# other apps link to them: Bed and Warehouse Section in Upande Core (Bed alone
+# holds 20,470 rows) and Seedling Request in Upande Propagation. A permission
+# query condition applies to link lookups as well as list views, so scoping
+# them meant anyone holding a CNP farm role had those other modules' pickers
+# quietly narrowed - including api@upande.com, an integration account. That is
+# the same fault as the Material Request one, one layer down.
+#
+# Nothing is lost by it. Every endpoint that serves blocks or sections scopes
+# itself through resolve_farm_scope(), so the dashboards, the field app and the
+# desk stay farm-scoped regardless; and the farm-specific work - programmes,
+# plans, applications, budgets, requests, attendance - is still scoped below.
+# What becomes visible is the existence of another farm's block names.
+#
+# Material Request is absent for its own reason:
 # It is site-wide data - fuel, chemicals, spares, every department - and
 # scoping it by CNP role meant a supervisor opening Material Request saw only
 # the handful of rows this module created, not the requests they actually
@@ -130,8 +147,6 @@ permission_query_conditions = {
     "Fertilizer Application": "upandecnp.upandecnp.utils.farm_permissions.fertilizer_application_query",
     "Production Calendar": "upandecnp.upandecnp.utils.farm_permissions.production_calendar_query",
     "Leaf Analysis": "upandecnp.upandecnp.utils.farm_permissions.leaf_analysis_query",
-    "Farm Block": "upandecnp.upandecnp.utils.farm_permissions.farm_block_query",
-    "Section": "upandecnp.upandecnp.utils.farm_permissions.section_query",
     "Field Attendance": "upandecnp.upandecnp.utils.farm_permissions.field_attendance_query",
     "Fertilizer Store Request": "upandecnp.upandecnp.utils.farm_permissions.fertilizer_store_request_query",
     "CNP Farm": "upandecnp.upandecnp.utils.farm_permissions.cnp_farm_query",
@@ -144,8 +159,6 @@ has_permission = {
     "Fertilizer Application": "upandecnp.upandecnp.utils.farm_permissions.has_farm_permission",
     "Production Calendar": "upandecnp.upandecnp.utils.farm_permissions.has_farm_permission",
     "Leaf Analysis": "upandecnp.upandecnp.utils.farm_permissions.has_farm_permission",
-    "Farm Block": "upandecnp.upandecnp.utils.farm_permissions.has_farm_permission",
-    "Section": "upandecnp.upandecnp.utils.farm_permissions.has_farm_permission",
     "Field Attendance": "upandecnp.upandecnp.utils.farm_permissions.has_farm_permission",
     "Fertilizer Store Request": "upandecnp.upandecnp.utils.farm_permissions.has_farm_permission",
     "CNP Farm": "upandecnp.upandecnp.utils.farm_permissions.has_farm_permission",

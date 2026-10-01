@@ -187,12 +187,8 @@ def leaf_analysis_query(user):
 	return _condition("Leaf Analysis", "farm", user)
 
 
-def farm_block_query(user):
-	return _condition("Farm Block", "farm", user)
 
 
-def section_query(user):
-	return _condition("Section", "farm", user)
 
 
 def field_attendance_query(user):
