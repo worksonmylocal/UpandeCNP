@@ -23,4 +23,14 @@ def get_context(context):
 
     context.no_cache = 1
     context.show_sidebar = False
+    # Supplied here rather than assumed. csrf_token is not in a web page's
+    # context by default, and a missing one renders as DebugUndefined, which
+    # tojson then refuses - taking the whole page down with a traceback rather
+    # than degrading. The site sets ignore_csrf today, but a page should not
+    # depend on that, and it should certainly not die if the token cannot be
+    # minted (there is no session object outside a real request).
+    try:
+        context.csrf_token = frappe.sessions.get_csrf_token()
+    except Exception:
+        context.csrf_token = ""
     return context
