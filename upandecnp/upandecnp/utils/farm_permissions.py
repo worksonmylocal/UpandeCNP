@@ -73,8 +73,19 @@ def get_restricted_farms(user=None):
 
 	Empty list means unrestricted. Holding a farm-specific role of either
 	family restricts to that farm, and holding several restricts to the union
-	of them."""
+	of them.
+
+	The bare "Farm Manager" role is checked first because it is the all-farm
+	one, and a broader grant has to win over a narrower one. Combining the two
+	families by list concatenation got this backwards: get_manager_farms()
+	signals "all farms" by returning an empty list, which contributes nothing
+	to a union, so an all-farm manager who was also the agronomist for one farm
+	came out restricted to that single farm - the opposite of what either role
+	grants. That is what collapsed Material Request lists for the few people
+	holding both."""
 	user = user or frappe.session.user
+	if MANAGER_ROLE in frappe.get_roles(user):
+		return []
 	return list(dict.fromkeys(get_agronomist_farms(user) + get_manager_farms(user)))
 
 
