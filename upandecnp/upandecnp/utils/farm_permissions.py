@@ -32,6 +32,25 @@ MANAGER_ROLE = "Farm Manager"
 MANAGER_ROLE_PREFIX = "Farm Manager "
 
 
+def module_scope_farm():
+	"""The one farm this installation currently operates, or None for all.
+
+	Set in Crop Nutrition Planning Settings (scope_farm). Only Lokitela has
+	real data and a working store today, so the module is pinned to it: every
+	farm picker offers it alone, a new programme starts on it, and a call that
+	names no farm means it rather than "every farm". Clearing the setting
+	restores the multi-farm behaviour - the per-farm roles underneath never
+	stopped working, this only narrows what is offered on top of them.
+
+	Deliberately a setting and not a constant: bringing the next farm on
+	should be one field edited, not a deploy.
+	"""
+	try:
+		return frappe.db.get_single_value("Crop Nutrition Planning Settings", "scope_farm") or None
+	except Exception:
+		return None
+
+
 def get_agronomist_farms(user):
 	"""Farms this user is restricted to, derived from their roles. Empty list
 	means no restriction applies (not "no farms allowed")."""
@@ -102,18 +121,41 @@ def is_farm_manager(user=None):
 
 def resolve_farm_scope(user, requested_farm):
 	"""Reconcile a dashboard API call's requested farm against the caller's
-	role-based restriction. Several api.py functions serve both /dashboard
-	and /manager, so this combines both Agronomist and Farm Manager
-	restrictions rather than assuming which page is calling - a user
-	restricted by either (or both) only ever sees the farm(s) either role
-	allows. Returns the farm to actually query with (None means "all
-	farms" for an unrestricted caller), or raises frappe.PermissionError if
-	the caller explicitly asked for a farm outside their allowed scope."""
+	role-based restriction and the module's own scope. Several api.py
+	functions serve both /dashboard and /manager, so this combines both
+	Agronomist and Farm Manager restrictions rather than assuming which page
+	is calling - a user restricted by either (or both) only ever sees the
+	farm(s) either role allows. Returns the farm to actually query with (None
+	means "all farms" for an unrestricted caller), or raises
+	frappe.PermissionError if the caller explicitly asked for a farm outside
+	their allowed scope.
+
+	When the module is scoped to one farm (module_scope_farm) that farm is
+	the answer for anyone who named none - including System Managers, who
+	would otherwise get "every farm" - and naming a different one is refused.
+	"""
 	user = user or frappe.session.user
+	scope = module_scope_farm()
+
+	if scope and requested_farm and requested_farm != scope:
+		frappe.throw(
+			f"CNP is currently operating on {scope} only; {requested_farm} is not available.",
+			frappe.PermissionError,
+		)
+
 	if "System Manager" in frappe.get_roles(user):
-		return requested_farm
+		return requested_farm or scope
 
 	farms = get_restricted_farms(user)
+	if scope:
+		if farms and scope not in farms:
+			# Restricted to some other farm, which the module is not operating.
+			frappe.throw(
+				f"CNP is currently operating on {scope} only, which your roles do not cover.",
+				frappe.PermissionError,
+			)
+		return requested_farm or scope
+
 	if not farms:
 		return requested_farm
 

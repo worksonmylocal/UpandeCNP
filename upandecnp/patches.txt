@@ -12,3 +12,4 @@ upandecnp.patches.create_agronomist_roles
 upandecnp.patches.seed_fertilizer_products
 upandecnp.patches.create_consultant_role
 upandecnp.patches.sync_programme_workflow_state
+upandecnp.patches.scope_cnp_to_lokitela

@@ -850,9 +850,15 @@ def get_farms():
     """Return active farms, for the dashboard's farm selector - scoped to
     whatever the caller's Agronomist/Farm Manager role restricts them to,
     same as every other dashboard call (see resolve_farm_scope)."""
-    from upandecnp.upandecnp.utils.farm_permissions import get_agronomist_farms, get_manager_farms
+    from upandecnp.upandecnp.utils.farm_permissions import (
+        get_agronomist_farms, get_manager_farms, module_scope_farm)
 
     farms = frappe.get_all("CNP Farm", filters={"is_active": 1}, fields=["name"], order_by="name")
+    scope = module_scope_farm()
+    if scope:
+        # The module operates on one farm; offering the others would only
+        # invite a choice the rest of the app then refuses.
+        return [f for f in farms if f.name == scope]
     if "System Manager" in frappe.get_roles(frappe.session.user):
         return farms
 
@@ -1767,12 +1773,15 @@ def get_computed_budget(farm=None, season=None):
 @frappe.whitelist()
 def get_available_farms():
     """Return the list of distinct custom_farm values on Block warehouses, for the sync dialog."""
+    from upandecnp.upandecnp.utils.farm_permissions import module_scope_farm
+
     farms = frappe.db.sql("""
         SELECT DISTINCT custom_farm FROM `tabWarehouse`
         WHERE warehouse_type = 'Block' AND custom_farm IS NOT NULL AND custom_farm != ''
         ORDER BY custom_farm
     """, as_dict=True)
-    return [f.custom_farm for f in farms]
+    scope = module_scope_farm()
+    return [f.custom_farm for f in farms if not scope or f.custom_farm == scope]
 
 # --------------------------------------------------------------- Fertilizer products
 
@@ -2061,8 +2070,11 @@ def get_agronomist_desk(farm=None, season=None):
 
     detail = _build_programme_detail(current["name"]) if current else None
 
+    from upandecnp.upandecnp.utils.farm_permissions import module_scope_farm
+
     return {
         "farm": farm,
+        "scope_farm": module_scope_farm(),
         "farms": get_available_farms(),
         "seasons": get_seasons(),
         "metrics": get_home_metrics(),
@@ -2798,13 +2810,21 @@ def get_active_supervisors(farm=None, window=15):
     """
     import time
 
-    from upandecnp.upandecnp.utils.farm_permissions import get_restricted_farms
+    from upandecnp.upandecnp.utils.farm_permissions import get_restricted_farms, module_scope_farm
     from upandecnp.upandecnp.utils.presence import read_presence
 
     if farm:
         allowed = [resolve_farm_scope(frappe.session.user, farm)]
     else:
         allowed = get_restricted_farms()
+        pinned = module_scope_farm()
+        if pinned:
+            # Validates the viewer may work on it at all (a role restricted to
+            # some other farm is refused), then narrows to it. Only when pinned:
+            # with no scope, resolve_farm_scope hands a restricted user just
+            # their first farm, which would hide the rest of theirs here.
+            resolve_farm_scope(frappe.session.user, pinned)
+            allowed = [pinned]
 
     presence = read_presence()
     window = cint(window) or 15

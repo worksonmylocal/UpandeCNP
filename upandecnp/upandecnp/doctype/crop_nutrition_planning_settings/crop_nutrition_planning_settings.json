@@ -8,7 +8,8 @@
   "section_break_zcrd",
   "upcoming_alert_days",
   "variance_threshold_pct",
-  "require_programme_approval"
+  "require_programme_approval",
+  "scope_farm"
  ],
  "fields": [
   {
@@ -33,13 +34,20 @@
    "fieldname": "require_programme_approval",
    "fieldtype": "Check",
    "label": "Require Programme Approval"
+  },
+  {
+   "description": "While set, every farm picker offers this farm alone, new programmes start on it, and a request that names no farm means it. Clear it to work across all farms again.",
+   "fieldname": "scope_farm",
+   "fieldtype": "Link",
+   "label": "Operate on One Farm",
+   "options": "CNP Farm"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-02 20:00:00.000000",
+ "modified": "2026-10-02 21:00:00.000000",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Crop Nutrition Planning Settings",

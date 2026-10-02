@@ -18,7 +18,9 @@
   const num = (n, d = 0) => (Number(n) || 0).toLocaleString(undefined,
     { minimumFractionDigits: d, maximumFractionDigits: d });
 
-  let state = { farm: "", season: "", data: null };
+  // `scope` is the one farm the module is operating on (Module Settings), or
+  // "" for all. Every farm picker, list and new record below honours it.
+  let state = { farm: "", season: "", data: null, scope: "" };
 
   // ------------------------------------------------------------------ transport
   async function call(method, args = {}, { quiet = false } = {}) {
@@ -215,7 +217,10 @@
     const wanted = Array.from(new Set(sels.map((s) => s.dataset.link)));
     const lists = {};
     await Promise.all(wanted.map(async (dt) => {
-      try { lists[dt] = await listDoc(dt, ["name"], [], "name asc"); }
+      try {
+        lists[dt] = await listDoc(dt, ["name"],
+          dt === "CNP Farm" && state.scope ? [["name", "=", state.scope]] : [], "name asc");
+      }
       catch (e) { lists[dt] = []; }
     }));
     sels.forEach((sel) => {
@@ -504,6 +509,8 @@
       fields: [
         { name: "upcoming_alert_days", label: "Alert Days Before Application", type: "int" },
         { name: "variance_threshold_pct", label: "Variance Alert Threshold (%)", type: "int" },
+        { name: "scope_farm", label: "Operate on One Farm", type: "link", doctype: "CNP Farm",
+          help: "While set, every picker offers this farm alone and new records start on it. Clear it to work across all farms." },
         { name: "require_programme_approval", label: "Require Programme Approval", type: "check",
           help: "Off: you submit the programme and it takes effect. On: it goes to the consultant, then the farm manager." },
       ],
@@ -519,10 +526,13 @@
       data = await getDoc(spec.doctype, spec.doctype);
     } else if (name) {
       data = await getDoc(spec.doctype, name);
-    } else if (defaults) {
+    } else {
       // A new record that already knows where it belongs - a block added from
-      // inside a section should not ask which section it is in.
-      data = Object.assign({}, defaults);
+      // inside a section should not ask which section it is in, and with the
+      // module on one farm nothing should ask which farm.
+      const onFarm = state.scope && spec.fields.some((f) => f.name === "farm")
+        ? { farm: state.scope } : {};
+      data = Object.assign(onFarm, defaults || {});
     }
 
     const form = document.createElement("div");
@@ -680,7 +690,10 @@
     });
 
     async function draw() {
-      const rows = await listDoc(spec.doctype, spec.list);
+      const farmField = spec.doctype === "CNP Farm" ? "name"
+        : spec.fields.some((f) => f.name === "farm") ? "farm" : null;
+      const rows = await listDoc(spec.doctype, spec.list,
+        state.scope && farmField ? [[farmField, "=", state.scope]] : []);
       $(".queue", wrap).innerHTML = rows.map((r) => {
         const extra = spec.list.slice(1).map((f) =>
           r[f] === undefined || r[f] === null || r[f] === "" ? null : `${f.replace(/_/g, " ")}: ${r[f]}`)
@@ -1546,6 +1559,7 @@
     const d = await call("get_agronomist_desk",
       { farm: state.farm || null, season: state.season || null });
     state.data = d;
+    state.scope = d.scope_farm || "";
     if (!$("#farm").options.length) {
       fillSelect($("#farm"), d.farms && d.farms.length ? d.farms : ["All Farms"], d.farm);
       fillSelect($("#season"), d.seasons || ["All Seasons"], state.season);
