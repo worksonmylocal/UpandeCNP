@@ -2011,13 +2011,23 @@ def get_agronomist_desk(farm=None, season=None):
     if season and season != "All Seasons":
         prog_filter["season"] = season
 
+    # workflow_state is a custom field Frappe adds when the approval Workflow is
+    # first saved. On a site where that has not happened yet - a fresh install,
+    # or one where build_workflow() bailed - naming it here would take the whole
+    # desk down with "Unknown column" rather than simply showing Draft.
+    has_state = frappe.db.has_column("Fertilizer Programme", "workflow_state")
+    fields = ["name", "season", "farm", "crop", "docstatus",
+              "period_type", "start_month", "end_month", "potassium_source",
+              "production_calendar", "modified"]
+    if has_state:
+        fields.append("workflow_state")
+
     programmes = frappe.get_all(
-        "Fertilizer Programme", filters=prog_filter,
-        fields=["name", "season", "farm", "crop", "docstatus", "workflow_state",
-                "period_type", "start_month", "end_month", "potassium_source",
-                "production_calendar", "modified"],
+        "Fertilizer Programme", filters=prog_filter, fields=fields,
         order_by="modified desc", limit_page_length=20,
     )
+    for p in programmes:
+        p.setdefault("workflow_state", None)
 
     # The one being worked on: the newest draft, else the newest at all.
     current = next((p for p in programmes if p.docstatus == 0), None) or (
@@ -2032,7 +2042,7 @@ def get_agronomist_desk(farm=None, season=None):
             "farm": doc.farm,
             "crop": doc.crop,
             "docstatus": doc.docstatus,
-            "workflow_state": doc.workflow_state,
+            "workflow_state": doc.get("workflow_state"),
             "period_type": doc.period_type,
             "start_month": doc.start_month,
             "end_month": doc.end_month,
