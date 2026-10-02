@@ -63,14 +63,30 @@
     return null;
   }
 
-  let toastTimer;
+  /** Top right, stacked, and gone on their own.
+   *
+   *  They used to land bottom-centre over the content and a second one
+   *  replaced the first, so a run of actions left one message and no idea
+   *  which. Ten seconds is long enough to read without becoming furniture. */
   function toast(msg, kind) {
+    let wrap = $(".toastwrap");
+    if (!wrap) {
+      wrap = document.createElement("div");
+      wrap.className = "toastwrap";
+      document.body.appendChild(wrap);
+    }
     const el = document.createElement("div");
     el.className = "toast" + (kind ? " toast--" + kind : "");
-    el.textContent = msg;
-    document.body.appendChild(el);
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => el.remove(), 4200);
+    const ic = kind === "good" ? "✓" : kind === "bad" ? "!" : "•";
+    el.innerHTML = `<span class="toast__ic">${ic}</span><span></span>`;
+    el.lastElementChild.textContent = msg;
+    wrap.appendChild(el);
+    const go = () => {
+      el.classList.add("toast--out");
+      setTimeout(() => { el.remove(); if (!wrap.children.length) wrap.remove(); }, 320);
+    };
+    const t = setTimeout(go, 10000);
+    el.addEventListener("click", () => { clearTimeout(t); go(); });
   }
 
   // --------------------------------------------------------------- frappe client
@@ -289,7 +305,8 @@
           { search: q || null, farm: state.farm || null });
         $("#ip-rows", wrap).innerHTML = rows.map((r) => `
           <div class="qrow" data-pick='${esc(JSON.stringify(r))}' style="cursor:pointer">
-            <div class="qrow__mark">${r.item_code === current ? "✓" : ""}</div>
+            <div class="qrow__mark" style="background:transparent">${r.item_code === current
+              ? `<span class="mark mark--yes">✓</span>` : ""}</div>
             <div><div class="qrow__name">${esc(r.item_name || r.item_code)}</div>
             <div class="qrow__meta">${esc(r.item_code)} · ${num(r.stock_qty)} ${esc(r.stock_uom || "kg")} in stock</div></div>
             <div class="qrow__right">${r.stock_qty > 0 ? pill("in stock", "good") : pill("empty", "mute")}</div>
@@ -679,11 +696,12 @@
       : "Full year";
 
     $("#prog-body").innerHTML = `
-      <div class="qrow" style="border:0;padding-left:0">
+      <div class="qrow" data-prog="${esc(c.name)}" style="border:0;padding-left:0;cursor:pointer">
         <div class="qrow__mark">${esc((c.season || "?").slice(0, 2))}</div>
         <div>
           <div class="qrow__name">${esc(c.name)}</div>
-          <div class="qrow__meta">${period} · ${num(c.blocks)} blocks · ${num(c.lines)} lines</div>
+          <div class="qrow__meta">${period} · ${num(c.blocks)} blocks · ${num(c.lines)} lines ·
+            <span style="color:var(--signal)">open for the numbers</span></div>
         </div>
         <div class="qrow__right">${pill(progState(c), stateKind(progState(c)))}</div>
       </div>
@@ -702,17 +720,20 @@
     const rows = (c.products || []).map((p) => {
       const short = p.shortfall > 0;
       return `<div class="qrow">
-        <div class="qrow__mark">${esc(p.product.slice(0, 3))}</div>
+        <div class="qrow__mark" style="background:transparent">
+          <span class="mark mark--${p.item ? "yes" : "no"}">${p.item ? "✓" : "✕"}</span>
+        </div>
         <div>
-          <div class="qrow__name">${esc(p.item_name || p.item || "No item chosen")}</div>
+          <div class="qrow__name">${esc(p.item_name || p.item || "No item chosen yet")}</div>
           <div class="qrow__meta">${esc(p.product)}${p.item ? " · " + esc(p.item) : ""} ·
             needs ${num(p.required)} kg, ${num(p.available)} kg in stock</div>
         </div>
         <div class="qrow__right">
-          ${short ? pill("short " + num(p.shortfall) + " kg", "bad")
-                  : p.item ? pill("covered", "good") : pill("choose an item", "warn")}
+          ${!p.item ? pill("not chosen", "bad")
+            : short ? pill("short " + num(p.shortfall) + " kg", "bad")
+                    : pill("covered", "good")}
           <button class="btn" data-choose="${esc(p.product)}"
-            ${c.actions && c.actions.editable ? "" : "disabled"}>Change</button>
+            ${c.actions && c.actions.editable ? "" : "disabled"}>${p.item ? "Change" : "Choose"}</button>
         </div>
       </div>`;
     }).join("");
@@ -733,6 +754,91 @@
         </div>
         <div class="qrow__right">${pill(progState(p), stateKind(progState(p)))}</div>
       </div>`).join("") || `<div class="none">Nothing yet.</div>`;
+  }
+
+  /** The programme opened up: what it commits to, and where it has got to. */
+  async function openProgramme(name) {
+    const c = state.data && state.data.current;
+    if (!c || c.name !== name) return;
+    let months = [], stock = [];
+    try {
+      [months, stock] = await Promise.all([
+        call("get_monthly_breakdown", { farm: state.farm || null, season: c.season }),
+        call("get_desk_stock", { farm: state.farm || null, season: c.season }),
+      ]);
+    } catch (e) { /* the numbers below still stand without the charts */ }
+
+    const prods = c.products || [];
+    const chosen = prods.filter((p) => p.item).length;
+    const short = prods.filter((p) => p.shortfall > 0);
+    const required = prods.reduce((a, p) => a + (p.required || 0), 0);
+
+    const body = document.createElement("div");
+    body.innerHTML = `
+      <div class="kpi-grid" style="margin-bottom:18px">
+        <div class="kpi"><div class="kpi__label">State</div>
+          <div class="kpi__value ${stateKind(progState(c)) === "good" ? "good" : "warn"}">${esc(progState(c))}</div>
+          <div class="kpi__unit">${esc(c.period_type === "Custom Period"
+            ? c.start_month + " – " + c.end_month : "Full year")}</div></div>
+        <div class="kpi"><div class="kpi__label">Blocks</div>
+          <div class="kpi__value">${num(c.blocks)}</div>
+          <div class="kpi__unit">${num(c.lines)} planned rounds</div></div>
+        <div class="kpi"><div class="kpi__label">Fertilizer committed</div>
+          <div class="kpi__value">${num(required)}</div>
+          <div class="kpi__unit">kg across ${prods.length} products</div></div>
+        <div class="kpi"><div class="kpi__label">Products chosen</div>
+          <div class="kpi__value ${chosen === prods.length && prods.length ? "good" : "bad"}">${num(chosen)}/${num(prods.length)}</div>
+          <div class="kpi__unit">${short.length ? short.length + " short of stock" : "all covered"}</div></div>
+      </div>
+
+      <div class="card" style="box-shadow:none;padding:0 0 18px">
+        <div class="card__head"><h3>Fertilizer by month</h3>
+          <span class="meta">What the calendar spreads it over</span></div>
+        <canvas id="pg-month" height="200"></canvas>
+      </div>
+
+      <div class="card" style="box-shadow:none;padding:0">
+        <div class="card__head"><h3>Cover per product</h3>
+          <span class="meta">Store against what is still needed</span></div>
+        <div id="pg-stock"></div>
+      </div>`;
+
+    modal({ title: c.name, sub: `${c.season} · ${c.farm || ""} · ${c.crop || ""}`,
+            body, size: "wide", foot: [{ label: "Close" }] });
+
+    // bars, after the popup is in the document so the canvas has a size
+    const inProg = (stock || []).filter((r) => r.in_programme);
+    $("#pg-stock", body).innerHTML = inProg.map((r) => {
+      const pct = r.required ? Math.min(100, Math.round(r.stock / r.required * 100)) : 100;
+      return `<div class="hb">
+        <div class="hb__name">${esc(r.item_name || r.item_code)}</div>
+        <div class="hb__lane"><div class="hb__est"></div>
+          <div class="hb__act${r.sufficient ? "" : " bad"}" style="width:${pct}%"></div></div>
+        <div class="hb__pct">${pct}%</div>
+      </div>`;
+    }).join("") || `<div class="none">Nothing required yet — run the calculation.</div>`;
+
+    if (window.Chart && months && months.length) {
+      new Chart($("#pg-month", body), {
+        type: "bar",
+        data: {
+          labels: months.map((m) => m.month),
+          datasets: [{
+            label: "Kg", data: months.map((m) => m.qty || m.total_kg || 0),
+            backgroundColor: "#24463c", borderRadius: 6,
+          }],
+        },
+        options: {
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, grid: { color: "rgba(10,10,10,.06)" } },
+                    x: { grid: { display: false } } },
+          maintainAspectRatio: false,
+        },
+      });
+    } else {
+      $("#pg-month", body).replaceWith(Object.assign(document.createElement("div"),
+        { className: "none", textContent: "No monthly split yet — run the calculation." }));
+    }
   }
 
   // ----------------------------------------------------------------- other tabs
@@ -1048,7 +1154,8 @@
       : "";
     const rows = opts.map((o) => `
       <div class="qrow" data-pick="${esc(o.item_code)}" style="cursor:pointer">
-        <div class="qrow__mark">${o.item_code === choices.current ? "✓" : ""}</div>
+        <div class="qrow__mark" style="background:transparent">${o.item_code === choices.current
+          ? `<span class="mark mark--yes">✓</span>` : ""}</div>
         <div><div class="qrow__name">${esc(o.item_name || o.item_code)}</div>
         <div class="qrow__meta">${esc(o.item_code)} · ${num(o.stock_qty)} ${esc(o.stock_uom || "kg")} in stock</div></div>
         <div class="qrow__right">${o.stock_qty > 0 ? pill("in stock", "good") : pill("empty", "bad")}</div>
@@ -1148,6 +1255,8 @@
       if (nw) return openRecord(nw.dataset.new, null, () => load()).catch(() => {});
       const ed = e.target.closest("[data-edit-prog]");
       if (ed) return openRecord("programme", ed.dataset.editProg, () => load()).catch(() => {});
+      const pg = e.target.closest("[data-prog]");
+      if (pg) return openProgramme(pg.dataset.prog);
       const bl = e.target.closest("[data-block]");
       if (bl) return openBlock(bl.dataset.block);
       const rq = e.target.closest("[data-req]");
