@@ -123,14 +123,17 @@ def get_blocks_with_pending_work():
 
 
 @frappe.whitelist()
-def get_pending_plans_for_block(block):
+def get_pending_plans_for_block(block, programme=None):
     """Return the pending fertilizer plans for a block, with any linked request status."""
     from upandecnp.upandecnp.utils.integration import categorize_request_status
 
     _block_scope_guard(block)
+    filters = {"docstatus": 1, "block": block, "status": ["in", ["Planned", "Issued"]]}
+    if programme:
+        filters["fertilizer_programme"] = programme
     plans = frappe.get_all(
         "Block Fertilizer Plan",
-        filters={"docstatus": 1, "block": block, "status": ["in", ["Planned", "Issued"]]},
+        filters=filters,
         fields=["name", "fertilizer_product", "application_month",
                 "total_kg_required", "status"],
         order_by="application_month",
@@ -156,7 +159,7 @@ def get_pending_plans_for_block(block):
 
 
 @frappe.whitelist()
-def get_sections_with_pending_work(farm=None):
+def get_sections_with_pending_work(farm=None, programme=None):
     """Sections that have at least one Planned or Issued Block Fertilizer
     Plan, with a pending-plan count - the entry point for the field app's
     Upcoming Applications flow (Sections first, then plans within one)."""
@@ -164,6 +167,8 @@ def get_sections_with_pending_work(farm=None):
     filters = {"docstatus": 1, "status": ["in", ["Planned", "Issued"]]}
     if farm:
         filters["farm"] = farm
+    if programme:
+        filters["fertilizer_programme"] = programme
 
     plans = frappe.get_all("Block Fertilizer Plan", filters=filters, fields=["section"])
     counts = {}
@@ -178,15 +183,18 @@ def get_sections_with_pending_work(farm=None):
 
 
 @frappe.whitelist()
-def get_pending_plans_for_section(section):
+def get_pending_plans_for_section(section, programme=None):
     """Same shape as get_pending_plans_for_block, scoped to every block in
     a Section instead of a single block."""
     from upandecnp.upandecnp.utils.integration import categorize_request_status
 
     _section_scope_guard(section)
+    filters = {"docstatus": 1, "section": section, "status": ["in", ["Planned", "Issued"]]}
+    if programme:
+        filters["fertilizer_programme"] = programme
     plans = frappe.get_all(
         "Block Fertilizer Plan",
-        filters={"docstatus": 1, "section": section, "status": ["in", ["Planned", "Issued"]]},
+        filters=filters,
         fields=["name", "block", "fertilizer_product", "application_month",
                 "total_kg_required", "status"],
         order_by="block, application_month",
@@ -211,7 +219,7 @@ def get_pending_plans_for_section(section):
 
 
 @frappe.whitelist()
-def get_sections_with_issued_work(farm=None):
+def get_sections_with_issued_work(farm=None, programme=None):
     """Same shape as get_sections_with_pending_work, but only counts blocks
     that have already been issued fertilizer from store - the entry point
     for Record Application, which should only ever offer blocks that are
@@ -220,6 +228,8 @@ def get_sections_with_issued_work(farm=None):
     filters = {"docstatus": 1, "status": "Issued"}
     if farm:
         filters["farm"] = farm
+    if programme:
+        filters["fertilizer_programme"] = programme
 
     plans = frappe.get_all("Block Fertilizer Plan", filters=filters, fields=["section"])
     counts = {}
@@ -234,14 +244,17 @@ def get_sections_with_issued_work(farm=None):
 
 
 @frappe.whitelist()
-def get_issued_blocks_in_section(section):
+def get_issued_blocks_in_section(section, programme=None):
     """Blocks within a section that have at least one Issued Block
     Fertilizer Plan - used by Record Application's block picker so a
     supervisor can only select blocks actually ready to record against."""
     _section_scope_guard(section)
+    filters = {"docstatus": 1, "section": section, "status": "Issued"}
+    if programme:
+        filters["fertilizer_programme"] = programme
     plans = frappe.get_all(
         "Block Fertilizer Plan",
-        filters={"docstatus": 1, "section": section, "status": "Issued"},
+        filters=filters,
         fields=["block"],
     )
     counts = {}
@@ -274,7 +287,7 @@ def get_blocks_in_section(section):
 
 
 @frappe.whitelist()
-def get_home_metrics(farm=None):
+def get_home_metrics(farm=None, programme=None):
     """Every figure the field app's home screen shows, in one call - a phone
     on a patchy orchard connection shouldn't make five round trips to fill
     one screen.
@@ -287,6 +300,8 @@ def get_home_metrics(farm=None):
     plan_filter = {"docstatus": 1}
     if farm:
         plan_filter["farm"] = farm
+    if programme:
+        plan_filter["fertilizer_programme"] = programme
     plans = frappe.get_all("Block Fertilizer Plan", filters=plan_filter, fields=["status"])
 
     total = len(plans)
@@ -348,7 +363,7 @@ def create_store_request(block_fertilizer_plan, quantity, employee=None):
 
 
 @frappe.whitelist()
-def get_store_requests(farm=None):
+def get_store_requests(farm=None, programme=None):
     """All Fertiliser Issuing Material Requests for the caller's farm scope,
     with a colour-coded status - the field app's "status of requests"
     view."""
@@ -362,6 +377,8 @@ def get_store_requests(farm=None):
     filters = {"custom_block_fertilizer_plan": ["is", "set"]}
     if farm:
         filters["custom_farm"] = farm
+    if programme:
+        filters["custom_fertilizer_programme"] = programme
 
     requests = frappe.get_all(
         "Material Request",
@@ -1039,7 +1056,7 @@ def get_budget_summary(season=None, farm=None):
 
 
 @frappe.whitelist()
-def get_upcoming_and_overdue(farm=None):
+def get_upcoming_and_overdue(farm=None, programme=None):
     """Plans due in the next 30 days, and overdue plans (month passed, not applied)."""
     farm = resolve_farm_scope(frappe.session.user, farm)
     from frappe.utils import today, getdate, date_diff
@@ -1051,6 +1068,8 @@ def get_upcoming_and_overdue(farm=None):
     plan_filter = {"docstatus": 1, "status": ["in", ["Planned", "Issued"]]}
     if farm:
         plan_filter["farm"] = farm
+    if programme:
+        plan_filter["fertilizer_programme"] = programme
 
     plans = frappe.get_all("Block Fertilizer Plan",
         filters=plan_filter,
@@ -2563,3 +2582,88 @@ def get_desk_stock(farm=None, season=None):
         })
     out.sort(key=lambda r: (not r["in_programme"], r["sufficient"], -r["shortfall"]))
     return out
+
+
+# ----------------------------------------------------------- desk: programme detail
+
+@frappe.whitelist()
+def get_programme_summary(programme):
+    """Everything the programme detail popup needs, scoped to this
+    programme alone.
+
+    get_monthly_breakdown() and get_desk_stock() pool every programme that
+    shares a farm and season, which is wrong the moment two programmes exist
+    side by side - and on Lokitela they already do. Opening one programme's
+    detail must not show figures a second programme contributed. Every number
+    here comes from this programme's own doc: its programme_lines for the
+    monthly split, its own Block Fertilizer Plans for progress, its own
+    product_selections for cost (that table already carries required/
+    available/shortfall from the last calculation, so it is reused rather
+    than re-derived).
+    """
+    doc = frappe.get_doc("Fertilizer Programme", programme)
+
+    month_order = ["January", "February", "March", "April", "May", "June",
+                   "July", "August", "September", "October", "November", "December"]
+    monthly = {m: 0.0 for m in month_order}
+    for line in doc.get("programme_lines", []):
+        if line.application_month in monthly:
+            monthly[line.application_month] += flt(line.total_kg)
+    months = [{"month": m[:3], "qty": round(q, 0)} for m, q in monthly.items() if q]
+
+    prices = {}
+    cost = 0.0
+    for row in doc.get("product_selections", []):
+        if not row.fertilizer_item:
+            continue
+        if row.fertilizer_item not in prices:
+            prices[row.fertilizer_item] = flt(frappe.db.get_value(
+                "Item Price", {"item_code": row.fertilizer_item, "buying": 1},
+                "price_list_rate"))
+        cost += flt(row.required_qty) * prices[row.fertilizer_item]
+
+    plans = frappe.get_all(
+        "Block Fertilizer Plan", filters={"fertilizer_programme": programme, "docstatus": 1},
+        fields=["status", "application_month"],
+    )
+    total_rounds = len(plans)
+    applied_rounds = sum(1 for p in plans if p.status in ("Applied", "Verified"))
+    today_date = frappe.utils.getdate(frappe.utils.today())
+    overdue_rounds = sum(
+        1 for p in plans
+        if p.status in ("Planned", "Issued") and _is_month_passed(p.application_month, today_date)
+    )
+
+    pending_requests = frappe.db.count(
+        "Material Request", {"custom_fertilizer_programme": programme, "status": ["!=", "Cancelled"]})
+
+    return {
+        "monthly": months,
+        "total_rounds": total_rounds,
+        "applied_rounds": applied_rounds,
+        "pct_applied": round(applied_rounds * 100.0 / total_rounds, 0) if total_rounds else 0,
+        "overdue_rounds": overdue_rounds,
+        "cost_estimate": round(cost, 0),
+        "pending_requests": pending_requests,
+    }
+
+
+@frappe.whitelist()
+def get_field_programmes(farm=None):
+    """Submitted programmes the field app can work against.
+
+    Drafts are excluded - they have no Block Fertilizer Plans yet, so there
+    is nothing for a supervisor to pick from them. On a farm with only one
+    submitted programme this is a formality the app skips past; it starts
+    mattering the moment a second one is submitted for the same farm.
+    """
+    farm = resolve_farm_scope(frappe.session.user, farm)
+    filters = {"docstatus": 1}
+    if farm:
+        filters["farm"] = farm
+    return frappe.get_all(
+        "Fertilizer Programme", filters=filters,
+        fields=["name", "season", "farm", "crop", "period_type",
+               "start_month", "end_month"],
+        order_by="modified desc",
+    )

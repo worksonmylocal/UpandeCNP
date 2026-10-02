@@ -757,21 +757,56 @@
   }
 
   /** The programme opened up: what it commits to, and where it has got to. */
+  /** A second, smaller modal asking "are you sure" - the delete button does
+   *  not get to be one tap, and the destructive action gets its own colour
+   *  rather than borrowing the same ink button as everything else. */
+  function confirmModal(title, body, confirmLabel) {
+    return new Promise((resolve) => {
+      let answered = false;
+      const m = modal({
+        title, sub: body, size: "",
+        onClose: () => { if (!answered) resolve(false); },
+        foot: [
+          { label: "Cancel", onClick: () => { answered = true; resolve(false); } },
+          { label: confirmLabel, cls: "btn--bad", onClick: () => { answered = true; resolve(true); } },
+        ],
+      });
+    });
+  }
+
+  async function submitProgramme(name) {
+    try {
+      const r = await call("desk_submit_programme", { programme: name });
+      toast(r.already ? "Already submitted." :
+        "Programme submitted — the block plans are created.", "good");
+      await load();
+    } catch (e) { /* already surfaced */ }
+  }
+
+  async function deleteDraft(name, closeModal) {
+    const ok = await confirmModal("Delete this draft?",
+      `${name} and anything pulled into it — blocks, products, calculated lines — goes with it. This cannot be undone.`,
+      "Delete draft");
+    if (!ok) return;
+    try {
+      await doc("delete", { doctype: "Fertilizer Programme", name });
+      toast("Draft deleted.", "good");
+      closeModal();
+      await load();
+    } catch (e) { /* already surfaced */ }
+  }
+
   async function openProgramme(name) {
     const c = state.data && state.data.current;
     if (!c || c.name !== name) return;
-    let months = [], stock = [];
-    try {
-      [months, stock] = await Promise.all([
-        call("get_monthly_breakdown", { farm: state.farm || null, season: c.season }),
-        call("get_desk_stock", { farm: state.farm || null, season: c.season }),
-      ]);
-    } catch (e) { /* the numbers below still stand without the charts */ }
+    let sum = null;
+    try { sum = await call("get_programme_summary", { programme: name }); }
+    catch (e) { /* the KPIs above still stand without it */ }
 
     const prods = c.products || [];
     const chosen = prods.filter((p) => p.item).length;
-    const short = prods.filter((p) => p.shortfall > 0);
     const required = prods.reduce((a, p) => a + (p.required || 0), 0);
+    const draft = c.docstatus === 0;
 
     const body = document.createElement("div");
     body.innerHTML = `
@@ -788,43 +823,69 @@
           <div class="kpi__unit">kg across ${prods.length} products</div></div>
         <div class="kpi"><div class="kpi__label">Products chosen</div>
           <div class="kpi__value ${chosen === prods.length && prods.length ? "good" : "bad"}">${num(chosen)}/${num(prods.length)}</div>
-          <div class="kpi__unit">${short.length ? short.length + " short of stock" : "all covered"}</div></div>
+          <div class="kpi__unit">${prods.length - chosen ? (prods.length - chosen) + " still to choose" : "all chosen"}</div></div>
+        ${sum ? `
+        <div class="kpi"><div class="kpi__label">Rounds applied</div>
+          <div class="kpi__value ${sum.applied_rounds === sum.total_rounds && sum.total_rounds ? "good" : ""}">${num(sum.applied_rounds)}/${num(sum.total_rounds)}</div>
+          <div class="kpi__unit">${num(sum.pct_applied)}% done</div></div>
+        <div class="kpi"><div class="kpi__label">Overdue rounds</div>
+          <div class="kpi__value ${sum.overdue_rounds ? "bad" : "good"}">${num(sum.overdue_rounds)}</div>
+          <div class="kpi__unit">month passed, not yet applied</div></div>
+        <div class="kpi"><div class="kpi__label">Estimated cost</div>
+          <div class="kpi__value">${num(sum.cost_estimate)}</div>
+          <div class="kpi__unit">at current buying price</div></div>
+        <div class="kpi"><div class="kpi__label">Store requests</div>
+          <div class="kpi__value ${sum.pending_requests ? "warn" : ""}">${num(sum.pending_requests)}</div>
+          <div class="kpi__unit">raised for this programme</div></div>` : ""}
       </div>
 
       <div class="card" style="box-shadow:none;padding:0 0 18px">
         <div class="card__head"><h3>Fertilizer by month</h3>
           <span class="meta">What the calendar spreads it over</span></div>
-        <canvas id="pg-month" height="200"></canvas>
+        <div class="chartbox"><canvas id="pg-month"></canvas></div>
       </div>
 
       <div class="card" style="box-shadow:none;padding:0">
         <div class="card__head"><h3>Cover per product</h3>
-          <span class="meta">Store against what is still needed</span></div>
+          <span class="meta">Store against what this programme still needs</span></div>
         <div id="pg-stock"></div>
       </div>`;
 
-    modal({ title: c.name, sub: `${c.season} · ${c.farm || ""} · ${c.crop || ""}`,
-            body, size: "wide", foot: [{ label: "Close" }] });
+    const foot = [];
+    if (draft) {
+      foot.push({ label: "Delete draft", cls: "btn--bad",
+        onClick: (h) => deleteDraft(name, () => h.close()) });
+      foot.push({ label: "Submit programme", cls: "btn--ink",
+        onClick: async (h) => { await submitProgramme(name); h.close(); } });
+    } else {
+      foot.push({ label: "Close" });
+    }
 
-    // bars, after the popup is in the document so the canvas has a size
-    const inProg = (stock || []).filter((r) => r.in_programme);
-    $("#pg-stock", body).innerHTML = inProg.map((r) => {
-      const pct = r.required ? Math.min(100, Math.round(r.stock / r.required * 100)) : 100;
+    modal({ title: c.name, sub: `${c.season} · ${c.farm || ""} · ${c.crop || ""}`,
+            body, size: "wide", foot });
+
+    // cover bars, straight from product_selections - already scoped to this
+    // one programme, so a second programme on the same farm/season cannot
+    // bleed its own required/available figures into this view.
+    $("#pg-stock", body).innerHTML = prods.map((p) => {
+      const pct = p.required ? Math.min(100, Math.round(p.available / p.required * 100)) : 100;
+      const ok = !p.required || p.shortfall <= 0;
       return `<div class="hb">
-        <div class="hb__name">${esc(r.item_name || r.item_code)}</div>
+        <div class="hb__name">${esc(p.item_name || p.item || p.product)}</div>
         <div class="hb__lane"><div class="hb__est"></div>
-          <div class="hb__act${r.sufficient ? "" : " bad"}" style="width:${pct}%"></div></div>
+          <div class="hb__act${ok ? "" : " bad"}" style="width:${pct}%"></div></div>
         <div class="hb__pct">${pct}%</div>
       </div>`;
-    }).join("") || `<div class="none">Nothing required yet — run the calculation.</div>`;
+    }).join("") || `<div class="none">No products loaded yet.</div>`;
 
+    const months = sum ? sum.monthly : [];
     if (window.Chart && months && months.length) {
       new Chart($("#pg-month", body), {
         type: "bar",
         data: {
           labels: months.map((m) => m.month),
           datasets: [{
-            label: "Kg", data: months.map((m) => m.qty || m.total_kg || 0),
+            label: "Kg", data: months.map((m) => m.qty || 0),
             backgroundColor: "#24463c", borderRadius: 6,
           }],
         },
@@ -833,6 +894,7 @@
           scales: { y: { beginAtZero: true, grid: { color: "rgba(10,10,10,.06)" } },
                     x: { grid: { display: false } } },
           maintainAspectRatio: false,
+          responsive: true,
         },
       });
     } else {
@@ -841,6 +903,7 @@
     }
   }
 
+  // ----------------------------------------------------------------- other tabs
   // ----------------------------------------------------------------- other tabs
   function bar(pct, kind) {
     const w = Math.max(0, Math.min(100, Number(pct) || 0));
