@@ -305,3 +305,14 @@ a{color:inherit}
 .pill.warn{background:#fdecc8;color:#8a5200;border-color:rgba(138,82,0,.32)}
 .pill--submitted::before{content:"\2713";width:auto;height:auto;background:none;font-size:11px;font-weight:800;line-height:1}
 .pill--draft::before{content:"\270E";width:auto;height:auto;background:none;font-size:11px;line-height:1}
+
+/* Presence: a dot on the avatar, so who is out there reads before any text */
+.qrow__mark{position:relative}
+.pdot{position:absolute;right:-3px;bottom:-3px;width:12px;height:12px;border-radius:50%;border:2px solid var(--surface-2);background:#b8b6ae}
+.pdot--online{background:#16a34a;animation:pdotpulse 1.8s ease-out infinite}
+.pdot--today{background:#2c6bb3}
+@keyframes pdotpulse{0%{box-shadow:0 0 0 0 rgba(22,163,74,.55)}70%{box-shadow:0 0 0 7px rgba(22,163,74,0)}100%{box-shadow:0 0 0 0 rgba(22,163,74,0)}}
+.tab-badge--live{background:#16a34a}
+.supstat{text-align:right;min-width:120px}
+.supstat__v{font:600 13px var(--sans);color:var(--ink)}
+.supstat__k{font-size:11.5px;color:var(--ink-mute);margin-top:2px}

@@ -4,7 +4,7 @@ These reuse the existing DocType logic so the workflow stays consistent.
 """
 
 import frappe
-from frappe.utils import cint, flt, today
+from frappe.utils import cint, flt, now_datetime, today
 from upandecnp.upandecnp.utils.calculation_engine import MONTHS, get_stock
 from upandecnp.upandecnp.utils.farm_permissions import resolve_farm_scope
 from upandecnp.upandecnp.utils.integration import get_grouped_sum
@@ -2754,4 +2754,148 @@ def get_section_overview(section, season=None):
             "rounds": total_rounds, "done": total_done,
             "pct": round(total_done * 100.0 / total_rounds, 0) if total_rounds else 0,
         },
+    }
+
+
+# --------------------------------------------------------- desk: who is out there
+
+@frappe.whitelist()
+def get_active_supervisors(farm=None, window=15):
+    """Supervisors, with whether they are using the field app right now.
+
+    "Supervisor" means someone with a team, or a Field Worker who has actually
+    been seen - a role granted to a developer account that never signs in
+    should not clutter the list with a permanent row of "not seen".
+
+    Presence comes from utils/presence.py, which records request activity
+    because the app's token logins leave no Frappe session to read. So
+    `online` means "made a request in the last `window` minutes", not "has the
+    app open".
+
+    A farm agronomist sees only their own farm's supervisors. A supervisor has
+    no farm of their own, so it is inferred from where their team is assigned
+    and where they have recorded work, falling back to their company; one with
+    no evidence at all is hidden from a restricted viewer rather than shown to
+    the wrong farm.
+    """
+    import time
+
+    from upandecnp.upandecnp.utils.farm_permissions import get_restricted_farms
+    from upandecnp.upandecnp.utils.presence import read_presence
+
+    if farm:
+        allowed = [resolve_farm_scope(frappe.session.user, farm)]
+    else:
+        allowed = get_restricted_farms()
+
+    presence = read_presence()
+    window = cint(window) or 15
+
+    team_counts = {r.sup: r.n for r in frappe.db.sql("""
+        select custom_field_supervisor as sup, count(*) as n from `tabEmployee`
+        where status = 'Active' and ifnull(custom_field_supervisor, '') != ''
+        group by custom_field_supervisor
+    """, as_dict=True)}
+
+    worker_users = frappe.get_all(
+        "Has Role", filters={"role": "Field Worker", "parenttype": "User"}, pluck="parent")
+    by_user = {}
+    if worker_users:
+        by_user = {r.name: r for r in frappe.get_all(
+            "Employee", filters={"user_id": ["in", worker_users], "status": "Active"},
+            fields=["name", "user_id"])}
+
+    candidates = set(team_counts)
+    for emp in by_user.values():
+        if emp.user_id in presence:        # a Field Worker only once they have been seen
+            candidates.add(emp.name)
+    if not candidates:
+        return {"supervisors": [], "summary": {"online": 0, "today": 0, "total": 0}, "window": window}
+
+    sups = list(candidates)
+    emps = {e.name: e for e in frappe.get_all(
+        "Employee", filters={"name": ["in", sups], "status": "Active"},
+        fields=["name", "employee_name", "employee_number", "user_id", "company"])}
+    sups = list(emps)
+
+    team = {}
+    for r in frappe.get_all(
+        "Employee", filters={"custom_field_supervisor": ["in", sups], "status": "Active"},
+        fields=["custom_field_supervisor", "name", "employee_name", "custom_assigned_block"],
+        order_by="employee_name asc", limit_page_length=0,
+    ):
+        team.setdefault(r.custom_field_supervisor, []).append(
+            {"name": r.employee_name or r.name, "block": r.custom_assigned_block})
+
+    day = today()
+    apps = {r.supervisor: r for r in frappe.db.sql("""
+        select supervisor, count(*) as n, coalesce(sum(actual_quantity_applied_kg), 0) as kg
+        from `tabFertilizer Application`
+        where docstatus = 1 and application_date = %(d)s and supervisor in %(s)s
+        group by supervisor""", {"d": day, "s": sups}, as_dict=True)}
+    marked = {r.marked_by: r.n for r in frappe.db.sql("""
+        select marked_by, count(*) as n from `tabField Attendance`
+        where attendance_date = %(d)s and marked_by in %(s)s
+        group by marked_by""", {"d": day, "s": sups}, as_dict=True)}
+
+    # farm evidence: where the team is assigned, and where work was recorded
+    blocks = {m["block"] for rows in team.values() for m in rows if m["block"]}
+    farm_of_block = {b.name: b.farm for b in frappe.get_all(
+        "Farm Block", filters={"name": ["in", list(blocks)]}, fields=["name", "farm"])} if blocks else {}
+    worked = {}
+    for r in frappe.db.sql("""
+        select distinct supervisor, farm from `tabFertilizer Application`
+        where supervisor in %(s)s and ifnull(farm, '') != ''""", {"s": sups}, as_dict=True):
+        worked.setdefault(r.supervisor, set()).add(r.farm)
+    farm_company = {f.name: f.company for f in frappe.get_all(
+        "CNP Farm", fields=["name", "company"])}
+
+    n = now_datetime()
+    since_midnight = n.hour * 3600 + n.minute * 60 + n.second
+    now_ts = time.time()
+
+    out = []
+    for name in sups:
+        e = emps[name]
+        farms = {farm_of_block[m["block"]] for m in team.get(name, []) if m["block"] in farm_of_block}
+        farms |= worked.get(name, set())
+        if not farms and e.company:
+            farms = {f for f, c in farm_company.items() if c == e.company}
+
+        if allowed and not (farms & set(allowed)):
+            continue
+
+        seen = presence.get(e.user_id) if e.user_id else None
+        age = (now_ts - seen["ts"]) if seen else None
+        state = ("none" if age is None
+                 else "online" if age <= window * 60
+                 else "today" if age <= since_midnight
+                 else "away")
+        a = apps.get(name)
+        rows = team.get(name, [])
+        out.append({
+            "employee": name, "user": e.user_id,
+            "name": e.employee_name, "number": e.employee_number,
+            "state": state,
+            "age_seconds": int(age) if age is not None else None,
+            "via": seen["via"] if seen else None,
+            "last_method": seen["method"] if seen else None,
+            "team_size": len(rows), "team": rows[:30],
+            "blocks": sorted({m["block"] for m in rows if m["block"]})[:6],
+            "apps_today": cint(a.n) if a else 0,
+            "kg_today": round(flt(a.kg), 1) if a else 0,
+            "attendance_today": cint(marked.get(name, 0)),
+            "farms": sorted(farms),
+        })
+
+    order = {"online": 0, "today": 1, "away": 2, "none": 3}
+    out.sort(key=lambda r: (order[r["state"]], r["age_seconds"] if r["age_seconds"] is not None else 1e12, r["name"] or ""))
+    return {
+        "supervisors": out,
+        "summary": {
+            "online": sum(1 for r in out if r["state"] == "online"),
+            "today": sum(1 for r in out if r["state"] in ("online", "today")),
+            "total": len(out),
+        },
+        "window": window,
     }

@@ -53,6 +53,7 @@
     <button class="tab" data-tab="requests">Store Requests</button>
     <button class="tab" data-tab="applications">Applications</button>
     <button class="tab" data-tab="stock">Stock</button>
+    <button class="tab" data-tab="supervisors">Supervisors <span class="tab-badge tab-badge--live" id="sup-badge" style="display:none"></span></button>
     <button class="tab" data-tab="setup">Setup &amp; Master Data</button>
   </div>
 
@@ -111,6 +112,18 @@
       <div class="card__head"><h3>Everything the engine reads</h3>
         <span class="meta">Opens here — no need for the doctype forms</span></div>
       <div class="opengrid" id="setup-grid"></div>
+    </div>
+  </div>
+
+  <div class="tabpanel" id="tab-supervisors">
+    <div class="kpi-grid" id="sup-kpis"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
+    <div class="card">
+      <div class="card__head"><h3>Supervisors in the field</h3>
+        <span class="meta" id="sup-meta">Refreshes every 30 seconds</span></div>
+      <div class="queue" id="sup-list"><div class="skel"></div></div>
+      <div class="none" style="text-align:left;padding-top:14px">
+        Online means a request in the last 15 minutes. The app signs in with a token rather
+        than a session, so a supervisor reading a screen without touching anything goes quiet.</div>
     </div>
   </div>
 

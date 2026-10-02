@@ -304,7 +304,10 @@ scheduler_events = {
 # Request Events
 # ----------------
 # before_request = ["upandecnp.utils.before_request"]
-# after_request = ["upandecnp.utils.after_request"]
+# Records who is using the field app. after_request, not before_request: token
+# authentication happens after before_request runs, so there the user is still
+# Guest for every call the mobile app makes.
+after_request = ["upandecnp.upandecnp.utils.presence.record_presence"]
 
 # Job Events
 # ----------

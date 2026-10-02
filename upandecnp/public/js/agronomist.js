@@ -1285,6 +1285,136 @@
     } catch (e) { el.innerHTML = `<div class="none">Could not load stock.</div>`; }
   }
 
+  // ----------------------------------------------------------------- supervisors
+  /* What a supervisor was last doing, in words. The endpoint reports the call
+   * they made; nobody wants to read "get_pending_plans_for_section". */
+  const DOING = {
+    record_application: "Recording an application",
+    create_store_request: "Requesting fertilizer",
+    mark_attendance: "Marking attendance",
+    get_attendance_by_block: "On the attendance register",
+    add_applicators: "Adding applicators", add_applicator: "Adding an applicator",
+    remove_applicator: "Updating the team", assign_block: "Assigning a block",
+    get_my_applicators: "Looking at the team", get_my_applicators_by_section: "Looking at the team",
+    get_available_employees_for_team: "Choosing applicators",
+    get_pending_plans_for_section: "Browsing upcoming work",
+    get_pending_plans_for_block: "Browsing upcoming work",
+    get_sections_with_pending_work: "Browsing upcoming work",
+    get_upcoming_and_overdue: "Checking what is due",
+    get_issued_blocks_in_section: "Choosing a block to record",
+    get_sections_with_issued_work: "Choosing a block to record",
+    get_store_requests: "Checking store requests",
+    get_block_progress: "Looking at block progress",
+    get_home_metrics: "On the home screen",
+    get_field_programmes: "On the home screen",
+  };
+
+  const doingText = (m) => (m && (DOING[m] || "Using the app")) || "";
+
+  function agoText(sec) {
+    if (sec == null) return "not seen yet";
+    if (sec < 60) return "just now";
+    const m = Math.round(sec / 60);
+    if (m < 60) return m + " min ago";
+    const h = Math.floor(m / 60), r = m % 60;
+    return h + " h" + (r ? " " + r + " min" : "") + " ago";
+  }
+
+  const PRESENCE = {
+    online: { label: "Online", kind: "good" },
+    today:  { label: "Seen today", kind: "info" },
+    away:   { label: "Not seen today", kind: "mute" },
+    none:   { label: "Not seen yet", kind: "mute" },
+  };
+
+  let supTimer = null;
+
+  async function loadSupervisors() {
+    let d;
+    try { d = await call("get_active_supervisors", { farm: state.farm || null }, { quiet: true }); }
+    catch (e) {
+      $("#sup-list").innerHTML = `<div class="none">Could not load supervisors.</div>`;
+      return;
+    }
+    state.sups = d.supervisors || [];
+    const sm = d.summary || {};
+
+    const badge = $("#sup-badge");
+    if (sm.online) { badge.textContent = sm.online; badge.style.display = ""; }
+    else badge.style.display = "none";
+
+    $("#sup-kpis").innerHTML = [
+      kpi("Online now", num(sm.online), sm.online ? "good" : "", `active in the last ${d.window} min`),
+      kpi("Seen today", num(sm.today), "info", "including those online"),
+      kpi("Supervisors", num(sm.total), "", "with a team in the field"),
+    ].join("");
+    $("#sup-meta").textContent = `Updated ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })} · refreshes every 30 seconds`;
+
+    $("#sup-list").innerHTML = state.sups.map((r, i) => {
+      const pr = PRESENCE[r.state] || PRESENCE.none;
+      const initials = (r.name || "?").split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+      const doing = r.state === "online" ? doingText(r.last_method) : "";
+      return `<div class="qrow" data-sup="${i}" style="cursor:pointer">
+        <div class="qrow__mark">${esc(initials)}<span class="pdot pdot--${esc(r.state)}"></span></div>
+        <div>
+          <div class="qrow__name">${esc(r.name || r.employee)}</div>
+          <div class="qrow__meta">${esc(r.number || r.employee)} ·
+            ${r.state === "none" ? "not seen yet" : esc(agoText(r.age_seconds))}${
+              r.via ? " · " + (r.via === "app" ? "mobile app" : "desk") : ""}${
+              doing ? " · " + esc(doing) : ""}</div>
+        </div>
+        <div class="qrow__right">
+          <div class="supstat"><div class="supstat__v">${num(r.apps_today)} applied today</div>
+            <div class="supstat__k">${num(r.team_size)} on team · ${num(r.attendance_today)} marked</div></div>
+          ${pill(pr.label, pr.kind)}
+        </div>
+      </div>`;
+    }).join("") || `<div class="none">No supervisors to show yet. A supervisor appears here once
+      they have a team, or have signed in to the app.</div>`;
+  }
+
+  function openSupervisor(idx) {
+    const r = (state.sups || [])[idx];
+    if (!r) return;
+    const pr = PRESENCE[r.state] || PRESENCE.none;
+    const seen = r.age_seconds == null ? "not seen yet"
+      : `${agoText(r.age_seconds)} (${new Date(Date.now() - r.age_seconds * 1000)
+          .toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" })})`;
+    const body = document.createElement("div");
+    body.innerHTML = `
+      <div class="statline"><span class="statline__k">Status</span>
+        <span class="statline__v">${pill(pr.label, pr.kind)}</span></div>
+      <div class="statline"><span class="statline__k">Last request</span>
+        <span class="statline__v">${esc(seen)}</span></div>
+      <div class="statline"><span class="statline__k">Using</span>
+        <span class="statline__v">${r.via ? (r.via === "app" ? "Mobile app" : "Desk") : "—"}</span></div>
+      <div class="statline"><span class="statline__k">Last activity</span>
+        <span class="statline__v">${esc(doingText(r.last_method) || "—")}</span></div>
+      <div class="statline"><span class="statline__k">Employee</span>
+        <span class="statline__v">${esc(r.number || r.employee)}${r.user ? " · " + esc(r.user) : ""}</span></div>
+      <div class="statline"><span class="statline__k">Farm</span>
+        <span class="statline__v">${esc((r.farms || []).join(", ") || "—")}</span></div>
+
+      <div class="card__head" style="margin:20px 0 10px"><h3>Today</h3></div>
+      <div class="statline"><span class="statline__k">Applications recorded</span>
+        <span class="statline__v">${num(r.apps_today)} · ${num(r.kg_today, 1)} kg</span></div>
+      <div class="statline"><span class="statline__k">Attendance marked</span>
+        <span class="statline__v">${num(r.attendance_today)} of ${num(r.team_size)}</span></div>
+      ${bar(r.team_size ? Math.min(100, r.attendance_today * 100 / r.team_size) : 0,
+            r.attendance_today >= r.team_size && r.team_size ? "good" : r.attendance_today ? "warn" : "")}
+
+      <div class="card__head" style="margin:20px 0 10px"><h3>Team · ${num(r.team_size)}</h3>
+        <span class="meta">${esc((r.blocks || []).join(", ") || "no block assigned")}</span></div>
+      <div class="queue queue--5">${(r.team || []).map((m) => `
+        <div class="qrow">
+          <div class="qrow__mark">${esc((m.name || "?").slice(0, 2).toUpperCase())}</div>
+          <div><div class="qrow__name">${esc(m.name)}</div>
+          <div class="qrow__meta">${esc(m.block || "no block assigned")}</div></div>
+        </div>`).join("") || `<div class="none">No one on this team yet.</div>`}</div>`;
+    modal({ title: r.name || r.employee, sub: `${r.number || r.employee} · supervisor`,
+            body, size: "wide", foot: [{ label: "Close" }] });
+  }
+
   // --------------------------------------------------------------------- actions
   async function act(button) {
     const kind = button.dataset.act;
@@ -1396,6 +1526,14 @@
       if (which === "applications") loadApplications();
       if (which === "stock") loadStock();
       if (which === "setup") renderSetup();
+      // Poll only while someone is looking: a list that refreshes itself is
+      // the point of the tab, but not a reason to hit the server from a hidden
+      // one all afternoon.
+      clearInterval(supTimer); supTimer = null;
+      if (which === "supervisors") {
+        loadSupervisors();
+        supTimer = setInterval(loadSupervisors, 30000);
+      }
     }));
   }
 
@@ -1439,6 +1577,8 @@
       if (nw) return openRecord(nw.dataset.new, null, () => load()).catch(() => {});
       const ed = e.target.closest("[data-edit-prog]");
       if (ed) return openRecord("programme", ed.dataset.editProg, () => load()).catch(() => {});
+      const sp = e.target.closest("[data-sup]");
+      if (sp) return openSupervisor(Number(sp.dataset.sup));
       const pg = e.target.closest("[data-prog]");
       if (pg) return openProgramme(pg.dataset.prog);
       const bl = e.target.closest("[data-block]");
@@ -1452,5 +1592,6 @@
     });
 
     load().catch(() => {});
+    loadSupervisors().catch(() => {});
   });
 })();
