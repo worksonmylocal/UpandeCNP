@@ -5,7 +5,7 @@ These reuse the existing DocType logic so the workflow stays consistent.
 
 import frappe
 from frappe.utils import cint, flt, now_datetime, today
-from upandecnp.upandecnp.utils.calculation_engine import MONTHS, get_stock
+from upandecnp.upandecnp.utils.calculation_engine import MONTHS, farm_warehouse, get_stock
 from upandecnp.upandecnp.utils.farm_permissions import resolve_farm_scope
 from upandecnp.upandecnp.utils.integration import get_grouped_sum
 
@@ -1777,8 +1777,9 @@ def get_available_farms():
 # --------------------------------------------------------------- Fertilizer products
 
 @frappe.whitelist()
-def get_product_items(product):
-    """Candidate Items for a Fertilizer Product, with stock on hand.
+def get_product_items(product, farm=None):
+    """Candidate Items for a Fertilizer Product, with stock on hand - in the
+    farm's own store when a farm is given.
 
     The site keeps several Items per real-world product, spelled
     inconsistently ("MOP" and "MURATE OF POTASIUM (MOP)", "POTASIUM
@@ -1791,16 +1792,20 @@ def get_product_items(product):
     if not terms:
         return []
 
+    warehouse = farm_warehouse(farm)
+    stock_sql = ("(select sum(b.actual_qty) from `tabBin` b where b.item_code = i.name"
+                 + (" and b.warehouse = %(wh)s)" if warehouse else ")"))
     conditions = []
     values = {"item_group": doc.item_group or "Fertilizer"}
+    if warehouse:
+        values["wh"] = warehouse
     for i, term in enumerate(terms):
         conditions.append(f"(i.item_name like %(t{i})s or i.name like %(t{i})s)")
         values[f"t{i}"] = f"%{term}%"
 
     sql = f"""
         select i.name as item_code, i.item_name, i.stock_uom,
-               coalesce((select sum(b.actual_qty) from `tabBin` b
-                         where b.item_code = i.name), 0) as stock_qty
+               coalesce({stock_sql}, 0) as stock_qty
         from `tabItem` i
         where i.item_group = %(item_group)s
           and i.disabled = 0
@@ -1847,6 +1852,7 @@ def load_programme_products(programme):
             "Set the Fertilizer Product field on the crop's nutrient rules first."
         )
 
+    wh = farm_warehouse(doc.farm)
     already = {
         r.product: r.fertilizer_item
         for r in doc.get("product_selections", []) if r.fertilizer_item
@@ -1857,7 +1863,7 @@ def load_programme_products(programme):
         doc.append("product_selections", {
             "product": product,
             "fertilizer_item": chosen,
-            "available_qty": get_stock(chosen) if chosen else 0,
+            "available_qty": get_stock(chosen, wh) if chosen else 0,
         })
     doc.save()
     return {"products": products, "already_chosen": len(already)}
@@ -1899,7 +1905,7 @@ def get_product_choices(programme, product):
         "product": product,
         "rule": rule,
         "current": current,
-        "options": get_product_items(product),
+        "options": get_product_items(product, doc.farm),
     }
 
 
@@ -1910,7 +1916,8 @@ def set_product_item(programme, product, item):
     if doc.docstatus == 1:
         frappe.throw("Cannot change products on a submitted programme.")
 
-    allowed = {o["item_code"] for o in get_product_items(product)}
+    wh = farm_warehouse(doc.farm)
+    allowed = {o["item_code"] for o in get_product_items(product, doc.farm)}
     if item not in allowed:
         frappe.throw(
             f"{item} is not one of the Items that match {product}. "
@@ -1920,15 +1927,15 @@ def set_product_item(programme, product, item):
     for row in doc.get("product_selections", []):
         if row.product == product:
             row.fertilizer_item = item
-            row.available_qty = get_stock(item)
+            row.available_qty = get_stock(item, wh)
             break
     else:
         doc.append("product_selections", {
             "product": product, "fertilizer_item": item,
-            "available_qty": get_stock(item),
+            "available_qty": get_stock(item, wh),
         })
     doc.save()
-    return {"item": item, "available_qty": get_stock(item)}
+    return {"item": item, "available_qty": get_stock(item, wh)}
 
 
 # --------------------------------------------------------------- Pushed applications
@@ -2230,25 +2237,36 @@ def desk_submit_programme(programme):
 
 @frappe.whitelist()
 def search_fertilizer_items(search=None, farm=None, limit=40):
-    """Fertilizer items for a picker, by name rather than by code.
+    """Fertilizer items for a picker, by name rather than by code, with the
+    stock in the farm's own store.
 
     The potassium source is chosen from thousands of Items, and nobody knows
-    "10070010005" by sight. Searched on the server and scoped to the farm's
-    company, so a Lokitela programme is not offered another business's stock.
+    "10070010005" by sight. Searched on the server. Stock is the farm's store,
+    not the whole site: that is what an application issues from, and a figure
+    summed across every farm's warehouse shows "in stock" for fertilizer the
+    farm cannot touch.
+
+    (This used to look up a `company` on CNP Farm to "scope to the company",
+    but CNP Farm has no such field and the result was never used - so the
+    docstring promised a scoping the code did not do. Removed rather than
+    left to read as protection.)
     """
     farm = resolve_farm_scope(frappe.session.user, farm)
-    company = frappe.db.get_value("CNP Farm", farm, "company") if farm else None
+    warehouse = farm_warehouse(farm)
 
     conditions = ["i.disabled = 0", "i.item_group in ('Fertilizer', 'AVOCADO FERTILIZER')"]
     values = {"limit": cint(limit) or 40}
+    if warehouse:
+        values["wh"] = warehouse
+    stock_sql = ("(select sum(b.actual_qty) from `tabBin` b where b.item_code = i.name"
+                 + (" and b.warehouse = %(wh)s)" if warehouse else ")"))
     if search and str(search).strip():
         conditions.append("(i.item_name like %(q)s or i.name like %(q)s)")
         values["q"] = f"%{str(search).strip()}%"
 
     rows = frappe.db.sql(f"""
         select i.name as item_code, i.item_name, i.stock_uom,
-               coalesce((select sum(b.actual_qty) from `tabBin` b
-                         where b.item_code = i.name), 0) as stock_qty
+               coalesce({stock_sql}, 0) as stock_qty
         from `tabItem` i
         where {" and ".join(conditions)}
         order by stock_qty desc, i.item_name asc

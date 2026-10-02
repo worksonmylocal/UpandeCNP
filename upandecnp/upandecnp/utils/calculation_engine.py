@@ -331,13 +331,34 @@ def update_product_requirements(programme, monthly_lines):
 		if not row.fertilizer_item:
 			continue
 		row.required_qty = round_half_up(required.get(row.fertilizer_item, 0), 2)
-		row.available_qty = round_half_up(get_stock(row.fertilizer_item), 2)
+		row.available_qty = round_half_up(get_stock(row.fertilizer_item, farm_warehouse(programme.farm)), 2)
 		row.shortfall = round_half_up(max(row.required_qty - row.available_qty, 0), 2)
 
 
-def get_stock(item_code):
-	"""Stock on hand across every warehouse."""
-	total = frappe.db.sql(
-		"select sum(actual_qty) from `tabBin` where item_code = %s", item_code
-	)
+def farm_warehouse(farm):
+	"""The store a farm's fertilizer is issued from, or None if it has none set."""
+	return frappe.db.get_value("CNP Farm", farm, "warehouse") if farm else None
+
+
+def get_stock(item_code, warehouse=None):
+	"""Stock on hand - in one warehouse when given, else across all of them.
+
+	Applications issue from the farm's own store, so that is the number that
+	says whether a programme can actually be carried out. Summing every
+	warehouse on the site answers a different question: Lokitela's store holds
+	97 kg of MOP while the site as a whole holds thousands, and "covered" on
+	the strength of another farm's shelves is how an application ends up
+	failing at the point of issue. With no warehouse (a farm that has none
+	configured) it falls back to the site-wide figure rather than reporting
+	nothing.
+	"""
+	if warehouse:
+		total = frappe.db.sql(
+			"select sum(actual_qty) from `tabBin` where item_code = %s and warehouse = %s",
+			(item_code, warehouse),
+		)
+	else:
+		total = frappe.db.sql(
+			"select sum(actual_qty) from `tabBin` where item_code = %s", item_code
+		)
 	return flt(total[0][0]) if total and total[0] else 0.0
