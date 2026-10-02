@@ -2052,36 +2052,7 @@ def get_agronomist_desk(farm=None, season=None):
     current = next((p for p in programmes if p.docstatus == 0), None) or (
         programmes[0] if programmes else None)
 
-    detail = None
-    if current:
-        doc = frappe.get_doc("Fertilizer Programme", current["name"])
-        detail = {
-            "name": doc.name,
-            "season": doc.season,
-            "farm": doc.farm,
-            "crop": doc.crop,
-            "docstatus": doc.docstatus,
-            "workflow_state": doc.get("workflow_state"),
-            "period_type": doc.period_type,
-            "start_month": doc.start_month,
-            "end_month": doc.end_month,
-            "potassium_source": doc.potassium_source,
-            "production_calendar": doc.production_calendar,
-            "blocks": len(doc.get("block_yield_data") or []),
-            "lines": len(doc.get("programme_lines") or []),
-            "products": [
-                {
-                    "product": r.product,
-                    "item": r.fertilizer_item,
-                    "item_name": r.item_name,
-                    "available": flt(r.available_qty),
-                    "required": flt(r.required_qty),
-                    "shortfall": flt(r.shortfall),
-                }
-                for r in doc.get("product_selections") or []
-            ],
-            "actions": _programme_actions(doc),
-        }
+    detail = _build_programme_detail(current["name"]) if current else None
 
     return {
         "farm": farm,
@@ -2091,6 +2062,49 @@ def get_agronomist_desk(farm=None, season=None):
         "programmes": programmes,
         "current": detail,
     }
+
+
+def _build_programme_detail(programme_name):
+    """The shape a programme's own detail view needs - factored out of
+    get_agronomist_desk() so it can be fetched for *any* programme, not just
+    the one the desk happens to be focused on. The "All programmes" list
+    needs exactly this for whichever row someone taps."""
+    doc = frappe.get_doc("Fertilizer Programme", programme_name)
+    return {
+        "name": doc.name,
+        "season": doc.season,
+        "farm": doc.farm,
+        "crop": doc.crop,
+        "docstatus": doc.docstatus,
+        "workflow_state": doc.get("workflow_state"),
+        "period_type": doc.period_type,
+        "start_month": doc.start_month,
+        "end_month": doc.end_month,
+        "potassium_source": doc.potassium_source,
+        "production_calendar": doc.production_calendar,
+        "blocks": len(doc.get("block_yield_data") or []),
+        "lines": len(doc.get("programme_lines") or []),
+        "products": [
+            {
+                "product": r.product,
+                "item": r.fertilizer_item,
+                "item_name": r.item_name,
+                "available": flt(r.available_qty),
+                "required": flt(r.required_qty),
+                "shortfall": flt(r.shortfall),
+            }
+            for r in doc.get("product_selections") or []
+        ],
+        "actions": _programme_actions(doc),
+    }
+
+
+@frappe.whitelist()
+def get_programme_detail(programme):
+    """One programme's detail, by name - what the "All programmes" list
+    opens into. has_farm_permission already governs whether this user may
+    read this doc at all, same as opening it from any other doctype list."""
+    return _build_programme_detail(programme)
 
 
 def _programme_actions(doc):

@@ -744,13 +744,14 @@
 
   function renderProgrammeList(d) {
     $("#prog-list").innerHTML = (d.programmes || []).map((p) => `
-      <div class="qrow">
+      <div class="qrow" data-prog="${esc(p.name)}" style="cursor:pointer">
         <div class="qrow__mark">${esc((p.season || "?").slice(0, 2))}</div>
         <div>
           <div class="qrow__name">${esc(p.name)}</div>
           <div class="qrow__meta">${esc(p.season)} · ${esc(p.farm || "")} ·
             ${p.period_type === "Custom Period"
-              ? esc(p.start_month) + " – " + esc(p.end_month) : "Full year"}</div>
+              ? esc(p.start_month) + " – " + esc(p.end_month) : "Full year"} ·
+            <span style="color:var(--signal)">open</span></div>
         </div>
         <div class="qrow__right">${pill(progState(p), stateKind(progState(p)))}</div>
       </div>`).join("") || `<div class="none">Nothing yet.</div>`;
@@ -797,11 +798,17 @@
   }
 
   async function openProgramme(name) {
-    const c = state.data && state.data.current;
-    if (!c || c.name !== name) return;
-    let sum = null;
-    try { sum = await call("get_programme_summary", { programme: name }); }
-    catch (e) { /* the KPIs above still stand without it */ }
+    // Fetched by name rather than read off state.data.current, so every row
+    // in "All programmes" opens - not only whichever one the desk happened
+    // to pick as "current" (the newest draft, or failing that the newest
+    // programme at all).
+    let c, sum;
+    try {
+      [c, sum] = await Promise.all([
+        call("get_programme_detail", { programme: name }),
+        call("get_programme_summary", { programme: name }).catch(() => null),
+      ]);
+    } catch (e) { return; /* already surfaced */ }
 
     const prods = c.products || [];
     const chosen = prods.filter((p) => p.item).length;
