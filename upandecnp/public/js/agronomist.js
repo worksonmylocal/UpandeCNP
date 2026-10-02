@@ -714,8 +714,20 @@
     </div>`;
   }
 
-  function pill(text, kind) {
-    return `<span class="pill${kind ? " pill--" + kind : ""}">${esc(text)}</span>`;
+  /** The stylesheet colours `.pill.good`, `.pill.warn` and so on - two
+   *  classes on one element. This used to emit `pill--good`, which no rule
+   *  matches, so every status pill on the desk rendered unstyled however the
+   *  colours were tuned. */
+  function pill(text, kind, extra) {
+    return `<span class="pill${kind ? " " + kind : ""}${extra ? " " + extra : ""}">${esc(text)}</span>`;
+  }
+
+  /** A programme's state as a pill: coloured by state, and marked - a tick when
+   *  submitted, a pencil while it is still a draft. */
+  function statePill(p) {
+    const st = progState(p);
+    return pill(st, stateKind(st),
+      st === "Submitted" ? "pill--submitted" : st === "Draft" ? "pill--draft" : "");
   }
 
   /** What the programme is, in the words the agronomist uses. With approval
@@ -733,19 +745,23 @@
       ? p.workflow_state : "Draft";
   }
 
+  /** One colour per state, so a programme's standing reads before its word:
+   *  green - in force; amber - still yours to finish (a draft); blue - out
+   *  with someone for approval; red - withdrawn or turned back. Grey is kept
+   *  for "nothing here yet", which is a different thing from a draft. */
   function stateKind(s) {
     if (s === "Submitted" || s === "Approved") return "good";
     if (s === "Rejected" || s === "Cancelled") return "bad";
-    if (s === "Draft") return "mute";
-    return "warn";
+    if (s === "Draft") return "warn";
+    return "info";
   }
 
   function renderKpis(d) {
     const m = d.metrics || {};
     const c = d.current;
     $("#kpis").innerHTML = [
-      kpi("Programme state", c ? (c.workflow_state || "Draft") : "none",
-          c ? stateKind(c.workflow_state) === "good" ? "good" : "" : ""),
+      kpi("Programme state", c ? progState(c) : "none",
+          c ? stateKind(progState(c)) : ""),
       kpi("Blocks planned", num(m.total_plans), "", "rounds across the season"),
       kpi("Season progress", num(m.progress_pct) + "%", "info",
           `${num(m.applied)} of ${num(m.total_plans)} applied`),
@@ -788,7 +804,7 @@
           <div class="qrow__meta">${period} · ${num(c.blocks)} blocks · ${num(c.lines)} lines ·
             <span style="color:var(--signal)">open for the numbers</span></div>
         </div>
-        <div class="qrow__right">${pill(progState(c), stateKind(progState(c)))}</div>
+        <div class="qrow__right">${statePill(c)}</div>
       </div>
       <div class="steps">${steps}</div>
       ${a.blocked ? `<div class="none">${esc(a.blocked)}</div>` : ""}
@@ -838,7 +854,7 @@
               ? esc(p.start_month) + " – " + esc(p.end_month) : "Full year"} ·
             <span style="color:var(--signal)">open</span></div>
         </div>
-        <div class="qrow__right">${pill(progState(p), stateKind(progState(p)))}</div>
+        <div class="qrow__right">${statePill(p)}</div>
       </div>`).join("") || `<div class="none">Nothing yet.</div>`;
   }
 
@@ -904,7 +920,7 @@
     body.innerHTML = `
       <div class="kpi-grid" style="margin-bottom:18px">
         <div class="kpi"><div class="kpi__label">State</div>
-          <div class="kpi__value ${stateKind(progState(c)) === "good" ? "good" : "warn"}">${esc(progState(c))}</div>
+          <div class="kpi__value ${stateKind(progState(c))}">${esc(progState(c))}</div>
           <div class="kpi__unit">${esc(c.period_type === "Custom Period"
             ? c.start_month + " – " + c.end_month : "Full year")}</div></div>
         <div class="kpi"><div class="kpi__label">Blocks</div>
