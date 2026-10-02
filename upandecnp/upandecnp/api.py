@@ -2681,3 +2681,77 @@ def get_field_programmes(farm=None):
                "start_month", "end_month"],
         order_by="modified desc",
     )
+
+
+@frappe.whitelist()
+def get_section_overview(section, season=None):
+    """A section and everything in it: its blocks, how big they are, and how
+    far through their rounds each one is.
+
+    Master data on its own is a list of names. Opening a section from Setup
+    should answer the questions someone actually has while looking at it -
+    how many blocks, how much land, which are behind - and be the place to
+    add or correct a block, rather than a bare form with three fields.
+    """
+    _section_scope_guard(section)
+    sec = frappe.db.get_value(
+        "Section", section, ["name", "section_name", "farm", "company", "is_active"],
+        as_dict=True)
+    if not sec:
+        frappe.throw(f"No such section: {section}")
+
+    blocks = frappe.get_all(
+        "Farm Block", filters={"section": section},
+        fields=["name", "block_number", "area_ha", "tree_count",
+                "previous_year_yield_kg_ha", "crop", "variety", "planting_year"],
+        order_by="name asc", limit_page_length=0)
+
+    stats = {}
+    if blocks:
+        conditions = ["docstatus = 1", "block in %(blocks)s"]
+        values = {"blocks": [b.name for b in blocks]}
+        if season and season != "All Seasons":
+            conditions.append("season = %(season)s")
+            values["season"] = season
+        stats = {r.block: r for r in frappe.db.sql(f"""
+            select block, count(*) as rounds,
+                   sum(case when status in ('Applied','Verified') then 1 else 0 end) as done,
+                   sum(total_kg_required) as planned_kg
+            from `tabBlock Fertilizer Plan`
+            where {" and ".join(conditions)}
+            group by block
+        """, values, as_dict=True)}
+
+    out, total_rounds, total_done = [], 0, 0
+    for b in blocks:
+        s = stats.get(b.name)
+        rounds = cint(s.rounds) if s else 0
+        done = cint(s.done) if s else 0
+        total_rounds += rounds
+        total_done += done
+        out.append({
+            "block": b.name, "block_number": b.block_number,
+            "area_ha": flt(b.area_ha), "tree_count": cint(b.tree_count),
+            "last_yield": flt(b.previous_year_yield_kg_ha),
+            "crop": b.crop, "variety": b.variety, "planting_year": b.planting_year,
+            "rounds": rounds, "done": done,
+            "planned_kg": round(flt(s.planned_kg), 1) if s else 0,
+            "pct": round(done * 100.0 / rounds, 0) if rounds else 0,
+            "state": ("Completed" if rounds and done == rounds
+                      else "In progress" if done
+                      else "Not started" if rounds else "No plan"),
+        })
+
+    yields = [b["last_yield"] for b in out if b["last_yield"] > 0]
+    return {
+        "section": sec,
+        "blocks": out,
+        "totals": {
+            "blocks": len(out),
+            "area_ha": round(sum(b["area_ha"] for b in out), 2),
+            "trees": sum(b["tree_count"] for b in out),
+            "avg_yield": round(sum(yields) / len(yields), 0) if yields else 0,
+            "rounds": total_rounds, "done": total_done,
+            "pct": round(total_done * 100.0 / total_rounds, 0) if total_rounds else 0,
+        },
+    }

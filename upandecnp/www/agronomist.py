@@ -1,3 +1,5 @@
+import os
+
 import frappe
 
 
@@ -23,6 +25,13 @@ def get_context(context):
 
     context.no_cache = 1
     context.show_sidebar = False
+    # Frappe serves /assets with Cache-Control: max-age=43200 - twelve hours.
+    # Without a changing query string a browser keeps the previous script and
+    # stylesheet across every update, which looks exactly like "I still don't
+    # see the change" however many times the page is reloaded. Keyed on the
+    # files' own modification time so it moves when they do, with no manual
+    # version number to forget to bump.
+    context.asset_version = _asset_version()
     # Supplied here rather than assumed. csrf_token is not in a web page's
     # context by default, and a missing one renders as DebugUndefined, which
     # tojson then refuses - taking the whole page down with a traceback rather
@@ -34,3 +43,14 @@ def get_context(context):
     except Exception:
         context.csrf_token = ""
     return context
+
+
+def _asset_version():
+    base = frappe.get_app_path("upandecnp", "public")
+    newest = 0
+    for rel in ("js/agronomist.js", "css/dashboard.css"):
+        try:
+            newest = max(newest, int(os.path.getmtime(os.path.join(base, rel))))
+        except OSError:
+            pass
+    return newest

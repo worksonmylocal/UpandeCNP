@@ -370,7 +370,8 @@
     },
     section: {
       doctype: "Section", title: "Section", icon: "🗺", tint: "rgba(100,116,139,.15)", colour: "#64748b",
-      sub: "Blocks are grouped into sections; the engine calculates per section.",
+      sub: "Open a section to see its blocks, and add or correct them there.",
+      open: "section",
       list: ["name", "farm", "is_active"],
       fields: [
         { name: "section_name", label: "Section Name", reqd: 1 },
@@ -511,13 +512,17 @@
 
   // --------------------------------------------------------------- record popups
   /** Open one record for editing, or a blank one. */
-  async function openRecord(key, name, afterSave) {
+  async function openRecord(key, name, afterSave, defaults) {
     const spec = SPECS[key];
     let data = {};
     if (spec.single) {
       data = await getDoc(spec.doctype, spec.doctype);
     } else if (name) {
       data = await getDoc(spec.doctype, name);
+    } else if (defaults) {
+      // A new record that already knows where it belongs - a block added from
+      // inside a section should not ask which section it is in.
+      data = Object.assign({}, defaults);
     }
 
     const form = document.createElement("div");
@@ -589,6 +594,77 @@
     return m;
   }
 
+  /** A section and its blocks: sizes, progress, and where blocks are added or
+   *  corrected. `back` re-opens whatever list this was reached from. */
+  async function openSection(name, back) {
+    let d;
+    try { d = await call("get_section_overview", { section: name, season: state.season || null }); }
+    catch (e) { return; }
+    const t = d.totals, sec = d.section;
+
+    const body = document.createElement("div");
+    const draw = (blocks) => blocks.map((b) => `
+      <div class="qrow" data-sb-open="${esc(b.block)}" style="cursor:pointer">
+        <div class="qrow__mark">${esc((b.block || "?").slice(0, 2))}</div>
+        <div>
+          <div class="qrow__name">${esc(b.block)}</div>
+          <div class="qrow__meta">${num(b.area_ha, 2)} ha · ${num(b.tree_count)} trees ·
+            ${b.last_yield ? num(b.last_yield) + " kg/ha last year" : "no yield recorded"} ·
+            ${num(b.done)}/${num(b.rounds)} rounds</div>
+        </div>
+        <div class="qrow__right">${bar(b.pct, b.pct >= 100 ? "good" : b.pct ? "warn" : "")}
+          ${pill(b.state, stateKindFor(b.state))}
+          <button class="btn" data-sb-edit="${esc(b.block)}">Edit</button></div>
+      </div>`).join("") || `<div class="none">No blocks in this section yet. Use “Add block”.</div>`;
+
+    body.innerHTML = `
+      <div class="kpi-grid" style="margin-bottom:16px">
+        <div class="kpi"><div class="kpi__label">Blocks</div>
+          <div class="kpi__value">${num(t.blocks)}</div>
+          <div class="kpi__unit">${sec.is_active ? "active section" : "inactive section"}</div></div>
+        <div class="kpi"><div class="kpi__label">Area</div>
+          <div class="kpi__value">${num(t.area_ha, 1)}</div><div class="kpi__unit">hectares</div></div>
+        <div class="kpi"><div class="kpi__label">Trees</div>
+          <div class="kpi__value">${num(t.trees)}</div>
+          <div class="kpi__unit">${t.avg_yield ? num(t.avg_yield) + " kg/ha avg yield" : "no yield recorded"}</div></div>
+        <div class="kpi"><div class="kpi__label">Rounds applied</div>
+          <div class="kpi__value ${t.pct >= 100 ? "good" : ""}">${num(t.done)}/${num(t.rounds)}</div>
+          <div class="kpi__unit">${num(t.pct)}% done</div></div>
+      </div>
+      <input class="searchbox" id="sb-q" placeholder="Search this section's blocks…">
+      <div class="queue" id="sb-list">${draw(d.blocks)}</div>`;
+
+    const m = modal({
+      title: sec.section_name || sec.name,
+      sub: `${sec.farm || ""} · tap a block for its progress, or Edit to change it`,
+      body, size: "wide",
+      foot: [
+        { label: back ? "Back" : "Close", onClick: (h) => { h.close(); if (back) back(); } },
+        { label: "Edit section", onClick: (h) => {
+            h.close(); openRecord("section", name, () => openSection(name, back)); } },
+        { label: "Add block", cls: "btn--ink", onClick: (h) => {
+            h.close();
+            openRecord("block", null, () => openSection(name, back),
+                       { section: name, farm: sec.farm, crop: (d.blocks[0] || {}).crop || "" }); } },
+      ],
+    });
+
+    $("#sb-q", body).addEventListener("input", (e) => {
+      const q = e.target.value.toLowerCase();
+      $("#sb-list", body).innerHTML = draw(d.blocks.filter((b) =>
+        !q || (b.block || "").toLowerCase().includes(q)));
+    });
+    body.addEventListener("click", (e) => {
+      const ed = e.target.closest("[data-sb-edit]");
+      if (ed) {
+        m.close();
+        return openRecord("block", ed.dataset.sbEdit, () => openSection(name, back));
+      }
+      const op = e.target.closest("[data-sb-open]");
+      if (op) openBlock(op.dataset.sbOpen);
+    });
+  }
+
   /** A list of a doctype's records, each opening the editor. */
   async function openList(key) {
     const spec = SPECS[key];
@@ -619,7 +695,11 @@
     }
     wrap.addEventListener("click", (e) => {
       const row = e.target.closest("[data-open]");
-      if (row) { m.close(); openRecord(key, row.dataset.open, () => openList(key)); }
+      if (!row) return;
+      m.close();
+      // Some doctypes have a richer view than a form: a section is its blocks.
+      if (spec.open === "section") return openSection(row.dataset.open, () => openList(key));
+      openRecord(key, row.dataset.open, () => openList(key));
     });
     await draw();
     return m;
@@ -866,6 +946,19 @@
         onClick: async (h) => { await submitProgramme(name); h.close(); } });
     } else {
       foot.push({ label: "Close" });
+    }
+
+    // Submit and Delete belong to drafts. A submitted programme has already
+    // created its block plans, so say so rather than leaving a footer with a
+    // lone Close that reads as though the buttons failed to load.
+    if (!draft) {
+      const note = document.createElement("div");
+      note.className = "none";
+      note.style.cssText = "text-align:left;padding:14px 0 0";
+      note.textContent = c.docstatus === 1
+        ? "This programme is submitted and its block plans exist, so Submit and Delete no longer apply. They appear on a draft."
+        : "This programme is cancelled.";
+      body.appendChild(note);
     }
 
     modal({ title: c.name, sub: `${c.season} · ${c.farm || ""} · ${c.crop || ""}`,
