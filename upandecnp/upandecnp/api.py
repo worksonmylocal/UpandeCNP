@@ -2167,3 +2167,389 @@ def get_plan_queue(farm=None, season=None, limit=200):
         limit %(limit)s
     """, values, as_dict=True)
     return rows
+
+
+# ------------------------------------------------------- desk: programme actions
+
+@frappe.whitelist()
+def desk_submit_programme(programme):
+    """Submit the programme. No review step: the agronomist builds it and puts
+    it to work, which is what submitting already means - on_submit creates the
+    Block Fertilizer Plans. Approval only enters if the setting asks for it,
+    and then the workflow owns the transition instead of this."""
+    doc = frappe.get_doc("Fertilizer Programme", programme)
+    if doc.docstatus == 1:
+        return {"docstatus": 1, "already": True}
+    doc.submit()
+    doc.reload()
+    return {"docstatus": doc.docstatus, "workflow_state": doc.workflow_state}
+
+
+@frappe.whitelist()
+def search_fertilizer_items(search=None, farm=None, limit=40):
+    """Fertilizer items for a picker, by name rather than by code.
+
+    The potassium source is chosen from thousands of Items, and nobody knows
+    "10070010005" by sight. Searched on the server and scoped to the farm's
+    company, so a Lokitela programme is not offered another business's stock.
+    """
+    farm = resolve_farm_scope(frappe.session.user, farm)
+    company = frappe.db.get_value("CNP Farm", farm, "company") if farm else None
+
+    conditions = ["i.disabled = 0", "i.item_group in ('Fertilizer', 'AVOCADO FERTILIZER')"]
+    values = {"limit": cint(limit) or 40}
+    if search and str(search).strip():
+        conditions.append("(i.item_name like %(q)s or i.name like %(q)s)")
+        values["q"] = f"%{str(search).strip()}%"
+
+    rows = frappe.db.sql(f"""
+        select i.name as item_code, i.item_name, i.stock_uom,
+               coalesce((select sum(b.actual_qty) from `tabBin` b
+                         where b.item_code = i.name), 0) as stock_qty
+        from `tabItem` i
+        where {" and ".join(conditions)}
+        order by stock_qty desc, i.item_name asc
+        limit %(limit)s
+    """, values, as_dict=True)
+    return rows
+
+
+# ------------------------------------------------------------- desk: blocks
+
+@frappe.whitelist()
+def get_desk_blocks(farm=None, season=None):
+    """Every block with how far through its rounds it is.
+
+    One row per block: the plan count, how many are applied, and last year's
+    yield - which is what the whole calculation keys off, so it belongs beside
+    the progress rather than two screens away.
+    """
+    farm = resolve_farm_scope(frappe.session.user, farm)
+
+    block_filters = {}
+    if farm:
+        block_filters["farm"] = farm
+    blocks = frappe.get_all(
+        "Farm Block", filters=block_filters,
+        fields=["name", "section", "farm", "area_ha", "tree_count",
+                "previous_year_yield_kg_ha"],
+        order_by="name asc", limit_page_length=0,
+    )
+
+    conditions = ["docstatus = 1"]
+    values = {}
+    if farm:
+        conditions.append("farm = %(farm)s")
+        values["farm"] = farm
+    if season and season != "All Seasons":
+        conditions.append("season = %(season)s")
+        values["season"] = season
+
+    stats = {r.block: r for r in frappe.db.sql(f"""
+        select block,
+               count(*) as rounds,
+               sum(case when status in ('Applied','Verified') then 1 else 0 end) as done,
+               sum(case when status = 'Issued' then 1 else 0 end) as issued,
+               sum(total_kg_required) as planned_kg
+        from `tabBlock Fertilizer Plan`
+        where {" and ".join(conditions)}
+        group by block
+    """, values, as_dict=True)}
+
+    out = []
+    for b in blocks:
+        s = stats.get(b.name)
+        rounds = cint(s.rounds) if s else 0
+        done = cint(s.done) if s else 0
+        out.append({
+            "block": b.name, "section": b.section, "farm": b.farm,
+            "area_ha": flt(b.area_ha), "tree_count": cint(b.tree_count),
+            "last_yield": flt(b.previous_year_yield_kg_ha),
+            "rounds": rounds, "done": done, "issued": cint(s.issued) if s else 0,
+            "planned_kg": flt(s.planned_kg) if s else 0,
+            "pct": round(done * 100.0 / rounds, 0) if rounds else 0,
+            "state": ("Completed" if rounds and done == rounds
+                      else "In progress" if done
+                      else "Not started" if rounds
+                      else "No plan"),
+        })
+    return out
+
+
+@frappe.whitelist()
+def get_block_detail(block, season=None):
+    """One block, everything about it: its figures, its rounds, and how it is
+    doing against the yield that produced them."""
+    info = frappe.db.get_value(
+        "Farm Block", block,
+        ["name", "section", "farm", "area_ha", "tree_count",
+         "previous_year_yield_kg_ha", "crop", "cost_center"],
+        as_dict=True,
+    )
+    if not info:
+        frappe.throw(f"No such block: {block}")
+    _section_scope_guard(info.section) if info.section else None
+
+    filters = {"block": block, "docstatus": 1}
+    if season and season != "All Seasons":
+        filters["season"] = season
+    plans = frappe.get_all(
+        "Block Fertilizer Plan", filters=filters,
+        fields=["name", "fertilizer_product", "application_month", "application_year",
+                "total_kg_required", "dose_per_tree_g", "application_rate_kg_ha",
+                "status", "yield_tier", "original_month", "times_pushed"],
+        order_by="application_year asc, name asc",
+    )
+    _attach_product_names(plans)
+
+    applied = frappe.get_all(
+        "Fertilizer Application",
+        filters={"block": block, "docstatus": 1},
+        fields=["name", "fertilizer_product", "application_date",
+                "actual_quantity_applied_kg", "planned_quantity_kg", "variance_kg",
+                "applied_in_full", "supervisor_name"],
+        order_by="application_date desc", limit_page_length=50,
+    )
+    _attach_product_names(applied)
+
+    planned_kg = sum(flt(p.total_kg_required) for p in plans)
+    actual_kg = sum(flt(a.actual_quantity_applied_kg) for a in applied)
+    done = len([p for p in plans if p.status in ("Applied", "Verified")])
+
+    # Where this block's yield sits against the farm, which is what put it in
+    # its tier in the first place.
+    peers = frappe.get_all("Farm Block", filters={"farm": info.farm},
+                           pluck="previous_year_yield_kg_ha") or []
+    peers = [flt(y) for y in peers if flt(y) > 0]
+    best = max(peers) if peers else 0
+    avg = (sum(peers) / len(peers)) if peers else 0
+
+    return {
+        "info": info,
+        "plans": plans,
+        "applied": applied,
+        "planned_kg": round(planned_kg, 1),
+        "actual_kg": round(actual_kg, 1),
+        "rounds": len(plans),
+        "done": done,
+        "pct": round(done * 100.0 / len(plans), 0) if plans else 0,
+        "yield": {
+            "block": flt(info.previous_year_yield_kg_ha),
+            "farm_best": round(best, 0),
+            "farm_avg": round(avg, 0),
+            "vs_avg_pct": round((flt(info.previous_year_yield_kg_ha) - avg) / avg * 100, 0) if avg else 0,
+        },
+    }
+
+
+# ------------------------------------------- desk: requests, applications, stock
+
+@frappe.whitelist()
+def get_desk_store_requests(farm=None, limit=200):
+    """Requests the supervisors raised from the app, with who raised each one.
+
+    The supervisor is on the Material Request Item row, not the parent - that
+    is where this site keeps the employee - so it has to be joined rather than
+    selected.
+    """
+    from upandecnp.upandecnp.utils.integration import categorize_request_status
+
+    farm = resolve_farm_scope(frappe.session.user, farm)
+    conditions = ["mr.custom_block_fertilizer_plan is not null",
+                  "mr.custom_block_fertilizer_plan != ''"]
+    values = {"limit": cint(limit) or 200}
+    if farm:
+        conditions.append("mr.custom_farm = %(farm)s")
+        values["farm"] = farm
+
+    # Which column holds the requesting supervisor differs by site: this app
+    # writes `employee` on the item row, but older installs carry
+    # `custom_employee` instead. Naming either one outright takes the whole
+    # query down with "Unknown column" on the site that has the other.
+    emp_col = next(
+        (c for c in ("employee", "custom_employee")
+         if frappe.db.has_column("Material Request Item", c)), None)
+    emp_name_col = next(
+        (c for c in ("employee_name", "custom_employee_name")
+         if frappe.db.has_column("Material Request Item", c)), None)
+    emp_select = f"mri.{emp_col} as employee" if emp_col else "null as employee"
+    emp_name_select = (f"mri.{emp_name_col} as employee_name"
+                       if emp_name_col else "null as employee_name")
+
+    rows = frappe.db.sql(f"""
+        select mr.name, mr.transaction_date, mr.workflow_state, mr.status,
+               mr.docstatus, mr.per_ordered, mr.custom_block_fertilizer_plan as plan,
+               bfp.block, bfp.section, bfp.application_month,
+               mri.item_code, mri.qty, {emp_select}, {emp_name_select}
+        from `tabMaterial Request` mr
+        left join `tabMaterial Request Item` mri on mri.parent = mr.name
+        left join `tabBlock Fertilizer Plan` bfp
+               on bfp.name = mr.custom_block_fertilizer_plan
+        where {" and ".join(conditions)}
+        order by mr.transaction_date desc, mr.name desc
+        limit %(limit)s
+    """, values, as_dict=True)
+
+    # Fall back to the Employee record for a name when only the link is stored.
+    for r in rows:
+        if r.get("employee") and not r.get("employee_name"):
+            r["employee_name"] = frappe.db.get_value("Employee", r["employee"], "employee_name")
+
+    for r in rows:
+        r["state"] = categorize_request_status(r.get("workflow_state") or r.get("status"))
+    _attach_product_names(rows, "item_code")
+    return rows
+
+
+@frappe.whitelist()
+def get_desk_applications(farm=None, season=None, limit=100):
+    """Recorded applications, newest first, with enough on each row to decide
+    whether it needs opening."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
+    filters = {"docstatus": 1}
+    if farm:
+        filters["farm"] = farm
+    rows = frappe.get_all(
+        "Fertilizer Application", filters=filters,
+        fields=["name", "block", "fertilizer_product", "application_date",
+                "planned_quantity_kg", "actual_quantity_applied_kg", "variance_kg",
+                "applied_in_full", "partial_reason", "application_method",
+                "weather_conditions", "supervisor", "supervisor_name",
+                "block_fertilizer_plan", "material_request"],
+        order_by="application_date desc, modified desc",
+        limit_page_length=cint(limit) or 100,
+    )
+    if season and season != "All Seasons":
+        names = set(frappe.get_all("Block Fertilizer Plan",
+                                   filters={"season": season}, pluck="name"))
+        rows = [r for r in rows if r.block_fertilizer_plan in names]
+    _attach_product_names(rows)
+
+    for r in rows:
+        applicators = frappe.get_all(
+            "Fertilizer Application Applicator",
+            filters={"parent": r.name}, fields=["employee_name"], pluck="employee_name")
+        r["applicators"] = [a for a in applicators if a]
+    return rows
+
+
+@frappe.whitelist()
+def get_variance_by_section(farm=None, season=None):
+    """Planned against applied per section - the level a decision gets made at.
+    Drill into one with get_variance_by_block()."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
+    conditions = ["bfp.docstatus = 1"]
+    values = {}
+    if farm:
+        conditions.append("bfp.farm = %(farm)s")
+        values["farm"] = farm
+    if season and season != "All Seasons":
+        conditions.append("bfp.season = %(season)s")
+        values["season"] = season
+
+    rows = frappe.db.sql(f"""
+        select bfp.section,
+               sum(bfp.total_kg_required) as planned,
+               coalesce(sum(fa.actual_quantity_applied_kg), 0) as actual,
+               count(distinct bfp.block) as blocks
+        from `tabBlock Fertilizer Plan` bfp
+        left join `tabFertilizer Application` fa
+               on fa.block_fertilizer_plan = bfp.name and fa.docstatus = 1
+        where {" and ".join(conditions)}
+        group by bfp.section
+        order by bfp.section asc
+    """, values, as_dict=True)
+
+    for r in rows:
+        r["variance"] = round(flt(r.actual) - flt(r.planned), 1)
+        r["pct"] = round(flt(r.actual) / flt(r.planned) * 100, 0) if flt(r.planned) else 0
+    return rows
+
+
+@frappe.whitelist()
+def get_variance_by_block(section, farm=None, season=None):
+    """The same figures one level down, for a single section."""
+    _section_scope_guard(section)
+    farm = resolve_farm_scope(frappe.session.user, farm)
+    conditions = ["bfp.docstatus = 1", "bfp.section = %(section)s"]
+    values = {"section": section}
+    if farm:
+        conditions.append("bfp.farm = %(farm)s")
+        values["farm"] = farm
+    if season and season != "All Seasons":
+        conditions.append("bfp.season = %(season)s")
+        values["season"] = season
+
+    rows = frappe.db.sql(f"""
+        select bfp.block,
+               sum(bfp.total_kg_required) as planned,
+               coalesce(sum(fa.actual_quantity_applied_kg), 0) as actual
+        from `tabBlock Fertilizer Plan` bfp
+        left join `tabFertilizer Application` fa
+               on fa.block_fertilizer_plan = bfp.name and fa.docstatus = 1
+        where {" and ".join(conditions)}
+        group by bfp.block
+        order by bfp.block asc
+    """, values, as_dict=True)
+    for r in rows:
+        r["variance"] = round(flt(r.actual) - flt(r.planned), 1)
+        r["pct"] = round(flt(r.actual) / flt(r.planned) * 100, 0) if flt(r.planned) else 0
+    return rows
+
+
+@frappe.whitelist()
+def get_desk_stock(farm=None, season=None):
+    """What the store actually holds of each fertilizer, and whether it covers
+    what the programme still needs.
+
+    Requirement is the programme's outstanding rounds, not its whole season:
+    fertilizer already applied is not a shortfall, and reporting it as one
+    sends people chasing stock they do not need.
+    """
+    farm = resolve_farm_scope(frappe.session.user, farm)
+    warehouse = frappe.db.get_value("CNP Farm", farm, "warehouse") if farm else None
+
+    conditions = ["p.docstatus = 1", "p.status in ('Planned','Issued')"]
+    values = {}
+    if farm:
+        conditions.append("p.farm = %(farm)s")
+        values["farm"] = farm
+    if season and season != "All Seasons":
+        conditions.append("p.season = %(season)s")
+        values["season"] = season
+
+    need = {r.fertilizer_product: flt(r.kg) for r in frappe.db.sql(f"""
+        select fertilizer_product, sum(total_kg_required) as kg
+        from `tabBlock Fertilizer Plan` p
+        where {" and ".join(conditions)}
+        group by fertilizer_product
+    """, values, as_dict=True)}
+
+    items = frappe.get_all(
+        "Item",
+        filters={"item_group": ["in", ["Fertilizer", "AVOCADO FERTILIZER"]], "disabled": 0},
+        fields=["name", "item_name", "stock_uom"], limit_page_length=0,
+    )
+    bin_filters = {"item_code": ["in", [i.name for i in items]]} if items else {}
+    if warehouse:
+        bin_filters["warehouse"] = warehouse
+    stock = get_grouped_sum("Bin", "actual_qty", "item_code", bin_filters) if items else {}
+
+    out = []
+    for i in items:
+        held = flt(stock.get(i.name, 0))
+        required = flt(need.get(i.name, 0))
+        # Everything the programme needs, plus anything actually in the store -
+        # an item with neither is noise on this screen.
+        if not required and held <= 0:
+            continue
+        out.append({
+            "item_code": i.name, "item_name": i.item_name, "uom": i.stock_uom,
+            "stock": round(held, 1), "required": round(required, 1),
+            "shortfall": round(max(required - held, 0), 1),
+            "sufficient": held >= required,
+            "in_programme": bool(required),
+            "pct": round(held / required * 100, 0) if required else None,
+        })
+    out.sort(key=lambda r: (not r["in_programme"], r["sufficient"], -r["shortfall"]))
+    return out

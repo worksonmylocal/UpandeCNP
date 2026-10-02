@@ -170,6 +170,14 @@
     } else if (f.type === "link") {
       input = `<select data-f="${esc(f.name)}" data-link="${esc(f.doctype)}" data-val="${esc(v)}">
         <option value="${esc(v)}">${esc(v || "—")}</option></select>`;
+    } else if (f.type === "itempick") {
+      // Shows the name, stores the code. Nobody recognises "10070010005".
+      input = `<div class="itempick">
+        <input type="text" class="itempick__show" readonly placeholder="Search for an item…"
+          value="${esc(f.display || v)}">
+        <input type="hidden" data-f="${esc(f.name)}" value="${esc(v)}">
+        <button type="button" class="btn itempick__go">Search</button>
+      </div>`;
     } else if (f.type === "check") {
       input = `<input type="checkbox" data-f="${esc(f.name)}"${v ? " checked" : ""}>`;
     } else if (f.type === "text") {
@@ -262,6 +270,47 @@
     return `<tr data-row="${esc(t.name)}">${cells}<td><button class="x" data-delrow="1">&times;</button></td></tr>`;
   }
 
+  /** A searchable item picker, by name. Resolves to the chosen row or null. */
+  function pickItem(current) {
+    return new Promise((resolve) => {
+      const wrap = document.createElement("div");
+      wrap.innerHTML = `<input class="searchbox" id="ip-q" placeholder="Type part of the name…" autofocus>
+        <div class="queue" id="ip-rows"><div class="skel"></div></div>`;
+      let done = false;
+      const m = modal({
+        title: "Choose an item", sub: "Fertilizer group, this farm's company.",
+        body: wrap, foot: [{ label: "Cancel" }],
+        onClose: () => { if (!done) resolve(null); },
+      });
+
+      let timer;
+      async function search(q) {
+        const rows = await call("search_fertilizer_items",
+          { search: q || null, farm: state.farm || null });
+        $("#ip-rows", wrap).innerHTML = rows.map((r) => `
+          <div class="qrow" data-pick='${esc(JSON.stringify(r))}' style="cursor:pointer">
+            <div class="qrow__mark">${r.item_code === current ? "✓" : ""}</div>
+            <div><div class="qrow__name">${esc(r.item_name || r.item_code)}</div>
+            <div class="qrow__meta">${esc(r.item_code)} · ${num(r.stock_qty)} ${esc(r.stock_uom || "kg")} in stock</div></div>
+            <div class="qrow__right">${r.stock_qty > 0 ? pill("in stock", "good") : pill("empty", "mute")}</div>
+          </div>`).join("") || `<div class="none">Nothing matches.</div>`;
+      }
+      $("#ip-q", wrap).addEventListener("input", (e) => {
+        clearTimeout(timer);
+        const q = e.target.value;
+        timer = setTimeout(() => search(q).catch(() => {}), 250);
+      });
+      wrap.addEventListener("click", (e) => {
+        const row = e.target.closest("[data-pick]");
+        if (!row) return;
+        done = true;
+        resolve(JSON.parse(row.dataset.pick));
+        m.close();
+      });
+      search("").catch(() => {});
+    });
+  }
+
   // ---------------------------------------------------------------- what we edit
   /* Curated on purpose. A doctype form shows every field in the schema, in
    * schema order, which is exactly the thing this desk exists to avoid - so
@@ -275,15 +324,18 @@
       sub: "The season's plan. Build it, calculate it, submit it.",
       list: ["name", "season", "farm", "crop", "docstatus"],
       fields: [
-        { name: "season", label: "Season", reqd: 1, help: "e.g. 2025/2026" },
+        { name: "season", label: "Season", type: "select", reqd: 1,
+          options: ["2025/2026", "2026/2027"] },
         { name: "farm", label: "Farm", type: "link", doctype: "CNP Farm", reqd: 1 },
         { name: "crop", label: "Crop", type: "link", doctype: "Crop", reqd: 1 },
         { name: "production_calendar", label: "Production Calendar", type: "link", doctype: "Production Calendar", reqd: 1 },
-        { name: "potassium_source", label: "Potassium Source", type: "link", doctype: "Item",
-          help: "Which of the crop's two potassium rules this season uses." },
+        { name: "potassium_source", label: "Potassium Source", type: "itempick",
+          help: "Which of the crop's two potassium rules this season uses. Searched by name." },
         { name: "period_type", label: "Programme Period", type: "select", options: ["Full Year", "Custom Period"] },
-        { name: "start_month", label: "Start Month", type: "select", options: ["", ...["January","February","March","April","May","June","July","August","September","October","November","December"]] },
-        { name: "end_month", label: "End Month", type: "select", options: ["", ...["January","February","March","April","May","June","July","August","September","October","November","December"]] },
+        { name: "start_month", label: "Start Month", type: "select", showIf: "custom",
+          options: ["", "January","February","March","April","May","June","July","August","September","October","November","December"] },
+        { name: "end_month", label: "End Month", type: "select", showIf: "custom",
+          options: ["", "January","February","March","April","May","June","July","August","September","October","November","December"] },
       ],
     },
     farm: {
@@ -476,6 +528,32 @@
       ],
     });
 
+    // Full Year is the default and the months are noise until someone asks for
+    // a window, so they are only shown when Custom Period is chosen.
+    const period = $('[data-f="period_type"]', form);
+    if (period) {
+      const sync = () => {
+        const custom = period.value === "Custom Period";
+        spec.fields.filter((f) => f.showIf === "custom").forEach((f) => {
+          const el = $(`[data-f="${f.name}"]`, form);
+          if (el) el.closest(".field").style.display = custom ? "" : "none";
+        });
+      };
+      period.addEventListener("change", sync);
+      sync();
+    }
+
+    // searching for an item by name, from inside the form
+    form.addEventListener("click", async (e) => {
+      const go = e.target.closest(".itempick__go");
+      if (!go) return;
+      const wrap = go.closest(".itempick");
+      const hidden = $('input[type="hidden"]', wrap);
+      const shown = $(".itempick__show", wrap);
+      const picked = await pickItem(hidden.value);
+      if (picked) { hidden.value = picked.item_code; shown.value = picked.item_name || picked.item_code; }
+    });
+
     // rows can be added and removed while the popup is open
     form.addEventListener("click", (e) => {
       const add = e.target.closest("[data-addrow]");
@@ -543,12 +621,21 @@
     return `<span class="pill${kind ? " pill--" + kind : ""}">${esc(text)}</span>`;
   }
 
-  /** Workflow state to a colour, so the state reads before it is read. */
+  /** What the programme is, in the words the agronomist uses. With approval
+   *  switched off there are two states that matter: still being built, or in
+   *  force. The workflow states only appear if someone turns approval on. */
+  function progState(p) {
+    if (p.docstatus === 1) return p.workflow_state === "Approved" || !p.workflow_state
+      ? "Submitted" : p.workflow_state;
+    if (p.docstatus === 2) return "Cancelled";
+    return p.workflow_state && p.workflow_state !== "Draft" ? p.workflow_state : "Draft";
+  }
+
   function stateKind(s) {
-    if (s === "Approved") return "good";
-    if (s === "Rejected") return "bad";
-    if (s === "Draft" || !s) return "mute";
-    return "warn";   // the pending states
+    if (s === "Submitted" || s === "Approved") return "good";
+    if (s === "Rejected" || s === "Cancelled") return "bad";
+    if (s === "Draft") return "mute";
+    return "warn";
   }
 
   function renderKpis(d) {
@@ -598,7 +685,7 @@
           <div class="qrow__name">${esc(c.name)}</div>
           <div class="qrow__meta">${period} · ${num(c.blocks)} blocks · ${num(c.lines)} lines</div>
         </div>
-        <div class="qrow__right">${pill(c.workflow_state || "Draft", stateKind(c.workflow_state))}</div>
+        <div class="qrow__right">${pill(progState(c), stateKind(progState(c)))}</div>
       </div>
       <div class="steps">${steps}</div>
       ${a.blocked ? `<div class="none">${esc(a.blocked)}</div>` : ""}
@@ -607,8 +694,8 @@
         <button class="btn" data-act="pull_blocks" ${a.editable ? "" : "disabled"}>Pull blocks</button>
         <button class="btn" data-act="load_products" ${a.editable ? "" : "disabled"}>Load products</button>
         <button class="btn" data-act="calculate" ${a.editable ? "" : "disabled"}>Run calculation</button>
-        <button class="btn btn--ink" data-act="send"
-          ${a.editable && a.ready_to_send ? "" : "disabled"}>Send for review</button>
+        <button class="btn btn--ink" data-act="submit"
+          ${a.editable && a.ready_to_send ? "" : "disabled"}>Submit programme</button>
       </div>`;
 
     // products, each with the item it draws from and whether stock covers it
@@ -644,19 +731,36 @@
             ${p.period_type === "Custom Period"
               ? esc(p.start_month) + " – " + esc(p.end_month) : "Full year"}</div>
         </div>
-        <div class="qrow__right">${pill(p.workflow_state || "Draft", stateKind(p.workflow_state))}</div>
+        <div class="qrow__right">${pill(progState(p), stateKind(progState(p)))}</div>
       </div>`).join("") || `<div class="none">Nothing yet.</div>`;
   }
 
   // ----------------------------------------------------------------- other tabs
+  function bar(pct, kind) {
+    const w = Math.max(0, Math.min(100, Number(pct) || 0));
+    return `<div class="bar"><div class="bar__fill${kind ? " " + kind : ""}" style="width:${w}%"></div></div>`;
+  }
+  const stateKindFor = (st) =>
+    st === "Completed" ? "good" : st === "In progress" ? "warn"
+    : st === "No plan" ? "mute" : "info";
+
+  let allBlocks = [];
+
   async function loadPlans() {
-    const el = $("#plans");
+    // every block, searchable
+    try {
+      allBlocks = await call("get_desk_blocks",
+        { farm: state.farm || null, season: state.season || null });
+      drawBlocks();
+    } catch (e) { $("#blocks").innerHTML = `<div class="none">Could not load blocks.</div>`; }
+
+    // and the ones with work outstanding
     try {
       const rows = await call("get_plan_queue",
         { farm: state.farm || null, season: state.season || null });
       $("#plans-meta").textContent = rows.length + " blocks";
-      el.innerHTML = rows.map((r) => `
-        <div class="qrow">
+      $("#plans").innerHTML = rows.map((r) => `
+        <div class="qrow" data-block="${esc(r.block)}" style="cursor:pointer">
           <div class="qrow__mark">${esc((r.block || "?").slice(0, 2))}</div>
           <div>
             <div class="qrow__name">${esc(r.block)}</div>
@@ -666,73 +770,229 @@
           <div class="qrow__right">${r.issued
             ? pill(num(r.issued) + " issued", "good") : pill("awaiting store", "warn")}</div>
         </div>`).join("") || `<div class="none">No block has work outstanding.</div>`;
-    } catch (e) { el.innerHTML = `<div class="none">Could not load blocks.</div>`; }
+    } catch (e) { $("#plans").innerHTML = `<div class="none">Could not load.</div>`; }
+  }
+
+  function drawBlocks() {
+    const q = ($("#block-search").value || "").toLowerCase();
+    const rows = allBlocks.filter((b) =>
+      !q || (b.block || "").toLowerCase().includes(q) || (b.section || "").toLowerCase().includes(q));
+    $("#blocks-meta").textContent = `${rows.length} of ${allBlocks.length}`;
+    $("#blocks").innerHTML = rows.map((b) => `
+      <div class="qrow" data-block="${esc(b.block)}" style="cursor:pointer">
+        <div class="qrow__mark">${esc((b.block || "?").slice(0, 2))}</div>
+        <div>
+          <div class="qrow__name">${esc(b.block)}</div>
+          <div class="qrow__meta">${esc(b.section || "")} · ${num(b.area_ha, 2)} ha ·
+            ${num(b.tree_count)} trees · ${num(b.done)}/${num(b.rounds)} rounds</div>
+        </div>
+        <div class="qrow__right">${bar(b.pct, b.pct >= 100 ? "good" : b.pct ? "warn" : "")}
+          ${pill(b.state, stateKindFor(b.state))}</div>
+      </div>`).join("") || `<div class="none">No block matches.</div>`;
+  }
+
+  /** One block, opened from either list. */
+  async function openBlock(block) {
+    let d;
+    try { d = await call("get_block_detail", { block, season: state.season || null }); }
+    catch (e) { return; }
+    const i = d.info, y = d.yield;
+    const vsAvg = Number(y.vs_avg_pct) || 0;
+    const body = `
+      <div class="statline"><span class="statline__k">Section</span>
+        <span class="statline__v">${esc(i.section || "—")}</span></div>
+      <div class="statline"><span class="statline__k">Area · trees</span>
+        <span class="statline__v">${num(i.area_ha, 2)} ha · ${num(i.tree_count)}</span></div>
+      <div class="statline"><span class="statline__k">Rounds done</span>
+        <span class="statline__v">${num(d.done)} of ${num(d.rounds)}</span></div>
+      ${bar(d.pct, d.pct >= 100 ? "good" : d.pct ? "warn" : "")}
+      <div class="statline" style="margin-top:14px"><span class="statline__k">Planned · applied</span>
+        <span class="statline__v">${num(d.planned_kg)} · ${num(d.actual_kg)} kg</span></div>
+
+      <div class="card__head" style="margin:22px 0 10px"><h3>Last year's yield</h3></div>
+      <div class="statline"><span class="statline__k">This block</span>
+        <span class="statline__v">${num(y.block)} kg/ha</span></div>
+      ${bar(y.farm_best ? (y.block / y.farm_best) * 100 : 0,
+            vsAvg >= 0 ? "good" : "warn")}
+      <div class="statline"><span class="statline__k">Farm average · best</span>
+        <span class="statline__v">${num(y.farm_avg)} · ${num(y.farm_best)} kg/ha</span></div>
+      <div class="none" style="text-align:left;padding:10px 0">
+        ${vsAvg >= 0 ? "Above" : "Below"} the farm average by ${num(Math.abs(vsAvg))}% —
+        which is what put this block in its yield tier, and so what set these rates.
+      </div>
+
+      <div class="card__head" style="margin:18px 0 10px"><h3>Rounds</h3></div>
+      <div class="queue queue--5">${d.plans.map((p) => `
+        <div class="qrow">
+          <div class="qrow__mark">${esc((p.application_month || "?").slice(0, 3))}</div>
+          <div><div class="qrow__name">${esc(p.fertilizer_product_name || p.fertilizer_product)}</div>
+          <div class="qrow__meta">${esc(p.application_month)}${p.application_year ? " " + p.application_year : ""} ·
+            ${num(p.total_kg_required)} kg · ${num(p.dose_per_tree_g, 1)} g/tree
+            ${p.times_pushed ? " · pushed " + p.times_pushed + "×" : ""}</div></div>
+          <div class="qrow__right">${pill(p.status,
+            p.status === "Applied" || p.status === "Verified" ? "good"
+            : p.status === "Issued" ? "warn" : "mute")}</div>
+        </div>`).join("") || `<div class="none">No rounds planned.</div>`}</div>`;
+    modal({ title: block, sub: `${i.farm || ""} · ${i.crop || ""}`, body, size: "wide",
+            foot: [{ label: "Close" }] });
   }
 
   async function loadRequests() {
     const el = $("#requests");
     try {
-      const rows = await call("get_store_requests", { farm: state.farm || null });
+      const rows = await call("get_desk_store_requests", { farm: state.farm || null });
+      state.requests = rows;
       $("#req-meta").textContent = rows.length + " requests";
-      el.innerHTML = rows.map((r) => `
-        <div class="qrow">
+      el.innerHTML = rows.map((r, idx) => `
+        <div class="qrow" data-req="${idx}" style="cursor:pointer">
           <div class="qrow__mark">${esc((r.block || "?").slice(0, 2))}</div>
           <div>
-            <div class="qrow__name">${esc(r.fertilizer_product_name || r.fertilizer_product || r.name)}</div>
-            <div class="qrow__meta">${esc(r.block || "")} · ${num(r.quantity)} kg · ${esc(r.name)}</div>
+            <div class="qrow__name">${esc(r.item_code_name || r.item_code || r.name)}</div>
+            <div class="qrow__meta">${esc(r.block || "—")} · ${num(r.qty)} kg ·
+              ${esc(r.employee_name || "unknown supervisor")} · ${esc(r.transaction_date || "")}</div>
           </div>
-          <div class="qrow__right">${pill(r.status || "—",
-            r.status === "Approved" || r.status === "Issued" ? "good"
-            : r.status === "Rejected" || r.status === "Cancelled" ? "bad" : "warn")}</div>
-        </div>`).join("") || `<div class="none">No store requests.</div>`;
+          <div class="qrow__right">${pill(r.state || "—",
+            r.state === "Approved" || r.state === "Issued" ? "good"
+            : r.state === "Rejected" || r.state === "Cancelled" ? "bad" : "warn")}</div>
+        </div>`).join("") || `<div class="none">No supervisor has raised a request yet.</div>`;
     } catch (e) { el.innerHTML = `<div class="none">Could not load requests.</div>`; }
+  }
+
+  function openRequest(idx) {
+    const r = (state.requests || [])[idx];
+    if (!r) return;
+    const body = `
+      <div class="statline"><span class="statline__k">Supervisor</span>
+        <span class="statline__v">${esc(r.employee_name || r.employee || "—")}</span></div>
+      <div class="statline"><span class="statline__k">Amount requested</span>
+        <span class="statline__v">${num(r.qty)} kg</span></div>
+      <div class="statline"><span class="statline__k">Product</span>
+        <span class="statline__v">${esc(r.item_code_name || r.item_code || "—")}</span></div>
+      <div class="statline"><span class="statline__k">Block</span>
+        <span class="statline__v">${esc(r.block || "—")}</span></div>
+      <div class="statline"><span class="statline__k">Section</span>
+        <span class="statline__v">${esc(r.section || "—")}</span></div>
+      <div class="statline"><span class="statline__k">For the month of</span>
+        <span class="statline__v">${esc(r.application_month || "—")}</span></div>
+      <div class="statline"><span class="statline__k">Raised on</span>
+        <span class="statline__v">${esc(r.transaction_date || "—")}</span></div>
+      <div class="statline"><span class="statline__k">Status</span>
+        <span class="statline__v">${esc(r.state || r.status || "—")}</span></div>
+      <div class="none" style="text-align:left">Request ${esc(r.name)}${
+        r.plan ? ` · plan ${esc(r.plan)}` : ""}</div>`;
+    modal({ title: "Store request", sub: r.block || "", body, foot: [{ label: "Close" }] });
   }
 
   async function loadApplications() {
     try {
-      const rows = await call("get_recent_activity", { farm: state.farm || null });
-      $("#apps").innerHTML = rows.map((r) => `
-        <div class="qrow">
+      const rows = await call("get_desk_applications",
+        { farm: state.farm || null, season: state.season || null });
+      state.apps = rows;
+      $("#apps-meta").textContent = `${rows.length} recorded`;
+      $("#apps").innerHTML = rows.map((r, idx) => `
+        <div class="qrow" data-app="${idx}" style="cursor:pointer">
           <div class="qrow__mark">${esc((r.block || "?").slice(0, 2))}</div>
           <div>
             <div class="qrow__name">${esc(r.fertilizer_product_name || r.fertilizer_product)}</div>
             <div class="qrow__meta">${esc(r.block)} · ${num(r.actual_quantity_applied_kg, 1)} kg ·
-              ${esc(r.application_date || "")}</div>
+              ${esc(r.application_date || "")} · ${esc(r.supervisor_name || "")}</div>
           </div>
           <div class="qrow__right">${r.applied_in_full ? pill("in full", "good") : pill("partial", "warn")}</div>
         </div>`).join("") || `<div class="none">Nothing recorded yet.</div>`;
     } catch (e) { $("#apps").innerHTML = `<div class="none">Could not load applications.</div>`; }
 
+    // planned against applied, per section
     try {
-      const rows = await call("get_variance_alerts", { farm: state.farm || null });
+      const rows = await call("get_variance_by_section",
+        { farm: state.farm || null, season: state.season || null });
       $("#variance").innerHTML = rows.map((r) => `
-        <div class="qrow">
-          <div class="qrow__mark">!</div>
-          <div>
-            <div class="qrow__name">${esc(r.block)} · ${esc(r.fertilizer_product_name || r.fertilizer_product)}</div>
-            <div class="qrow__meta">${esc(r.application_date || "")} · ${num(r.variance_pct, 1)}% off plan</div>
+        <div class="hb" data-section="${esc(r.section)}" style="cursor:pointer">
+          <div class="hb__name">${esc(r.section || "—")}</div>
+          <div class="hb__lane">
+            <div class="hb__est"></div>
+            <div class="hb__act${r.pct >= 100 ? "" : " bad"}"
+              style="width:${Math.max(0, Math.min(100, r.pct))}%"></div>
           </div>
-          <div class="qrow__right">${pill(num(r.variance_pct, 0) + "%", "bad")}</div>
-        </div>`).join("") || `<div class="none">Nothing beyond the threshold.</div>`;
-    } catch (e) { $("#variance").innerHTML = `<div class="none">Could not load alerts.</div>`; }
+          <div class="hb__pct">${num(r.actual)} / ${num(r.planned)} kg</div>
+        </div>`).join("") || `<div class="none">Nothing planned yet.</div>`;
+    } catch (e) { $("#variance").innerHTML = `<div class="none">Could not load.</div>`; }
+  }
+
+  function openApplication(idx) {
+    const a = (state.apps || [])[idx];
+    if (!a) return;
+    const body = `
+      <div class="statline"><span class="statline__k">Block</span>
+        <span class="statline__v">${esc(a.block)}</span></div>
+      <div class="statline"><span class="statline__k">Product</span>
+        <span class="statline__v">${esc(a.fertilizer_product_name || a.fertilizer_product)}</span></div>
+      <div class="statline"><span class="statline__k">Date</span>
+        <span class="statline__v">${esc(a.application_date || "—")}</span></div>
+      <div class="statline"><span class="statline__k">Planned · applied</span>
+        <span class="statline__v">${num(a.planned_quantity_kg, 1)} · ${num(a.actual_quantity_applied_kg, 1)} kg</span></div>
+      <div class="statline"><span class="statline__k">Variance</span>
+        <span class="statline__v">${num(a.variance_kg, 1)} kg</span></div>
+      ${a.applied_in_full ? "" : `<div class="none" style="text-align:left">
+        Partial — ${esc(a.partial_reason || "no reason given")}</div>`}
+      <div class="statline"><span class="statline__k">Method · weather</span>
+        <span class="statline__v">${esc(a.application_method || "—")} · ${esc(a.weather_conditions || "—")}</span></div>
+      <div class="statline"><span class="statline__k">Supervisor</span>
+        <span class="statline__v">${esc(a.supervisor_name || a.supervisor || "—")}</span></div>
+      <div class="statline"><span class="statline__k">Applicators</span>
+        <span class="statline__v">${esc((a.applicators || []).join(", ") || "—")}</span></div>
+      <div class="none" style="text-align:left">${esc(a.name)}${
+        a.material_request ? ` · request ${esc(a.material_request)}` : ""}</div>`;
+    modal({ title: "Application", sub: a.block, body, foot: [{ label: "Close" }] });
+  }
+
+  async function openSectionVariance(section) {
+    let rows;
+    try {
+      rows = await call("get_variance_by_block",
+        { section, farm: state.farm || null, season: state.season || null });
+    } catch (e) { return; }
+    const body = rows.map((r) => `
+      <div class="hb">
+        <div class="hb__name">${esc(r.block)}</div>
+        <div class="hb__lane">
+          <div class="hb__est"></div>
+          <div class="hb__act${r.pct >= 100 ? "" : " bad"}"
+            style="width:${Math.max(0, Math.min(100, r.pct))}%"></div>
+        </div>
+        <div class="hb__pct">${num(r.actual)} / ${num(r.planned)} kg</div>
+      </div>`).join("") || `<div class="none">Nothing planned in this section.</div>`;
+    modal({ title: section, sub: "Planned against applied, per block",
+            body, size: "wide", foot: [{ label: "Close" }] });
   }
 
   async function loadStock() {
     const el = $("#stock");
     try {
-      const rows = await call("get_stock_coverage", { farm: state.farm || null, season: state.season || null });
-      el.innerHTML = rows.map((r) => {
-        const pct = r.need ? Math.min(100, Math.round((r.stock / r.need) * 100)) : 100;
-        return `<div class="hb">
-          <div class="hb__name">${esc(r.product_name || r.product)}</div>
-          <div class="hb__lane">
-            <div class="hb__est"></div>
-            <div class="hb__act${r.covered ? "" : " bad"}" style="width:${pct}%"></div>
+      const rows = await call("get_desk_stock",
+        { farm: state.farm || null, season: state.season || null });
+      const inProg = rows.filter((r) => r.in_programme);
+      const rest = rows.filter((r) => !r.in_programme);
+      const line = (r) => `
+        <div class="qrow">
+          <div class="qrow__mark">${r.sufficient ? "✓" : "!"}</div>
+          <div>
+            <div class="qrow__name">${esc(r.item_name || r.item_code)}</div>
+            <div class="qrow__meta">${esc(r.item_code)} · ${num(r.stock)} ${esc(r.uom || "kg")} in store${
+              r.in_programme ? ` · ${num(r.required)} needed` : ""}</div>
           </div>
-          <div class="hb__pct">${pct}%</div>
+          <div class="qrow__right">${r.in_programme
+            ? (r.sufficient ? pill("covers it", "good")
+                            : pill("short " + num(r.shortfall) + " kg", "bad"))
+            : pill("not in the programme", "mute")}</div>
         </div>`;
-      }).join("") || `<div class="none">No requirement calculated yet.</div>`;
-    } catch (e) { el.innerHTML = `<div class="none">Could not load stock cover.</div>`; }
+      el.innerHTML =
+        `<div class="card__head"><h3>Needed by this programme</h3>
+           <span class="meta">${inProg.length} items</span></div>
+         <div class="queue">${inProg.map(line).join("") || `<div class="none">Nothing required yet — calculate the programme first.</div>`}</div>
+         <div class="card__head" style="margin-top:22px"><h3>Also in the store</h3>
+           <span class="meta">${rest.length} items</span></div>
+         <div class="queue queue--5">${rest.map(line).join("") || `<div class="none">—</div>`}</div>`;
+    } catch (e) { el.innerHTML = `<div class="none">Could not load stock.</div>`; }
   }
 
   // --------------------------------------------------------------------- actions
@@ -752,9 +1012,10 @@
       } else if (kind === "calculate") {
         const r = await call("desk_calculate", { programme: c.name });
         toast(`${r.lines} programme lines generated.`, "good");
-      } else if (kind === "send") {
-        const r = await call("desk_send_for_review", { programme: c.name });
-        toast(`Sent — now ${r.workflow_state}.`, "good");
+      } else if (kind === "submit") {
+        const r = await call("desk_submit_programme", { programme: c.name });
+        toast(r.already ? "Already submitted." :
+          "Programme submitted — the block plans are created.", "good");
       }
       await load();
     } catch (e) {
@@ -850,6 +1111,7 @@
     $("#avatar").textContent = (u.slice(0, 2) || "--").toUpperCase();
     tabs();
     $("#refresh").addEventListener("click", () => load());
+    $("#block-search").addEventListener("input", () => drawBlocks());
     $("#farm").addEventListener("change", (e) => { state.farm = e.target.value; load(); });
     $("#season").addEventListener("change", (e) => { state.season = e.target.value; load(); });
 
@@ -866,6 +1128,14 @@
       if (nw) return openRecord(nw.dataset.new, null, () => load()).catch(() => {});
       const ed = e.target.closest("[data-edit-prog]");
       if (ed) return openRecord("programme", ed.dataset.editProg, () => load()).catch(() => {});
+      const bl = e.target.closest("[data-block]");
+      if (bl) return openBlock(bl.dataset.block);
+      const rq = e.target.closest("[data-req]");
+      if (rq) return openRequest(Number(rq.dataset.req));
+      const ap = e.target.closest("[data-app]");
+      if (ap) return openApplication(Number(ap.dataset.app));
+      const sv = e.target.closest("[data-section]");
+      if (sv) return openSectionVariance(sv.dataset.section);
     });
 
     load().catch(() => {});

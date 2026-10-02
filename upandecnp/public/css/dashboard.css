@@ -257,3 +257,18 @@ a{color:inherit}
 .opentile__ic{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font-size:15px;flex:none}
 .opentile__lb{font:600 13.5px var(--sans);color:var(--ink)}
 .opentile__sub{font-size:11.5px;color:var(--ink-mute);margin-top:2px}
+
+/* A search box that sits inside a card, above its queue */
+.searchbox{font:400 13.5px var(--sans);color:var(--ink);background:var(--surface);border:1px solid var(--hairline);border-radius:999px;padding:10px 16px;width:100%;margin-bottom:12px}
+.searchbox:focus{outline:0;border-color:var(--signal);box-shadow:0 0 0 3px rgba(34,136,131,0.15);background:#fff}
+/* Five rows then scroll - a long list should not push the rest of the page away */
+.queue--5{max-height:330px}
+/* A thin progress lane used in rows and popups */
+.bar{height:8px;border-radius:999px;background:rgba(10,10,10,0.06);overflow:hidden;min-width:90px}
+.bar__fill{height:8px;border-radius:999px;background:var(--signal)}
+.bar__fill.good{background:var(--good)} .bar__fill.warn{background:var(--warn)} .bar__fill.bad{background:var(--bad)}
+.statline{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin:4px 0 10px}
+.statline__k{font-size:12px;color:var(--ink-mute)}
+.statline__v{font:600 13px var(--sans);color:var(--ink);font-variant-numeric:tabular-nums}
+.itempick{display:flex;gap:8px;align-items:center}
+.itempick__show{flex:1;cursor:default;background:var(--surface)}
