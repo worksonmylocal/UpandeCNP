@@ -722,10 +722,15 @@
    *  switched off there are two states that matter: still being built, or in
    *  force. The workflow states only appear if someone turns approval on. */
   function progState(p) {
-    if (p.docstatus === 1) return p.workflow_state === "Approved" || !p.workflow_state
-      ? "Submitted" : p.workflow_state;
+    // docstatus is the fact; workflow_state is a label that can lag behind it.
+    // A submitted document cannot be anything but submitted, whatever the
+    // label says - and with approval switched off Frappe never updates the
+    // label on submit at all, so it can be left reading "Draft" forever.
+    if (p.docstatus === 1) return "Submitted";
     if (p.docstatus === 2) return "Cancelled";
-    return p.workflow_state && p.workflow_state !== "Draft" ? p.workflow_state : "Draft";
+    // Only a draft sitting mid-chain has a state worth showing.
+    return p.workflow_state && !["Draft", "Approved"].includes(p.workflow_state)
+      ? p.workflow_state : "Draft";
   }
 
   function stateKind(s) {

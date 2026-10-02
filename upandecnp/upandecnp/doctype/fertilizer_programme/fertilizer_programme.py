@@ -100,8 +100,23 @@ class FertilizerProgramme(Document):
 		)
 
 	def on_submit(self):
+		self.sync_workflow_state()
 		self.create_block_fertilizer_plans()
 		self.create_material_requests()
+
+	def sync_workflow_state(self):
+		"""Leave the stored state saying what is true.
+
+		With approval switched off the Workflow is inactive, and an inactive
+		Workflow does not move workflow_state on submit - so a programme could
+		be submitted, with its block plans created, while the field still read
+		"Draft" for ever. Anything reading that field (reports, list filters,
+		the desk) then disagreed with docstatus. "Approved" is the Workflow's
+		own terminal state, so a site that later turns approval on finds these
+		programmes already in a state the chain recognises.
+		"""
+		if frappe.db.has_column(self.doctype, "workflow_state"):
+			self.db_set("workflow_state", "Approved", update_modified=False)
 
 	def on_cancel(self):
 		self.cancel_block_fertilizer_plans()

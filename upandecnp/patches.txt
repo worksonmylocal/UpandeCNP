@@ -11,3 +11,4 @@ upandecnp.patches.add_material_request_block_fertilizer_plan_field
 upandecnp.patches.create_agronomist_roles
 upandecnp.patches.seed_fertilizer_products
 upandecnp.patches.create_consultant_role
+upandecnp.patches.sync_programme_workflow_state
