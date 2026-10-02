@@ -1074,6 +1074,26 @@
     });
   }
 
+  /* The master-data grid. Order is the order someone sets a farm up in:
+   * where it is, how it is divided, what grows there, what feeds it, when,
+   * and what the lab said. */
+  const SETUP_ORDER = ["farm", "section", "block", "crop", "product",
+                       "calendar", "leaf", "norm", "settings"];
+
+  function renderSetup() {
+    const grid = $("#setup-grid");
+    if (!grid) return;
+    grid.innerHTML = SETUP_ORDER.map((k) => {
+      const sp = SPECS[k];
+      if (!sp) return "";
+      return `<button class="opentile" data-open-list="${esc(k)}">
+        <span class="opentile__ic" style="background:${sp.tint};color:${sp.colour}">${sp.icon}</span>
+        <span><span class="opentile__lb">${esc(sp.title)}</span>
+        <span class="opentile__sub">${esc(sp.sub)}</span></span>
+      </button>`;
+    }).join("");
+  }
+
   // ------------------------------------------------------------------ bootstrap
   function tabs() {
     $$(".tab").forEach((t) => t.addEventListener("click", () => {
