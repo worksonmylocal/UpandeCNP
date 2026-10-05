@@ -2885,8 +2885,11 @@ def get_active_supervisors(farm=None, window=15):
         select distinct supervisor, farm from `tabFertilizer Application`
         where supervisor in %(s)s and ifnull(farm, '') != ''""", {"s": sups}, as_dict=True):
         worked.setdefault(r.supervisor, set()).add(r.farm)
-    farm_company = {f.name: f.company for f in frappe.get_all(
+    # CNP Farm carries no company of its own; Frappe 16 rejects the unknown
+    # field outright, so only use it where a site has added one.
+    farm_company = ({f.name: f.company for f in frappe.get_all(
         "CNP Farm", fields=["name", "company"])}
+        if frappe.get_meta("CNP Farm").has_field("company") else {})
 
     n = now_datetime()
     since_midnight = n.hour * 3600 + n.minute * 60 + n.second
