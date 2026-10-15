@@ -211,24 +211,45 @@
     </div>`;
   }
 
-  /** Fill every link select in a container from its doctype, once. */
-  async function hydrateLinks(root) {
+  /** Fill every link select in a container from its doctype, once.
+   *
+   *  A field can declare `filterBy: "farm"` (looked up via `spec`, so this
+   *  only applies to the top-level form, not table rows) to narrow its list
+   *  to whatever the named sibling field currently holds - Section and Block
+   *  pickers only make sense once a Farm is chosen, otherwise every section
+   *  or block on every farm would be offered. That sibling is watched for
+   *  changes so picking a different Farm re-narrows them live. */
+  async function hydrateLinks(root, spec) {
     const sels = $$("select[data-link]", root);
-    const wanted = Array.from(new Set(sels.map((s) => s.dataset.link)));
-    const lists = {};
-    await Promise.all(wanted.map(async (dt) => {
+    const byName = {};
+    (spec ? spec.fields : []).forEach((f) => { byName[f.name] = f; });
+
+    async function load(sel) {
+      const dt = sel.dataset.link;
+      const f = byName[sel.dataset.f];
+      let rows = [];
       try {
-        lists[dt] = await listDoc(dt, ["name"],
-          dt === "CNP Farm" && state.scope ? [["name", "=", state.scope]] : [], "name asc");
-      }
-      catch (e) { lists[dt] = []; }
-    }));
-    sels.forEach((sel) => {
-      const rows = lists[sel.dataset.link] || [];
+        if (f && f.filterBy) {
+          const dep = $(`[data-f="${f.filterBy}"]`, root);
+          const depVal = dep ? dep.value : "";
+          rows = depVal ? await listDoc(dt, ["name"], [[f.filterBy, "=", depVal]], "name asc") : [];
+        } else {
+          rows = await listDoc(dt, ["name"],
+            dt === "CNP Farm" && state.scope ? [["name", "=", state.scope]] : [], "name asc");
+        }
+      } catch (e) { rows = []; }
       const cur = sel.dataset.val || "";
       sel.innerHTML = `<option value="">—</option>` + rows.map((r) =>
         `<option value="${esc(r.name)}"${r.name === cur ? " selected" : ""}>${esc(r.name)}</option>`).join("");
       sel.value = cur;
+    }
+
+    await Promise.all(sels.map(load));
+    sels.forEach((sel) => {
+      const f = byName[sel.dataset.f];
+      if (!f || !f.filterBy) return;
+      const dep = $(`[data-f="${f.filterBy}"]`, root);
+      if (dep) dep.addEventListener("change", () => load(sel).catch(() => {}));
     });
   }
 
@@ -344,19 +365,28 @@
       doctype: "Fertilizer Programme", title: "Fertilizer Programme",
       icon: "🗂", tint: "rgba(16,185,129,.13)", colour: "#059669",
       sub: "The season's plan. Build it, calculate it, submit it.",
-      list: ["name", "season", "farm", "crop", "docstatus"],
+      list: ["name", "season", "farm", "scope_type", "crop", "docstatus"],
       fields: [
         { name: "season", label: "Season", type: "select", reqd: 1,
           options: ["2025/2026", "2026/2027"] },
         { name: "farm", label: "Farm", type: "link", doctype: "CNP Farm", reqd: 1 },
+        { name: "scope_type", label: "Programme Scope", type: "select",
+          options: ["Entire Farm", "Section", "Block"],
+          help: "Entire Farm plans every block. Section or Block narrows it to one piece of the farm." },
+        { name: "scope_section", label: "Section", type: "link", doctype: "Section",
+          filterBy: "farm", showWhen: { field: "scope_type", equals: "Section" } },
+        { name: "scope_block", label: "Block", type: "link", doctype: "Farm Block",
+          filterBy: "farm", showWhen: { field: "scope_type", equals: "Block" } },
         { name: "crop", label: "Crop", type: "link", doctype: "Crop", reqd: 1 },
         { name: "production_calendar", label: "Production Calendar", type: "link", doctype: "Production Calendar", reqd: 1 },
         { name: "potassium_source", label: "Potassium Source", type: "itempick",
           help: "Which of the crop's two potassium rules this season uses. Searched by name." },
         { name: "period_type", label: "Programme Period", type: "select", options: ["Full Year", "Custom Period"] },
-        { name: "start_month", label: "Start Month", type: "select", showIf: "custom",
+        { name: "start_month", label: "Start Month", type: "select",
+          showWhen: { field: "period_type", equals: "Custom Period" },
           options: ["", "January","February","March","April","May","June","July","August","September","October","November","December"] },
-        { name: "end_month", label: "End Month", type: "select", showIf: "custom",
+        { name: "end_month", label: "End Month", type: "select",
+          showWhen: { field: "period_type", equals: "Custom Period" },
           options: ["", "January","February","March","April","May","June","July","August","September","October","November","December"] },
       ],
     },
@@ -560,20 +590,23 @@
       ],
     });
 
-    // Full Year is the default and the months are noise until someone asks for
-    // a window, so they are only shown when Custom Period is chosen.
-    const period = $('[data-f="period_type"]', form);
-    if (period) {
-      const sync = () => {
-        const custom = period.value === "Custom Period";
-        spec.fields.filter((f) => f.showIf === "custom").forEach((f) => {
-          const el = $(`[data-f="${f.name}"]`, form);
-          if (el) el.closest(".field").style.display = custom ? "" : "none";
-        });
-      };
-      period.addEventListener("change", sync);
-      sync();
-    }
+    // A field tagged showWhen only matters once another field holds a given
+    // value - the custom-period months, or the scope's section/block - so it
+    // stays hidden until then instead of sitting there as noise.
+    const conditional = spec.fields.filter((f) => f.showWhen);
+    const syncConditional = () => {
+      conditional.forEach((f) => {
+        const dep = $(`[data-f="${f.showWhen.field}"]`, form);
+        const el = $(`[data-f="${f.name}"]`, form);
+        if (dep && el) el.closest(".field").style.display =
+          dep.value === f.showWhen.equals ? "" : "none";
+      });
+    };
+    new Set(conditional.map((f) => f.showWhen.field)).forEach((depName) => {
+      const dep = $(`[data-f="${depName}"]`, form);
+      if (dep) dep.addEventListener("change", syncConditional);
+    });
+    syncConditional();
 
     // searching for an item by name, from inside the form
     form.addEventListener("click", async (e) => {
@@ -600,7 +633,7 @@
       if (del) del.closest("tr").remove();
     });
 
-    await hydrateLinks(form);
+    await hydrateLinks(form, spec);
     return m;
   }
 

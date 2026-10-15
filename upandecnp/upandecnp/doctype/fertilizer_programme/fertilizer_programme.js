@@ -8,8 +8,11 @@ frappe.ui.form.on("Fertilizer Programme", {
                 }
                 frm.call("pull_blocks_from_farm").then((r) => {
                     frm.reload_doc();
+                    const scope = frm.doc.scope_type === "Section" ? frm.doc.scope_section
+                        : frm.doc.scope_type === "Block" ? frm.doc.scope_block
+                        : frm.doc.farm;
                     frappe.show_alert({
-                        message: `Pulled ${r.message} blocks from ${frm.doc.farm}.`,
+                        message: `Pulled ${r.message} block${r.message === 1 ? "" : "s"} from ${scope}.`,
                         indicator: "green"
                     });
                 });
@@ -65,8 +68,12 @@ frappe.ui.form.on("Fertilizer Programme", {
     crop(frm) {
         set_potassium_source_query(frm);
     },
+    farm(frm) {
+        set_scope_queries(frm);
+    },
     onload(frm) {
         set_potassium_source_query(frm);
+        set_scope_queries(frm);
     }
 });
 
@@ -78,6 +85,14 @@ function set_potassium_source_query(frm) {
             .map(r => r.fertilizer_product);
         frm.set_query("potassium_source", () => ({ filters: { name: ["in", products] } }));
     });
+}
+
+// Section and Block only make sense from the farm already chosen - without
+// this they would list every section or block on every farm, defeating the
+// point of scoping a programme down in the first place.
+function set_scope_queries(frm) {
+    frm.set_query("scope_section", () => ({ filters: { farm: frm.doc.farm } }));
+    frm.set_query("scope_block", () => ({ filters: { farm: frm.doc.farm } }));
 }
 
 frappe.ui.form.on("Programme Block Yield", {

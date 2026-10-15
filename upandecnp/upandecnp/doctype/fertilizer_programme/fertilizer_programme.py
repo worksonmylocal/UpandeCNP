@@ -7,6 +7,7 @@ class FertilizerProgramme(Document):
 
 	def validate(self):
 		self.validate_period()
+		self.validate_scope()
 		self.warn_on_stock_shortfall()
 
 	def before_submit(self):
@@ -73,6 +74,23 @@ class FertilizerProgramme(Document):
 		if not self.start_month or not self.end_month:
 			frappe.throw("A Custom Period needs both a start and an end month.")
 
+	def validate_scope(self):
+		"""Entire Farm is the long-standing default; Section and Block narrow
+		which blocks pull_blocks_from_farm() picks up. The unused side is
+		cleared so a programme switched back to Entire Farm doesn't silently
+		keep a stale section or block it no longer scopes to."""
+		if self.scope_type == "Section":
+			self.scope_block = None
+			if self.scope_section and frappe.db.get_value("Section", self.scope_section, "farm") != self.farm:
+				frappe.throw("That Section does not belong to this programme's Farm.")
+		elif self.scope_type == "Block":
+			self.scope_section = None
+			if self.scope_block and frappe.db.get_value("Farm Block", self.scope_block, "farm") != self.farm:
+				frappe.throw("That Block does not belong to this programme's Farm.")
+		else:
+			self.scope_section = None
+			self.scope_block = None
+
 	def warn_on_stock_shortfall(self):
 		"""Flag products whose selected Item can't cover the programme, but
 		never block on it - fertilizer is routinely ordered against a
@@ -123,15 +141,30 @@ class FertilizerProgramme(Document):
 
 	@frappe.whitelist()
 	def pull_blocks_from_farm(self):
-		"""Populate block_yield_data from every active Farm Block under this
-		programme's Farm - the single source of truth for area/tree_count/
-		yield/section, replacing manual re-entry."""
+		"""Populate block_yield_data from the Farm Blocks this programme is
+		scoped to - the single source of truth for area/tree_count/yield/
+		section, replacing manual re-entry.
+
+		Entire Farm (the default) pulls every block on the farm, same as
+		before Programme Scope existed. Section or Block narrows that to just
+		the chosen piece, so a programme can be built for one part of a farm
+		without touching the rest of it."""
 		if not self.farm:
 			frappe.throw("Please set the Farm first.")
 
+		filters = {"farm": self.farm}
+		if self.scope_type == "Section":
+			if not self.scope_section:
+				frappe.throw("Please choose a Section first.")
+			filters["section"] = self.scope_section
+		elif self.scope_type == "Block":
+			if not self.scope_block:
+				frappe.throw("Please choose a Block first.")
+			filters["name"] = self.scope_block
+
 		blocks = frappe.get_all(
 			"Farm Block",
-			filters={"farm": self.farm},
+			filters=filters,
 			fields=["name", "section", "area_ha", "tree_count", "previous_year_yield_kg_ha"],
 		)
 
