@@ -1,17 +1,23 @@
 """
-Restores the Lokitela demo/master data an app deploy has been observed to
-wipe on this site: CNP Farm records, Sections, Farm Block linkage (section/
+Restores the Lokitela master data an app deploy has been observed to wipe
+on this site: CNP Farm records, Sections, Farm Block linkage (section/
 crop/variety/area/tree count/cost center/previous year yield), the Lokitela
 Production Calendar (fertilizer schedule + calendar events), and Leaf
 Analysis records.
+
+The block and leaf-analysis figures came from a one-off upload
+(Master_block_data.ods / LEAF_ANALYSIS.ods) - the farm's real master data,
+not demo values. The "Sync from Kaitet" button that used to pull area_ha/
+tree_count from the Warehouse/GIS tree and clobber this on every click has
+been removed for exactly that reason: this data is only meant to change
+through another upload, not through another system's sync.
 
 Safe to re-run on every migrate - each piece only creates what's missing
 (Production Calendar and Leaf Analysis are left alone if they already
 exist, so hand edits made after a restore aren't clobbered by the next
 one), except Farm Block field values, which are always re-applied for the
 known Lokitela blocks since those are exactly the fields observed to get
-silently zeroed out (e.g. by re-running sync_blocks_from_warehouse against
-a Warehouse tree that has no GIS/area data of its own).
+silently zeroed out by other deploy paths.
 """
 
 import json
@@ -68,8 +74,9 @@ def _seed_sections(sections):
 def _restore_blocks(blocks):
     for b in blocks:
         if not frappe.db.exists("Farm Block", b["name"]):
-            # This patch links known blocks - it doesn't create Farm Block
-            # records from scratch (that's sync_blocks_from_warehouse's job).
+            # This patch corrects known blocks - it doesn't create new Farm
+            # Block records. A block that doesn't exist yet needs a fresh
+            # upload, not an entry fabricated here.
             continue
         frappe.db.set_value("Farm Block", b["name"], {
             "section": b["section"],
