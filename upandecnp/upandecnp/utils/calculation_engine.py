@@ -148,13 +148,17 @@ def calculate_product_for_group(rule, tier_tonnage, group_area_ha, leaf_adjustme
 		if nutrient_kg_per_bag else 0
 	)
 
-	total_product_kg = product_kg_per_ha * group_area_ha
-	adjusted_total = total_product_kg * (1 + leaf_adjustment_pct / 100)
+	# Rounded to whole kg at each step, per the agronomist's worked example
+	# (192 x 8.68 -> 1666.56 -> 1667 kg, +10% leaf deficiency -> 1834 kg) -
+	# the group's total is a physical quantity of fertilizer, not a figure
+	# to carry fractional kilos through to the next step.
+	total_product_kg = round_half_up(product_kg_per_ha * group_area_ha)
+	adjusted_total = round_half_up(total_product_kg * (1 + leaf_adjustment_pct / 100))
 	final_product_kg_per_ha = adjusted_total / group_area_ha if group_area_ha else 0
 
 	return {
 		"product_kg_per_ha": round_half_up(product_kg_per_ha, 2),
-		"total_product_kg": round_half_up(total_product_kg, 2),
+		"total_product_kg": total_product_kg,
 		"final_product_kg_per_ha": final_product_kg_per_ha,
 	}
 
@@ -162,7 +166,10 @@ def calculate_product_for_group(rule, tier_tonnage, group_area_ha, leaf_adjustme
 def distribute_to_blocks(blocks, final_product_kg_per_ha, fertilizer_product, yield_tier, section, product=None):
 	lines = []
 	for block in blocks:
-		block_total_kg = block["area_ha"] * final_product_kg_per_ha
+		# Whole kg, same reasoning as the group total above (211 x 1.5 -> 317,
+		# not 316.94) - each block's annual total is also what gets rounded
+		# again, per month, in apply_monthly_schedule.
+		block_total_kg = round_half_up(block["area_ha"] * final_product_kg_per_ha)
 		dose_per_tree_g = (
 			round_half_up((block_total_kg / block["tree_count"]) * 1000, 1)
 			if block["tree_count"] else 0
@@ -174,8 +181,9 @@ def distribute_to_blocks(blocks, final_product_kg_per_ha, fertilizer_product, yi
 			"product": product,
 			"yield_tier": yield_tier,
 			"kg_per_ha_rate": round_half_up(final_product_kg_per_ha, 2),
-			"total_kg": round_half_up(block_total_kg, 2),
+			"total_kg": block_total_kg,
 			"dose_per_tree_g": dose_per_tree_g,
+			"tree_count": block["tree_count"],
 		})
 	return lines
 
@@ -206,12 +214,18 @@ def apply_monthly_schedule(annual_lines, calendar_doc, allowed_months=None):
 		for month, fraction in schedule:
 			if allowed is not None and month not in allowed:
 				continue
+			# Whole kg for the round's own total (70% of 317 -> 222, not
+			# 221.86), then the tree dose comes from that rounded figure -
+			# what the store actually weighs out, not a fraction of a
+			# fraction (222 / 250 trees -> 0.888 kg, not 317 x 0.7 / 250).
+			month_total_kg = round_half_up(line["total_kg"] * fraction)
+			tree_count = line.get("tree_count") or 0
 			monthly_lines.append({
 				**line,
 				"application_month": month,
 				"kg_per_ha_rate": round_half_up(line["kg_per_ha_rate"] * fraction, 2),
-				"total_kg": round_half_up(line["total_kg"] * fraction, 2),
-				"dose_per_tree_g": round_half_up(line["dose_per_tree_g"] * fraction, 1),
+				"total_kg": month_total_kg,
+				"dose_per_tree_g": round_half_up((month_total_kg / tree_count) * 1000, 1) if tree_count else 0,
 			})
 	return monthly_lines
 
