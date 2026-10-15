@@ -228,83 +228,105 @@ def mark_plan_issued_from_stock_entry(doc, method=None):
             frappe.db.set_value("Block Fertilizer Plan", mr.custom_block_fertilizer_plan, "status", "Issued")
 
 
-def calculate_shortfalls(programme):
+def calculate_shortfalls_by_block(programme):
     """
-    Aggregate programme requirement per product, net off live stock,
-    return a dict of products with a shortfall.
+    Aggregate programme requirement per product, net off live stock, and
+    apportion whatever is short back to the blocks that asked for it.
+
+    The farm draws from one shared store, so when it can only cover part of
+    a product's total demand, every block is short in the same proportion
+    as its own share of that demand - not an arbitrary pick of whichever
+    block's lines happen to come first. Each block has its own cost
+    center, so the resulting purchase has to be split and charged that way
+    rather than lumped into one farm-wide request with nowhere correct to
+    post it.
+
+    Returns {block: {product: {"shortfall_kg", "first_month"}}}.
     """
     warehouse = get_farm_warehouse(programme.farm)
 
-    requirements = {}
+    demand = {}
     for line in programme.get("programme_lines", []):
         product = line.fertilizer_product
-        if product not in requirements:
-            requirements[product] = {"total_kg": 0, "first_month": line.application_month}
-        requirements[product]["total_kg"] += flt(line.total_kg)
+        d = demand.setdefault(product, {"blocks": {}, "total_kg": 0, "first_month": line.application_month})
+        d["blocks"][line.block] = d["blocks"].get(line.block, 0) + flt(line.total_kg)
+        d["total_kg"] += flt(line.total_kg)
 
     stock_by_product = {}
-    if requirements:
-        bin_filters = {"item_code": ["in", list(requirements.keys())]}
+    if demand:
+        bin_filters = {"item_code": ["in", list(demand.keys())]}
         if warehouse:
             bin_filters["warehouse"] = warehouse
         stock_by_product = get_grouped_sum("Bin", "actual_qty", "item_code", bin_filters)
 
-    shortfalls = {}
-    for product, req in requirements.items():
-        stock = stock_by_product.get(product, 0)
-        shortfall = req["total_kg"] - stock
-        if shortfall > 0:
-            shortfalls[product] = {
-                "shortfall_kg": shortfall,
-                "first_month": req["first_month"],
+    by_block = {}
+    for product, d in demand.items():
+        shortfall = d["total_kg"] - stock_by_product.get(product, 0)
+        if shortfall <= 0:
+            continue
+        ratio = shortfall / d["total_kg"]
+        for block, block_kg in d["blocks"].items():
+            share = round(block_kg * ratio, 2)
+            if share <= 0:
+                continue
+            by_block.setdefault(block, {})[product] = {
+                "shortfall_kg": share,
+                "first_month": d["first_month"],
             }
-    return shortfalls
+    return by_block
 
 
 def create_material_requests_for_programme(programme_name):
     """
     Called when a Fertilizer Programme is submitted.
-    Creates one Material Request (Purchase) covering all shortfall products.
+    Creates one Material Request (Purchase) per block that is short on any
+    product, each charged to that block's own cost center.
     """
     programme = frappe.get_doc("Fertilizer Programme", programme_name)
-    shortfalls = calculate_shortfalls(programme)
+    by_block = calculate_shortfalls_by_block(programme)
 
-    if not shortfalls:
+    if not by_block:
         frappe.msgprint("Stock is sufficient — no Material Request needed.", alert=True)
-        return None
+        return []
 
     warehouse = get_farm_warehouse(programme.farm)
     farm_doc = frappe.get_doc("CNP Farm", programme.farm) if programme.farm else None
-    items = []
-    for product, data in shortfalls.items():
-        items.append({
+    company = get_farm_company(farm_doc.name) if farm_doc else None
+    business_unit = get_business_unit_for_farm(farm_doc) if farm_doc else None
+
+    created = []
+    for block, products in by_block.items():
+        cost_center = frappe.db.get_value("Farm Block", block, "cost_center") if block else None
+        items = [{
             "item_code": product,
-            "qty": round(data["shortfall_kg"], 2),
+            "qty": data["shortfall_kg"],
             "uom": "Kg",
             "schedule_date": month_to_date(data["first_month"]),
             "warehouse": warehouse,
-            "custom_purpose": f"Fertilizer shortfall purchase for {programme_name}",
-        })
+            "cost_center": cost_center,
+            "custom_purpose": f"Fertilizer shortfall purchase for {block} ({programme_name})",
+        } for product, data in products.items()]
 
-    mr = frappe.get_doc({
-        "doctype": "Material Request",
-        "material_request_type": "Purchase",
-        "transaction_date": today(),
-        "schedule_date": min(i["schedule_date"] for i in items),
-        "company": get_farm_company(farm_doc.name) if farm_doc else None,
-        "custom_farm": farm_doc.name if farm_doc else None,
-        "custom_business_unit": get_business_unit_for_farm(farm_doc) if farm_doc else None,
-        "custom_request_type": "Fertiliser Issuing",
-        "custom_fertilizer_programme": programme_name,
-        "items": items,
-    })
-    mr.insert(ignore_permissions=True)
+        mr = frappe.get_doc({
+            "doctype": "Material Request",
+            "material_request_type": "Purchase",
+            "transaction_date": today(),
+            "schedule_date": min(i["schedule_date"] for i in items),
+            "company": company,
+            "custom_farm": farm_doc.name if farm_doc else None,
+            "custom_business_unit": business_unit,
+            "custom_request_type": "Fertiliser Issuing",
+            "custom_fertilizer_programme": programme_name,
+            "items": items,
+        })
+        mr.insert(ignore_permissions=True)
+        created.append(mr.name)
 
     frappe.msgprint(
-        f"Material Request {mr.name} created for {len(items)} product(s) with shortfall.",
+        f"{len(created)} Material Request(s) created across blocks for shortfall products.",
         alert=True,
     )
-    return mr.name
+    return created
 
 def is_fertilizer(item_code):
     """Check whether an item is a fertilizer (by item group)."""
