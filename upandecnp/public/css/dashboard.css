@@ -199,6 +199,10 @@ a{color:inherit}
 .step__tick{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:800;background:rgba(10,10,10,0.06);color:var(--ink-faint);border:1px solid rgba(10,10,10,.08);transition:all .2s}
 .step__tick.on{background:#16a34a;color:#fff;border-color:#16a34a;box-shadow:0 0 0 3px rgba(22,163,74,.18)}
 .step__label{font:500 13.5px var(--sans);color:var(--ink-3)}
+.signoff{display:flex;gap:18px;padding:12px 14px;border-radius:12px;background:rgba(10,10,10,0.04);border:1px solid var(--hairline);transition:all .2s}
+.signoff--on{background:var(--good-bg);border-color:var(--good)}
+.signoff label{display:flex;align-items:center;gap:8px;font:500 13.5px var(--sans);color:var(--ink-3);cursor:pointer}
+.signoff input[type=checkbox]{width:16px;height:16px;cursor:pointer}
 .step__detail{font-size:12px;color:var(--ink-mute);margin-top:1px}
 
 /* Buttons used inside cards and queue rows */

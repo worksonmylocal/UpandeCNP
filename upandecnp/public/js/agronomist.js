@@ -854,11 +854,22 @@
       </div>
       <div class="steps">${steps}</div>
       ${a.blocked ? `<div class="none">${esc(a.blocked)}</div>` : ""}
+      ${a.sign_off ? `
+      <div class="card__head" style="margin:18px 0 10px"><h3>Approved</h3></div>
+      <div class="signoff${a.sign_off.done ? " signoff--on" : ""}">
+        <label><input type="checkbox" data-signoff="bramuel"
+          ${a.sign_off.bramuel ? "checked" : ""}> Bramuel</label>
+        <label><input type="checkbox" data-signoff="richard_collins"
+          ${a.sign_off.richard_collins ? "checked" : ""}> Richard Collins</label>
+      </div>` : ""}
       <div class="btnrow">
         <button class="btn" data-edit-prog="${esc(c.name)}">Edit details</button>
         <button class="btn" data-act="pull_blocks" ${a.editable ? "" : "disabled"}>Pull blocks</button>
         <button class="btn" data-act="load_products" ${a.editable ? "" : "disabled"}>Load products</button>
         <button class="btn" data-act="calculate" ${a.editable ? "" : "disabled"}>Run calculation</button>
+        <button class="btn" data-edit-rates="${esc(c.name)}" ${c.lines ? "" : "disabled"}>Edit Programme</button>
+        <button class="btn" data-act="export_excel" ${c.lines ? "" : "disabled"}>Export Excel</button>
+        <button class="btn btn--bad" data-act="delete_draft" ${a.editable ? "" : "disabled"}>Delete draft</button>
         <button class="btn btn--ink" data-act="submit"
           ${a.editable && a.ready_to_send ? "" : "disabled"}>Submit programme</button>
       </div>`;
@@ -1474,6 +1485,18 @@
     const kind = button.dataset.act;
     const c = state.data && state.data.current;
     if (!c) return;
+
+    if (kind === "export_excel") {
+      window.open("/api/method/upandecnp.upandecnp.api.export_programme_excel?programme="
+        + encodeURIComponent(c.name), "_blank");
+      return;
+    }
+    if (kind === "delete_draft") {
+      const sure = await confirmModal("Delete draft?",
+        `${c.name} and everything calculated on it will be gone for good. This cannot be undone.`);
+      if (!sure) return;
+    }
+
     const label = button.textContent;
     button.disabled = true; button.textContent = "Working…";
     try {
@@ -1486,6 +1509,9 @@
       } else if (kind === "calculate") {
         const r = await call("desk_calculate", { programme: c.name });
         toast(`${r.lines} programme lines generated.`, "good");
+      } else if (kind === "delete_draft") {
+        await call("desk_delete_draft", { programme: c.name });
+        toast(`${c.name} deleted.`, "good");
       } else if (kind === "submit") {
         const r = await call("desk_submit_programme", { programme: c.name });
         toast(r.already ? "Already submitted." :
@@ -1496,6 +1522,94 @@
       if (!e.handled) toast(e.message, "bad");
       button.disabled = false; button.textContent = label;
     }
+  }
+
+  /** A sign-off box - ticked immediately, no Save step, since the whole
+   *  point is that both people can see it change the moment it happens. */
+  async function toggleSignOff(input) {
+    const c = state.data && state.data.current;
+    if (!c) return;
+    input.disabled = true;
+    try {
+      await call("desk_set_sign_off",
+        { programme: c.name, who: input.dataset.signoff, value: input.checked ? 1 : 0 });
+      await load();
+    } catch (e) {
+      input.checked = !input.checked;
+      input.disabled = false;
+      if (!e.handled) toast(e.message, "bad");
+    }
+  }
+
+  /** A yes/no confirmation, styled like everything else here instead of a
+   *  bare browser confirm(). Resolves true only if Delete was clicked. */
+  function confirmModal(title, message) {
+    return new Promise((resolve) => {
+      let decided = false;
+      modal({
+        title, body: `<div class="none" style="text-align:left;padding:0">${esc(message)}</div>`,
+        foot: [
+          { label: "Cancel", onClick: (h) => { decided = true; h.close(); resolve(false); } },
+          { label: "Delete", cls: "btn--bad", onClick: (h) => { decided = true; h.close(); resolve(true); } },
+        ],
+        onClose: () => { if (!decided) resolve(false); },
+      });
+    });
+  }
+
+  /** Every block this programme covers, grouped by section, one Kg/Ha input
+   *  per product per block - scrollable as one screen rather than a popup
+   *  per block, since the whole point is editing all of them in one sitting. */
+  async function openRatesGrid(name) {
+    let grid;
+    try { grid = await call("desk_get_rate_grid", { programme: name }); }
+    catch (e) { return; }
+
+    const body = document.createElement("div");
+    body.style.maxHeight = "70vh";
+    body.style.overflowY = "auto";
+    body.innerHTML = grid.sections.map((sec) => `
+      <div class="card" style="margin-bottom:16px">
+        <div class="card__head"><h3>${esc(sec.section || "(No section)")}</h3>
+          <span class="meta">${sec.blocks.length} block${sec.blocks.length === 1 ? "" : "s"}</span></div>
+        <table class="gridtbl">
+          <thead><tr>
+            <th>Block</th><th>Area (ha)</th><th>Trees</th>
+            ${grid.products.map((p) => `<th>${esc(p.product_name)}<br><small>Kg/Ha</small></th>`).join("")}
+          </tr></thead>
+          <tbody>
+            ${sec.blocks.map((b) => `<tr data-row-block="${esc(b.block)}">
+              <td>${esc(b.block)}</td><td>${num(b.area_ha, 2)}</td><td>${num(b.tree_count)}</td>
+              ${grid.products.map((p) => {
+                const r = (b.rates || []).find((x) => x.product === p.product);
+                return `<td><input type="number" step="any" data-rate data-product="${esc(p.product)}"
+                  value="${r ? r.kg_per_ha : 0}"></td>`;
+              }).join("")}
+            </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>`).join("") || `<div class="none">No blocks on this programme yet - pull them first.</div>`;
+
+    modal({
+      title: "Edit Programme", sub: `${name} · one Kg/Ha per product, per block`,
+      size: "wide", body,
+      foot: [
+        { label: "Cancel" },
+        { label: "Save", cls: "btn--ink", onClick: async (h) => {
+            const rates = [];
+            $$("tr[data-row-block]", body).forEach((tr) => {
+              const block = tr.dataset.rowBlock;
+              $$("input[data-rate]", tr).forEach((inp) => {
+                rates.push({ block, product: inp.dataset.product, kg_per_ha: Number(inp.value) || 0 });
+              });
+            });
+            await call("desk_save_rates", { programme: name, rates });
+            toast("Rates saved - totals and dose per tree recalculated.", "good");
+            h.close();
+            load();
+          } },
+      ],
+    });
   }
 
   /** Choosing the item a product is drawn from, with stock and the rule in view. */
@@ -1632,6 +1746,8 @@
       if (nw) return openRecord(nw.dataset.new, null, () => load()).catch(() => {});
       const ed = e.target.closest("[data-edit-prog]");
       if (ed) return openRecord("programme", ed.dataset.editProg, () => load()).catch(() => {});
+      const er = e.target.closest("[data-edit-rates]");
+      if (er) return openRatesGrid(er.dataset.editRates).catch(() => {});
       const sp = e.target.closest("[data-sup]");
       if (sp) return openSupervisor(Number(sp.dataset.sup));
       const pg = e.target.closest("[data-prog]");
@@ -1644,6 +1760,11 @@
       if (ap) return openApplication(Number(ap.dataset.app));
       const sv = e.target.closest("[data-section]");
       if (sv) return openSectionVariance(sv.dataset.section);
+    });
+
+    document.addEventListener("change", (e) => {
+      const so = e.target.closest("[data-signoff]");
+      if (so) return toggleSignOff(so);
     });
 
     load().catch(() => {});
