@@ -2066,12 +2066,18 @@ def _programme_actions(doc):
                   "done": lines > 0, "detail": f"{lines} lines"})
 
     nxt = next((s["key"] for s in steps if not s["done"]), None)
-    ready = all(s["done"] for s in steps) and bool(doc.potassium_source)
+    signed_off = bool(doc.approved_by_bramuel) and bool(doc.approved_by_richard_collins)
+    ready = all(s["done"] for s in steps) and bool(doc.potassium_source) and signed_off
 
     return {
         "editable": True,
         "steps": steps,
         "next": nxt,
+        "sign_off": {
+            "bramuel": bool(doc.approved_by_bramuel),
+            "richard_collins": bool(doc.approved_by_richard_collins),
+            "done": signed_off,
+        },
         "ready_to_send": ready,
         "blocked": None if doc.potassium_source else "Select a potassium source first.",
     }
@@ -2090,6 +2096,146 @@ def desk_calculate(programme):
     """Run the calculation engine from the desk."""
     from upandecnp.upandecnp.utils.calculation_engine import calculate_programme
     return {"lines": calculate_programme(programme)}
+
+
+@frappe.whitelist()
+def desk_get_rate_grid(programme):
+    """Every block this programme covers, grouped by section, with each
+    product's KG/Ha derived from the calculation engine's own total for that
+    block (total_kg summed across whichever months it was split into,
+    divided by the block's area) - the figure an agronomist can then
+    override by hand in the Edit Programme screen."""
+    doc = frappe.get_doc("Fertilizer Programme", programme)
+    doc.check_permission("read")
+
+    blocks = {
+        b.block: {"section": b.section, "area_ha": flt(b.area_ha), "tree_count": cint(b.tree_count)}
+        for b in doc.get("block_yield_data", [])
+    }
+
+    products, totals = {}, {}
+    for line in doc.get("programme_lines", []):
+        products[line.fertilizer_product] = line.fertilizer_product_name or line.fertilizer_product
+        key = (line.block, line.fertilizer_product)
+        totals[key] = totals.get(key, 0) + flt(line.total_kg)
+
+    sections = {}
+    for block, info in blocks.items():
+        section = sections.setdefault(info["section"] or "", {"section": info["section"], "blocks": []})
+        rates = [{
+            "product": code,
+            "product_name": name,
+            "kg_per_ha": round(totals.get((block, code), 0) / info["area_ha"], 2) if info["area_ha"] else 0,
+        } for code, name in products.items()]
+        section["blocks"].append({
+            "block": block, "area_ha": info["area_ha"], "tree_count": info["tree_count"], "rates": rates,
+        })
+
+    for section in sections.values():
+        section["blocks"].sort(key=lambda b: b["block"])
+
+    return {
+        "products": [{"product": c, "product_name": n} for c, n in products.items()],
+        "sections": sorted(sections.values(), key=lambda s: s["section"] or ""),
+    }
+
+
+@frappe.whitelist()
+def desk_save_rates(programme, rates):
+    """Apply agronomist-edited KG/Ha rates back onto a programme's lines.
+
+    Each (block, product) rate is turned into a new annual total
+    (kg_per_ha x block.area_ha), then every one of that block+product's
+    existing monthly lines is scaled by the same ratio - preserving however
+    the Production Calendar originally split the season across rounds,
+    rather than collapsing it back into one lump sum."""
+    from upandecnp.upandecnp.utils.calculation_engine import update_product_requirements
+    from upandecnp.upandecnp.utils.rounding import round_half_up
+
+    rates = frappe.parse_json(rates)
+    doc = frappe.get_doc("Fertilizer Programme", programme)
+    doc.check_permission("write")
+    if doc.docstatus != 0:
+        frappe.throw("Only a Draft programme's rates can be edited.")
+
+    areas = {b.block: flt(b.area_ha) for b in doc.get("block_yield_data", [])}
+    trees = {b.block: cint(b.tree_count) for b in doc.get("block_yield_data", [])}
+
+    by_key = {}
+    for line in doc.get("programme_lines", []):
+        by_key.setdefault((line.block, line.fertilizer_product), []).append(line)
+
+    for r in rates:
+        block, product, kg_per_ha = r["block"], r["product"], flt(r["kg_per_ha"])
+        rows = by_key.get((block, product))
+        area = areas.get(block, 0)
+        if not rows or not area:
+            continue
+        old_total = sum(flt(row.total_kg) for row in rows)
+        new_total = kg_per_ha * area
+        if old_total <= 0:
+            if new_total > 0:
+                frappe.throw(
+                    f"{block} has no scheduled rounds for {product} to redistribute onto. "
+                    "Re-run the calculation first."
+                )
+            continue
+        ratio = new_total / old_total
+        tree_count = trees.get(block, 0)
+        for row in rows:
+            row.total_kg = round_half_up(flt(row.total_kg) * ratio, 2)
+            row.kg_per_ha_rate = round_half_up(row.total_kg / area, 2)
+            row.dose_per_tree_g = round_half_up((row.total_kg / tree_count) * 1000, 1) if tree_count else 0
+
+    update_product_requirements(doc, [line.as_dict() for line in doc.get("programme_lines", [])])
+    doc.save()
+    return {"lines": len(doc.get("programme_lines", []))}
+
+
+@frappe.whitelist()
+def export_programme_excel(programme):
+    """One sheet, one table per section, one row per block - every product's
+    amount/tree, month(s) of application and total Kg/Ha side by side, so an
+    agronomist can hand this to someone who never opens the desk."""
+    from upandecnp.upandecnp.utils.excel_export import build_programme_workbook
+
+    doc = frappe.get_doc("Fertilizer Programme", programme)
+    doc.check_permission("read")
+    workbook = build_programme_workbook(doc)
+
+    frappe.response.filename = f"{programme.replace('/', '-')}.xlsx"
+    frappe.response.filecontent = workbook
+    frappe.response.type = "download"
+
+
+@frappe.whitelist()
+def desk_set_sign_off(programme, who, value):
+    """Tick or clear one of the two sign-off boxes. `who` is never trusted as
+    a raw fieldname - only these two names are ever written, so this can't
+    become a general field setter."""
+    fieldname = {"bramuel": "approved_by_bramuel", "richard_collins": "approved_by_richard_collins"}.get(who)
+    if not fieldname:
+        frappe.throw(f"Unknown sign-off: {who}")
+
+    doc = frappe.get_doc("Fertilizer Programme", programme)
+    doc.check_permission("write")
+    if doc.docstatus != 0:
+        frappe.throw("This programme is no longer a draft.")
+    doc.db_set(fieldname, 1 if cint(value) else 0, update_modified=False)
+    doc.reload()
+    return _programme_actions(doc)["sign_off"]
+
+
+@frappe.whitelist()
+def desk_delete_draft(programme):
+    """Delete a programme that never left Draft - nothing downstream exists
+    yet to clean up, unlike cancelling a submitted one."""
+    doc = frappe.get_doc("Fertilizer Programme", programme)
+    doc.check_permission("delete")
+    if doc.docstatus != 0:
+        frappe.throw("Only a Draft programme can be deleted this way - cancel a submitted one first.")
+    frappe.delete_doc("Fertilizer Programme", programme, ignore_permissions=True)
+    return {"deleted": programme}
 
 
 @frappe.whitelist()
