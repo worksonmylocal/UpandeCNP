@@ -1147,7 +1147,10 @@
 
       <div style="text-align:center;margin:20px 0">
         <div style="font-size:40px;line-height:1">🌳</div>
-        <div style="font:700 15px var(--sans);color:var(--ink);margin-top:6px">${num(d.dose_per_tree_g, 0)} g/tree</div>
+        <div style="margin-top:6px">${(d.dose_by_product || []).map((p) =>
+          `<div style="font:700 15px var(--sans);color:var(--ink)">
+            ${esc(p.product_name)} · ${num(p.dose_per_tree_g, 0)} g/tree</div>`).join("")
+          || `<div class="none" style="padding:0">No rounds planned.</div>`}</div>
       </div>
 
       <div class="card__head" style="margin:22px 0 10px"><h3>Last year's yield</h3></div>

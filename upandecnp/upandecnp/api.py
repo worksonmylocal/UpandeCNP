@@ -2297,8 +2297,21 @@ def get_block_detail(block, season=None):
 
     planned_kg = sum(flt(p.total_kg_required) for p in plans)
     actual_kg = sum(flt(a.actual_quantity_applied_kg) for a in applied)
-    dose_per_tree_g = sum(flt(p.dose_per_tree_g) for p in plans)
     done = len([p for p in plans if p.status in ("Applied", "Verified")])
+
+    # Each product's own dose per tree, summed across every round it has
+    # this season - not one lump figure that hides what is actually in it.
+    dose_by_product = {}
+    for p in plans:
+        row = dose_by_product.setdefault(p.fertilizer_product, {
+            "product": p.fertilizer_product,
+            "product_name": p.fertilizer_product_name or p.fertilizer_product,
+            "dose_per_tree_g": 0,
+        })
+        row["dose_per_tree_g"] += flt(p.dose_per_tree_g)
+    for row in dose_by_product.values():
+        row["dose_per_tree_g"] = round(row["dose_per_tree_g"], 1)
+    dose_by_product = sorted(dose_by_product.values(), key=lambda r: r["product_name"])
 
     # Where this block's yield sits against the farm, which is what put it in
     # its tier in the first place.
@@ -2314,7 +2327,7 @@ def get_block_detail(block, season=None):
         "applied": applied,
         "planned_kg": round(planned_kg, 1),
         "actual_kg": round(actual_kg, 1),
-        "dose_per_tree_g": round(dose_per_tree_g, 1),
+        "dose_by_product": dose_by_product,
         "rounds": len(plans),
         "done": done,
         "pct": round(done * 100.0 / len(plans), 0) if plans else 0,
