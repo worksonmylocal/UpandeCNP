@@ -1145,6 +1145,11 @@
       <div class="statline" style="margin-top:14px"><span class="statline__k">Planned · applied</span>
         <span class="statline__v">${num(d.planned_kg)} · ${num(d.actual_kg)} kg</span></div>
 
+      <div style="text-align:center;margin:20px 0">
+        <div style="font-size:40px;line-height:1">🌳</div>
+        <div style="font:700 15px var(--sans);color:var(--ink);margin-top:6px">${num(d.dose_per_tree_g, 0)} g/tree</div>
+      </div>
+
       <div class="card__head" style="margin:22px 0 10px"><h3>Last year's yield</h3></div>
       <div class="statline"><span class="statline__k">This block</span>
         <span class="statline__v">${num(y.block)} kg/ha</span></div>

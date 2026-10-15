@@ -2297,6 +2297,7 @@ def get_block_detail(block, season=None):
 
     planned_kg = sum(flt(p.total_kg_required) for p in plans)
     actual_kg = sum(flt(a.actual_quantity_applied_kg) for a in applied)
+    dose_per_tree_g = sum(flt(p.dose_per_tree_g) for p in plans)
     done = len([p for p in plans if p.status in ("Applied", "Verified")])
 
     # Where this block's yield sits against the farm, which is what put it in
@@ -2313,6 +2314,7 @@ def get_block_detail(block, season=None):
         "applied": applied,
         "planned_kg": round(planned_kg, 1),
         "actual_kg": round(actual_kg, 1),
+        "dose_per_tree_g": round(dose_per_tree_g, 1),
         "rounds": len(plans),
         "done": done,
         "pct": round(done * 100.0 / len(plans), 0) if plans else 0,
