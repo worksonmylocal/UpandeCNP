@@ -1,9 +1,11 @@
 """Builds the downloadable Excel workbook for a Fertilizer Programme.
 
-One sheet, one table per section, one row per block - every product's
-amount per tree, month(s) of application and total Kg/Ha side by side, so
-the agronomist can hand the whole programme to someone who never opens the
-desk.
+Follows the agronomist's own template: one flat table, Section and Block as
+the first columns, then every product's own rounds side by side - the
+column header is the actual month that round falls in (not "Round 1"), the
+cell under it is that round's share of the product's annual total (e.g.
+"20%" under "November"), and the next column over is the per-tree gram
+dose for that same round.
 """
 
 import re
@@ -12,13 +14,10 @@ from io import BytesIO
 from frappe.utils import cint, flt
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.utils import get_column_letter
 
-MONTH_ORDER = [
-	"January", "February", "March", "April", "May", "June",
-	"July", "August", "September", "October", "November", "December",
-]
+from upandecnp.upandecnp.utils.rounding import round_half_up
 
-SECTION_FILL = PatternFill("solid", fgColor="1F2937")
 HEADER_FILL = PatternFill("solid", fgColor="E5E7EB")
 
 
@@ -29,16 +28,27 @@ def build_programme_workbook(doc):
 		for b in doc.get("block_yield_data", [])
 	}
 
-	products = {}
-	totals = {}       # (block, product) -> total_kg
-	months = {}        # (block, product) -> set of application_month
-	dose = {}          # (block, product) -> total dose_per_tree_g
+	products = {}          # code -> display name
+	yield_tier = {}        # block -> yield tier label
+	# (block, product) -> [(month, total_kg, dose_per_tree_g), ...], in the
+	# order the rounds actually run - the order programme_lines was written
+	# in, which already follows the Production Calendar's own row order.
+	rounds = {}
+	product_months = {}    # product -> months in first-seen (= round) order
+
 	for line in doc.get("programme_lines", []):
-		products[line.fertilizer_product] = line.fertilizer_product_name or line.fertilizer_product
-		key = (line.block, line.fertilizer_product)
-		totals[key] = totals.get(key, 0) + flt(line.total_kg)
-		dose[key] = dose.get(key, 0) + flt(line.dose_per_tree_g)
-		months.setdefault(key, set()).add(line.application_month)
+		code = line.fertilizer_product
+		products[code] = line.fertilizer_product_name or code
+		yield_tier.setdefault(line.block, line.yield_tier)
+
+		key = (line.block, code)
+		rounds.setdefault(key, []).append(
+			(line.application_month, flt(line.total_kg), flt(line.dose_per_tree_g))
+		)
+
+		seen = product_months.setdefault(code, [])
+		if line.application_month not in seen:
+			seen.append(line.application_month)
 
 	product_list = sorted(products.items(), key=lambda p: p[1])
 
@@ -51,65 +61,81 @@ def build_programme_workbook(doc):
 	safe_name = re.sub(r"[\\/*?:\[\]]", "-", doc.name or "Programme")
 	ws.title = safe_name[:31]
 
-	n_cols = 3 + 3 * len(product_list)
-	row = 1
+	fixed_cols = 5  # Section, Block, Area, No of Trees, Tier
+	col_span = {code: 2 * len(product_months.get(code, [])) for code, _ in product_list}
+	n_cols = fixed_cols + sum(col_span.values())
 
+	product_row, month_row = 1, 2
+	for col, label in enumerate(("Section", "Block", "Area", "No of Trees", "Tier"), start=1):
+		cell = ws.cell(row=product_row, column=col, value=label)
+		cell.font = Font(bold=True)
+		cell.fill = HEADER_FILL
+		ws.merge_cells(start_row=product_row, start_column=col, end_row=month_row, end_column=col)
+
+	col = fixed_cols + 1
+	for code, name in product_list:
+		span = col_span[code]
+		if not span:
+			continue
+		cell = ws.cell(row=product_row, column=col, value=name)
+		cell.font = Font(bold=True)
+		cell.fill = HEADER_FILL
+		cell.alignment = Alignment(horizontal="center")
+		ws.merge_cells(start_row=product_row, start_column=col, end_row=product_row, end_column=col + span - 1)
+		for month in product_months[code]:
+			month_cell = ws.cell(row=month_row, column=col, value=month)
+			gtree_cell = ws.cell(row=month_row, column=col + 1, value="G/Tree")
+			for c in (month_cell, gtree_cell):
+				c.font = Font(bold=True)
+				c.fill = HEADER_FILL
+				c.alignment = Alignment(horizontal="center")
+			col += 2
+
+	row = month_row + 1
 	for section_name in sorted(sections):
-		ws.cell(row=row, column=1, value=section_name)
-		ws.cell(row=row, column=1).font = Font(bold=True, color="FFFFFF")
-		ws.cell(row=row, column=1).fill = SECTION_FILL
-		for col in range(2, n_cols + 1):
-			ws.cell(row=row, column=col).fill = SECTION_FILL
-		row += 1
-
-		product_row, sub_row = row, row + 1
-		for col, label in enumerate(("Block", "Area (ha)", "Tree Count"), start=1):
-			cell = ws.cell(row=product_row, column=col, value=label)
-			cell.font = Font(bold=True)
-			cell.fill = HEADER_FILL
-			ws.merge_cells(start_row=product_row, start_column=col, end_row=sub_row, end_column=col)
-
-		col = 4
-		for code, name in product_list:
-			cell = ws.cell(row=product_row, column=col, value=name)
-			cell.font = Font(bold=True)
-			cell.fill = HEADER_FILL
-			cell.alignment = Alignment(horizontal="center")
-			ws.merge_cells(start_row=product_row, start_column=col, end_row=product_row, end_column=col + 2)
-			for offset, sub_label in enumerate(("Amount/tree (g)", "Month of application", "Total Kg/Ha")):
-				sub_cell = ws.cell(row=sub_row, column=col + offset, value=sub_label)
-				sub_cell.font = Font(bold=True)
-				sub_cell.fill = HEADER_FILL
-				sub_cell.alignment = Alignment(wrap_text=True, horizontal="center")
-			col += 3
-		row = sub_row + 1
-
-		for block in sorted(sections[section_name]):
+		section_blocks = sorted(sections[section_name])
+		section_start_row = row
+		for block in section_blocks:
 			info = blocks[block]
-			ws.cell(row=row, column=1, value=block)
-			ws.cell(row=row, column=2, value=info["area_ha"])
-			ws.cell(row=row, column=3, value=info["tree_count"])
-			col = 4
-			for code, name in product_list:
-				key = (block, code)
-				applied_months = sorted(months.get(key, []), key=lambda m: MONTH_ORDER.index(m) if m in MONTH_ORDER else 99)
-				total_kg_ha = round(totals.get(key, 0) / info["area_ha"], 2) if info["area_ha"] else 0
-				ws.cell(row=row, column=col, value=round(dose.get(key, 0), 1))
-				ws.cell(row=row, column=col + 1, value=", ".join(applied_months) or "—")
-				ws.cell(row=row, column=col + 2, value=total_kg_ha)
-				col += 3
+			ws.cell(row=row, column=2, value=block)
+			ws.cell(row=row, column=3, value=info["area_ha"])
+			ws.cell(row=row, column=4, value=info["tree_count"])
+			ws.cell(row=row, column=5, value=yield_tier.get(block) or "—")
+
+			col = fixed_cols + 1
+			for code, _ in product_list:
+				months = product_months.get(code, [])
+				if not months:
+					continue
+				by_month = {m: (total_kg, dose) for m, total_kg, dose in rounds.get((block, code), [])}
+				annual_total = sum(total_kg for total_kg, _ in by_month.values())
+				for month in months:
+					total_kg, dose = by_month.get(month, (0, 0))
+					pct = int(round_half_up(total_kg / annual_total * 100)) if annual_total else 0
+					# The month itself is the column header above - this cell is
+					# that round's share of the product's annual total, e.g.
+					# "20%" under the "November" header.
+					ws.cell(row=row, column=col, value=f"{pct}%")
+					ws.cell(row=row, column=col + 1, value=round(dose, 1))
+					col += 2
 			row += 1
 
-		row += 1  # blank row between section tables
+		ws.cell(row=section_start_row, column=1, value=section_name)
+		if row - 1 > section_start_row:
+			ws.merge_cells(start_row=section_start_row, start_column=1, end_row=row - 1, end_column=1)
+		ws.cell(row=section_start_row, column=1).alignment = Alignment(vertical="top")
 
-	ws.column_dimensions["A"].width = 18
-	ws.column_dimensions["B"].width = 10
+	ws.column_dimensions["A"].width = 24
+	ws.column_dimensions["B"].width = 16
 	ws.column_dimensions["C"].width = 10
-	for i in range(len(product_list)):
-		base = 4 + i * 3
-		ws.column_dimensions[ws.cell(row=1, column=base).column_letter].width = 16
-		ws.column_dimensions[ws.cell(row=1, column=base + 1).column_letter].width = 20
-		ws.column_dimensions[ws.cell(row=1, column=base + 2).column_letter].width = 14
+	ws.column_dimensions["D"].width = 12
+	ws.column_dimensions["E"].width = 10
+	col = fixed_cols + 1
+	for code, _ in product_list:
+		for _ in product_months.get(code, []):
+			ws.column_dimensions[get_column_letter(col)].width = 16
+			ws.column_dimensions[get_column_letter(col + 1)].width = 10
+			col += 2
 
 	buf = BytesIO()
 	wb.save(buf)
