@@ -1553,15 +1553,20 @@
   }
 
   /** A sign-off box - ticked immediately, no Save step, since the whole
-   *  point is that both people can see it change the moment it happens. */
+   *  point is that both people can see it change the moment it happens.
+   *
+   * Only patches this one programme's actions from the response and
+   * re-renders the programme panel - a full load() re-fetches farms,
+   * seasons, home metrics and the whole programmes list, which is why this
+   * used to take noticeably long for a single checkbox. */
   async function toggleSignOff(input) {
     const c = state.data && state.data.current;
     if (!c) return;
     input.disabled = true;
     try {
-      await call("desk_set_sign_off",
+      c.actions = await call("desk_set_sign_off",
         { programme: c.name, who: input.dataset.signoff, value: input.checked ? 1 : 0 });
-      await load();
+      renderProgramme(state.data);
     } catch (e) {
       input.checked = !input.checked;
       input.disabled = false;

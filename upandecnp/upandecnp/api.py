@@ -2232,7 +2232,7 @@ def desk_set_sign_off(programme, who, value):
         frappe.throw("This programme is no longer a draft.")
     doc.db_set(fieldname, 1 if cint(value) else 0, update_modified=False)
     doc.reload()
-    return _programme_actions(doc)["sign_off"]
+    return _programme_actions(doc)
 
 
 @frappe.whitelist()
