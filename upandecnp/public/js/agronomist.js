@@ -236,20 +236,26 @@
     async function load(sel) {
       const dt = sel.dataset.link;
       const f = byName[sel.dataset.f];
+      // Item is named by item_code ("1010100032"), not a human label - every
+      // other doctype here is named by something readable already, so this
+      // is the one place that needs its title field fetched and shown
+      // instead of the raw name.
+      const fields = dt === "Item" ? ["name", "item_name"] : ["name"];
+      const label = (r) => (dt === "Item" && r.item_name) ? `${r.item_name} (${r.name})` : r.name;
       let rows = [];
       try {
         if (f && f.filterBy) {
           const dep = $(`[data-f="${f.filterBy}"]`, root);
           const depVal = dep ? dep.value : "";
-          rows = depVal ? await listDoc(dt, ["name"], [[f.filterBy, "=", depVal]], "name asc") : [];
+          rows = depVal ? await listDoc(dt, fields, [[f.filterBy, "=", depVal]], "name asc") : [];
         } else {
-          rows = await listDoc(dt, ["name"],
+          rows = await listDoc(dt, fields,
             dt === "CNP Farm" && state.scope ? [["name", "=", state.scope]] : [], "name asc");
         }
       } catch (e) { rows = []; }
       const cur = sel.dataset.val || "";
       sel.innerHTML = `<option value="">—</option>` + rows.map((r) =>
-        `<option value="${esc(r.name)}"${r.name === cur ? " selected" : ""}>${esc(r.name)}</option>`).join("");
+        `<option value="${esc(r.name)}"${r.name === cur ? " selected" : ""}>${esc(label(r))}</option>`).join("");
       sel.value = cur;
     }
 
