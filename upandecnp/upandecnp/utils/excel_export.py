@@ -78,17 +78,20 @@ def build_programme_workbook(doc, section=None):
 
 	# Tier Kg/Ha is the rate most of a tier's blocks actually carry - the
 	# mode, not an average, so one hand-rounded outlier block doesn't drag
-	# the "tier" figure away from what every other block in it still is.
+	# the "tier" figure away from what every other block in it still is. A
+	# tier is a yield classification, not a per-section thing - 15T in one
+	# section is the same tier as 15T in another - so this is farm-wide,
+	# matching how Edit Programme's Round Tier applies.
 	tier_kg_ha = {}
 	for code, _ in product_list:
 		by_tier = {}
-		for block, info in blocks.items():
+		for block in blocks:
 			tier = yield_tier.get(block)
 			if not tier:
 				continue
-			by_tier.setdefault((info["section"], tier), []).append(block_kg_ha(block, code))
-		for key, values in by_tier.items():
-			tier_kg_ha[(key[0], key[1], code)] = Counter(values).most_common(1)[0][0]
+			by_tier.setdefault(tier, []).append(block_kg_ha(block, code))
+		for tier, values in by_tier.items():
+			tier_kg_ha[(tier, code)] = Counter(values).most_common(1)[0][0]
 
 	sections = {}
 	for block, info in blocks.items():
@@ -150,7 +153,7 @@ def build_programme_workbook(doc, section=None):
 			col = fixed_cols + 1
 			for code, _ in product_list:
 				this_block_kg_ha = block_kg_ha(block, code)
-				this_tier_kg_ha = tier_kg_ha.get((info["section"], tier, code), this_block_kg_ha)
+				this_tier_kg_ha = tier_kg_ha.get((tier, code), this_block_kg_ha)
 				for value in (this_tier_kg_ha, this_block_kg_ha):
 					ws.cell(row=row, column=col, value=value).alignment = CENTER
 					col += 1

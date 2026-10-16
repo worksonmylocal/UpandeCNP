@@ -1690,23 +1690,21 @@
   }
 
   /** Round Tier / Round Block - the guided rounding tool above the free-form
-   * grid. Tier rounding sets one Kg/Ha across every block sharing a
-   * (Section, Yield Tier) for the chosen product - each block's own total
-   * then follows from its own area. Block rounding sets one block's total
-   * Kg directly - the figure the agronomist actually reads off the ground
-   * (e.g. "732 kg for this block") - and only that block's dose per tree
-   * changes. Tier rounding is meant to be applied first, since a later
-   * block rounding simply overrides whatever a tier rounding set. */
+   * grid. A tier (15T, 18T, ...) is a yield classification, not a per-
+   * section thing - a 15T block in one section and a 15T block in another
+   * are still both 15T, so Round Tier sets one Kg/Ha across every block
+   * carrying that tier farm-wide, not one section at a time. Block rounding
+   * sets one block's total Kg directly - the figure the agronomist actually
+   * reads off the ground (e.g. "732 kg for this block") - and only that
+   * block's dose per tree changes. Tier rounding is meant to be applied
+   * first, since a later block rounding simply overrides whatever a tier
+   * rounding set. */
   function roundingToolHtml(grid) {
     const tiers = [];
-    const seen = new Set();
     grid.sections.forEach((sec) => (sec.blocks || []).forEach((b) => {
-      if (!b.yield_tier) return;
-      const key = sec.section + "::" + b.yield_tier;
-      if (seen.has(key)) return;
-      seen.add(key);
-      tiers.push({ section: sec.section, yield_tier: b.yield_tier });
+      if (b.yield_tier && !tiers.includes(b.yield_tier)) tiers.push(b.yield_tier);
     }));
+    tiers.sort();
     const blocks = [];
     grid.sections.forEach((sec) => (sec.blocks || []).forEach((b) => blocks.push(b)));
 
@@ -1720,14 +1718,14 @@
         </div>
         <div class="field"><label>Scope</label>
           <select id="rt-scope">
-            <option value="tier">Round Tier - one Kg/Ha across every block in a tier</option>
+            <option value="tier">Round Tier - one Kg/Ha across every block in a tier, farm-wide</option>
             <option value="block">Round Block - one total Kg for a single block</option>
           </select>
         </div>
         <div id="rt-tier-fields" class="field">
           <label>Tier</label>
           <select id="rt-tier">${tiers.map((t) =>
-            `<option value="${esc(t.section)}::${esc(t.yield_tier)}">${esc(t.section)} · ${esc(t.yield_tier)}</option>`).join("")
+            `<option value="${esc(t)}">${esc(t)}</option>`).join("")
             || `<option value="">No tiers yet - calculate the programme first</option>`}</select>
           <label style="margin-top:10px">New Kg/Ha</label>
           <input type="number" step="any" id="rt-tier-value" placeholder="e.g. 366">
@@ -1739,7 +1737,7 @@
           <label style="margin-top:10px">New total Kg</label>
           <input type="number" step="any" id="rt-block-value" placeholder="e.g. 732">
         </div>
-        <button class="btn btn--ink" id="rt-apply" style="margin-top:12px">Apply</button>
+        <button type="button" class="btn btn--ink" id="rt-apply" style="margin-top:12px">Apply</button>
       </div>`;
   }
 
@@ -1753,27 +1751,34 @@
 
     $("#rt-apply", root).addEventListener("click", async () => {
       const product = $("#rt-product", root).value;
+      const productName = (grid.products.find((p) => p.product === product) || {}).product_name || product;
       const rates = [];
+      let confirmMsg;
       if (scopeSel.value === "tier") {
-        const [section, yield_tier] = $("#rt-tier", root).value.split("::");
+        const yield_tier = $("#rt-tier", root).value;
         const kg_per_ha = Number($("#rt-tier-value", root).value);
-        if (!section || !Number.isFinite(kg_per_ha)) { toast("Choose a tier and a Kg/Ha value.", "bad"); return; }
-        grid.sections.forEach((sec) => {
-          if (sec.section !== section) return;
-          (sec.blocks || []).forEach((b) => {
-            if (b.yield_tier === yield_tier) rates.push({ block: b.block, product, kg_per_ha });
-          });
-        });
+        if (!yield_tier || !Number.isFinite(kg_per_ha)) { toast("Choose a tier and a Kg/Ha value.", "bad"); return; }
+        const sectionsHit = new Set();
+        grid.sections.forEach((sec) => (sec.blocks || []).forEach((b) => {
+          if (b.yield_tier === yield_tier) {
+            rates.push({ block: b.block, product, kg_per_ha });
+            sectionsHit.add(sec.section);
+          }
+        }));
+        confirmMsg = `Set ${productName} to ${kg_per_ha} Kg/Ha for ${rates.length} block`
+          + `${rates.length === 1 ? "" : "s"} in tier ${yield_tier} across ${sectionsHit.size} section`
+          + `${sectionsHit.size === 1 ? "" : "s"}.`;
       } else {
         const block = $("#rt-block", root).value;
         const total_kg = Number($("#rt-block-value", root).value);
         if (!block || !Number.isFinite(total_kg)) { toast("Choose a block and a total Kg value.", "bad"); return; }
         rates.push({ block, product, total_kg });
+        confirmMsg = `Set ${productName} to ${total_kg} kg total for ${block}.`;
       }
-      if (!rates.length) { toast("Nothing to apply.", "bad"); return; }
+      if (!rates.length) { toast("No blocks carry that tier.", "bad"); return; }
       try {
         await call("desk_save_rates", { programme: name, rates });
-        toast(`${rates.length === 1 ? "Block" : "Tier"} rounding applied.`, "good");
+        toast(confirmMsg, "good");
         await onApplied();
       } catch (e) { /* already surfaced */ }
     });
