@@ -130,10 +130,10 @@
   }
 
   const getDoc  = (doctype, name) => doc("get", { doctype, name });
-  const listDoc = (doctype, fields, filters, order) =>
+  const listDoc = (doctype, fields, filters, order, limit) =>
     doc("get_list", {
       doctype, fields, filters: filters || [],
-      order_by: order || "modified desc", limit_page_length: 200,
+      order_by: order || "modified desc", limit_page_length: limit || 200,
     });
   const saveDoc = (d) => doc(d.name && !d.__islocal ? "save" : "insert", { doc: d });
 
@@ -242,12 +242,19 @@
       // instead of the raw name.
       const fields = dt === "Item" ? ["name", "item_name"] : ["name"];
       const label = (r) => (dt === "Item" && r.item_name) ? `${r.item_name} (${r.name})` : r.name;
+      // Item is shared with the site's whole stock ledger - nails, PPE,
+      // whatever else - so an unfiltered list of it is mostly not
+      // fertilizer at all. Same item groups the rest of the module already
+      // scopes Item pickers to (get_product_items, search_fertilizer_items).
+      const itemFilters = [["item_group", "in", ["Fertilizer", "AVOCADO FERTILIZER"]], ["disabled", "=", 0]];
       let rows = [];
       try {
         if (f && f.filterBy) {
           const dep = $(`[data-f="${f.filterBy}"]`, root);
           const depVal = dep ? dep.value : "";
           rows = depVal ? await listDoc(dt, fields, [[f.filterBy, "=", depVal]], "name asc") : [];
+        } else if (dt === "Item") {
+          rows = await listDoc(dt, fields, itemFilters, "item_name asc", 500);
         } else {
           rows = await listDoc(dt, fields,
             dt === "CNP Farm" && state.scope ? [["name", "=", state.scope]] : [], "name asc");
