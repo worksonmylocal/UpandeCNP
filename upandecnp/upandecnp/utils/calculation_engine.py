@@ -16,9 +16,10 @@ Algorithm (per the agronomist's spec, reproduced exactly):
      product's kg/ha requirement for the group, net off compost where
      applicable, scale by area, apply the group's leaf-analysis adjustment,
      and distribute back to each block as a total kg and a per-tree gram dose.
-  4. Alternative-source nutrients (rows sharing a nutrient_source_group, e.g.
-     MOP vs K2SO4) are all computed as candidates; only the one matching the
-     Programme's potassium_source feeds into programme_lines.
+  4. Nutrients with more than one source (rows sharing a nutrient_source_group,
+     e.g. MOP and K2SO4 for potassium) are both computed in full and both feed
+     into programme_lines - which one supplies a given round is decided by the
+     Production Calendar's Potassium Schedule, not by picking one up front.
   5. Annual per-block totals are split across months using the Production
      Calendar's Fertilizer Schedule (unchanged from the old engine).
   6. A programme may cover only part of the year. Rounds scheduled outside
@@ -188,24 +189,41 @@ def distribute_to_blocks(blocks, final_product_kg_per_ha, fertilizer_product, yi
 	return lines
 
 
-def apply_monthly_schedule(annual_lines, calendar_doc, allowed_months=None):
-	schedule_map = {}
-	for row in calendar_doc.get("fertilizer_schedule", []):
-		schedule_map.setdefault(row.fertilizer_product, []).append(
+def _schedule_map(rows):
+	m = {}
+	for row in rows:
+		m.setdefault(row.fertilizer_product, []).append(
 			(row.application_month, flt(row.percentage) / 100.0)
 		)
+	return m
+
+
+def apply_monthly_schedule(annual_lines, calendar_doc, allowed_months=None):
+	schedule_map = _schedule_map(calendar_doc.get("fertilizer_schedule", []))
+	split_schedule_map = _schedule_map(calendar_doc.get("potassium_schedule", []))
 
 	allowed = set(allowed_months) if allowed_months else None
 
 	monthly_lines = []
 	for line in annual_lines:
-		schedule = schedule_map.get(line["fertilizer_product"])
-		if schedule is None:
-			# The calendar is written against whichever Item was current when
-			# it was set up. If this programme swapped to a different Item for
-			# the same product, fall back to the schedule of the Item the rule
-			# names, so swapping Items doesn't silently break the split.
-			schedule = schedule_map.get(line.get("scheduled_as"))
+		# Potassium (and any future multi-source nutrient) is scheduled from
+		# the Potassium Schedule - a percentage there is of that product's own
+		# total, not a share of a combined pool, so MOP and K2SO4 are each
+		# looked up and split independently even though both always apply.
+		primary, fallback = (
+			(split_schedule_map, schedule_map) if line.get("is_split_schedule")
+			else (schedule_map, split_schedule_map)
+		)
+		# The calendar is written against whichever Item was current when it
+		# was set up. If this programme swapped to a different Item for the
+		# same product, fall back to the schedule of the Item the rule names,
+		# so swapping Items doesn't silently break the split.
+		schedule = (
+			primary.get(line["fertilizer_product"])
+			or primary.get(line.get("scheduled_as"))
+			or fallback.get(line["fertilizer_product"])
+			or fallback.get(line.get("scheduled_as"))
+		)
 		if not schedule:
 			frappe.throw(
 				f"No monthly application schedule configured for {line['fertilizer_product']} "
@@ -236,8 +254,6 @@ def calculate_programme(programme_name):
 
 	if programme.docstatus == 1:
 		frappe.throw("Cannot recalculate a submitted programme.")
-	if not programme.potassium_source:
-		frappe.throw("Please select a Potassium Source before running the calculation.")
 
 	unchosen = [
 		row.product for row in programme.get("product_selections", [])
@@ -264,7 +280,6 @@ def calculate_programme(programme_name):
 	chosen = resolve_products(programme)
 
 	annual_lines = []
-	potassium_candidates = []
 
 	for (section, tier_label), group in groups.items():
 		for rule in crop_doc.get("nutrient_rules", []):
@@ -277,23 +292,6 @@ def calculate_programme(programme_name):
 				rule, group["tier_tonnage"], group["total_area_ha"], leaf_pct, crop_doc
 			)
 
-			if rule.nutrient_source_group:
-				# Use the leaf-adjusted final figures here too, so the comparison
-				# reflects what would actually be applied - not the pre-adjustment
-				# baseline distribute_to_blocks() uses for whichever gets selected.
-				final_per_ha = round_half_up(result["final_product_kg_per_ha"], 2)
-				potassium_candidates.append({
-					"section": section,
-					"yield_tier": tier_label,
-					"fertilizer_product": rule.fertilizer_product,
-					"nutrient": rule.nutrient,
-					"product_kg_per_ha": final_per_ha,
-					"total_product_kg": round_half_up(final_per_ha * group["total_area_ha"], 2),
-					"is_selected": rule.fertilizer_product == programme.potassium_source,
-				})
-				if rule.fertilizer_product != programme.potassium_source:
-					continue
-
 			lines = distribute_to_blocks(
 				group["blocks"], result["final_product_kg_per_ha"],
 				item_for_rule(rule, chosen), tier_label, section,
@@ -303,6 +301,8 @@ def calculate_programme(programme_name):
 			# still find a schedule if this programme swapped to another Item.
 			for line in lines:
 				line["scheduled_as"] = rule.fertilizer_product
+				if rule.nutrient_source_group:
+					line["is_split_schedule"] = True
 			annual_lines += lines
 
 	allowed_months = (
@@ -321,10 +321,6 @@ def calculate_programme(programme_name):
 	programme.set("programme_lines", [])
 	for line in monthly_lines:
 		programme.append("programme_lines", line)
-
-	programme.set("potassium_candidates", [])
-	for candidate in potassium_candidates:
-		programme.append("potassium_candidates", candidate)
 
 	update_product_requirements(programme, monthly_lines)
 

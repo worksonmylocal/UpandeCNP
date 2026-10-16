@@ -1962,7 +1962,7 @@ def get_agronomist_desk(farm=None, season=None):
     # desk down with "Unknown column" rather than simply showing Draft.
     has_state = frappe.db.has_column("Fertilizer Programme", "workflow_state")
     fields = ["name", "season", "farm", "crop", "docstatus",
-              "period_type", "start_month", "end_month", "potassium_source",
+              "period_type", "start_month", "end_month",
               "production_calendar", "modified"]
     if has_state:
         fields.append("workflow_state")
@@ -2009,7 +2009,6 @@ def _build_programme_detail(programme_name):
         "period_type": doc.period_type,
         "start_month": doc.start_month,
         "end_month": doc.end_month,
-        "potassium_source": doc.potassium_source,
         "production_calendar": doc.production_calendar,
         "blocks": len(doc.get("block_yield_data") or []),
         "lines": len(doc.get("programme_lines") or []),
@@ -2067,7 +2066,7 @@ def _programme_actions(doc):
 
     nxt = next((s["key"] for s in steps if not s["done"]), None)
     signed_off = bool(doc.approved_by_bramuel) and bool(doc.approved_by_richard_collins)
-    ready = all(s["done"] for s in steps) and bool(doc.potassium_source) and signed_off
+    ready = all(s["done"] for s in steps) and signed_off
 
     return {
         "editable": True,
@@ -2079,7 +2078,7 @@ def _programme_actions(doc):
             "done": signed_off,
         },
         "ready_to_send": ready,
-        "blocked": None if doc.potassium_source else "Select a potassium source first.",
+        "blocked": None,
     }
 
 
@@ -2308,8 +2307,8 @@ def search_fertilizer_items(search=None, farm=None, limit=40):
     """Fertilizer items for a picker, by name rather than by code, with the
     stock in the farm's own store.
 
-    The potassium source is chosen from thousands of Items, and nobody knows
-    "10070010005" by sight. Searched on the server. Stock is the farm's store,
+    Items are chosen from thousands of them, and nobody knows "10070010005"
+    by sight. Searched on the server. Stock is the farm's store,
     not the whole site: that is what an application issues from, and a figure
     summed across every farm's warehouse shows "in stock" for fertilizer the
     farm cannot touch.

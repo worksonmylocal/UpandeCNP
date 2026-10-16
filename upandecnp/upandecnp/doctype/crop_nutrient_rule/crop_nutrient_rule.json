@@ -70,7 +70,7 @@
    "label": "Net Off Compost"
   },
   {
-   "description": "Rows sharing the same group are alternative sources of the same nutrient (e.g. MOP vs K2SO4 for potassium). The engine computes all of them in parallel; the programme picks one.",
+   "description": "Rows sharing the same group are multiple sources of the same nutrient (e.g. MOP and K2SO4 for potassium). The engine computes all of them in full and applies all of them - the Production Calendar's Potassium Schedule decides which one supplies which round.",
    "fieldname": "nutrient_source_group",
    "fieldtype": "Data",
    "label": "Nutrient Source Group"

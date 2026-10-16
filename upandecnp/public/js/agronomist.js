@@ -283,6 +283,7 @@
     const head = t.fields.map((f) => `<th>${esc(f.label)}</th>`).join("") + "<th></th>";
     const body = (rows || []).map((r) => rowHtml(t, r)).join("");
     return `<div class="field"><label>${esc(t.label)}</label>
+      ${t.help ? `<small>${esc(t.help)}</small>` : ""}
       <table class="gridtbl" data-table="${esc(t.name)}">
         <thead><tr>${head}</tr></thead><tbody>${body}</tbody>
       </table>
@@ -379,8 +380,6 @@
           filterBy: "farm", showWhen: { field: "scope_type", equals: "Block" } },
         { name: "crop", label: "Crop", type: "link", doctype: "Crop", reqd: 1 },
         { name: "production_calendar", label: "Production Calendar", type: "link", doctype: "Production Calendar", reqd: 1 },
-        { name: "potassium_source", label: "Potassium Source", type: "itempick",
-          help: "Which of the crop's two potassium rules this season uses. Searched by name." },
         { name: "period_type", label: "Programme Period", type: "select", options: ["Full Year", "Custom Period"] },
         { name: "start_month", label: "Start Month", type: "select",
           showWhen: { field: "period_type", equals: "Custom Period" },
@@ -494,6 +493,13 @@
           { name: "fertilizer_product", label: "Item", type: "link", doctype: "Item" },
           { name: "application_month", label: "Month", type: "select", options: ["January","February","March","April","May","June","July","August","September","October","November","December"] },
           { name: "percentage", label: "%", type: "float" },
+        ] },
+        { name: "potassium_schedule", label: "Potassium Schedule",
+          help: "Both MOP and K2SO4 are always applied in full - this just decides which one supplies which round, and how much of that product's own total. E.g. round 1: 40% MOP, round 2: 20% K2SO4, round 3: 40% MOP.",
+          fields: [
+          { name: "fertilizer_product", label: "MOP or K2SO4", type: "link", doctype: "Item" },
+          { name: "application_month", label: "Month", type: "select", options: ["January","February","March","April","May","June","July","August","September","October","November","December"] },
+          { name: "percentage", label: "% of that product's own total", type: "float" },
         ] },
       ],
     },

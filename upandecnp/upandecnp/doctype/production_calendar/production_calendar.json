@@ -12,7 +12,8 @@
   "company",
   "season_notes",
   "calendar_events",
-  "fertilizer_schedule"
+  "fertilizer_schedule",
+  "potassium_schedule"
  ],
  "fields": [
   {
@@ -57,6 +58,13 @@
    "fieldtype": "Table",
    "label": "Fertilizer Schedule",
    "options": "Fertilizer Schedule"
+  },
+  {
+   "description": "How much of each potassium product's own annual total is applied in each round - e.g. round 1: 40% MOP, round 2: 20% K2SO4, round 3: 40% MOP. Both products are always calculated and applied; this just decides which one supplies which round.",
+   "fieldname": "potassium_schedule",
+   "fieldtype": "Table",
+   "label": "Potassium Schedule",
+   "options": "Potassium Schedule"
   }
  ],
  "grid_page_length": 50,

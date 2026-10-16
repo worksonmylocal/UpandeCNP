@@ -45,10 +45,6 @@ frappe.ui.form.on("Fertilizer Programme", {
                     frappe.msgprint("Please pull block yield data before running the calculation.");
                     return;
                 }
-                if (!frm.doc.potassium_source) {
-                    frappe.msgprint("Please select a Potassium Source before running the calculation.");
-                    return;
-                }
                 frappe.call({
                     method: "upandecnp.upandecnp.utils.calculation_engine.calculate_programme",
                     args: { programme_name: frm.doc.name },
@@ -65,27 +61,13 @@ frappe.ui.form.on("Fertilizer Programme", {
             }, __("Actions"));
         }
     },
-    crop(frm) {
-        set_potassium_source_query(frm);
-    },
     farm(frm) {
         set_scope_queries(frm);
     },
     onload(frm) {
-        set_potassium_source_query(frm);
         set_scope_queries(frm);
     }
 });
-
-function set_potassium_source_query(frm) {
-    if (!frm.doc.crop) return;
-    frappe.db.get_doc("Crop", frm.doc.crop).then(crop => {
-        const products = (crop.nutrient_rules || [])
-            .filter(r => r.nutrient_source_group)
-            .map(r => r.fertilizer_product);
-        frm.set_query("potassium_source", () => ({ filters: { name: ["in", products] } }));
-    });
-}
 
 // Section and Block only make sense from the farm already chosen - without
 // this they would list every section or block on every farm, defeating the
