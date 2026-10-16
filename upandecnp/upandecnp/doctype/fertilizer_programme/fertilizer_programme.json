@@ -26,6 +26,7 @@
   "section_break_lines",
   "programme_lines",
   "section_break_approval",
+  "approved_by_elvis_koskey",
   "approved_by_bramuel",
   "approved_by_richard_collins"
  ],
@@ -126,15 +127,21 @@
   },
   {
    "default": "0",
+   "fieldname": "approved_by_elvis_koskey",
+   "fieldtype": "Check",
+   "label": "Elvis Koskey (General Manager)"
+  },
+  {
+   "default": "0",
    "fieldname": "approved_by_bramuel",
    "fieldtype": "Check",
-   "label": "Bramuel"
+   "label": "Bramuel (Farm Manager)"
   },
   {
    "default": "0",
    "fieldname": "approved_by_richard_collins",
    "fieldtype": "Check",
-   "label": "Richard Collins"
+   "label": "Richard Collins (Consultant)"
   },
   {
    "fieldname": "production_calendar",

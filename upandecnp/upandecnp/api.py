@@ -2070,7 +2070,11 @@ def _programme_actions(doc):
                   "done": lines > 0, "detail": f"{lines} lines"})
 
     nxt = next((s["key"] for s in steps if not s["done"]), None)
-    signed_off = bool(doc.approved_by_bramuel) and bool(doc.approved_by_richard_collins)
+    signed_off = (
+        bool(doc.approved_by_elvis_koskey)
+        and bool(doc.approved_by_bramuel)
+        and bool(doc.approved_by_richard_collins)
+    )
     ready = all(s["done"] for s in steps) and signed_off
 
     return {
@@ -2078,6 +2082,7 @@ def _programme_actions(doc):
         "steps": steps,
         "next": nxt,
         "sign_off": {
+            "elvis_koskey": bool(doc.approved_by_elvis_koskey),
             "bramuel": bool(doc.approved_by_bramuel),
             "richard_collins": bool(doc.approved_by_richard_collins),
             "done": signed_off,
@@ -2224,10 +2229,14 @@ def export_programme_excel(programme, section=None):
 
 @frappe.whitelist()
 def desk_set_sign_off(programme, who, value):
-    """Tick or clear one of the two sign-off boxes. `who` is never trusted as
-    a raw fieldname - only these two names are ever written, so this can't
-    become a general field setter."""
-    fieldname = {"bramuel": "approved_by_bramuel", "richard_collins": "approved_by_richard_collins"}.get(who)
+    """Tick or clear one of the three sign-off boxes. `who` is never trusted
+    as a raw fieldname - only these three names are ever written, so this
+    can't become a general field setter."""
+    fieldname = {
+        "elvis_koskey": "approved_by_elvis_koskey",
+        "bramuel": "approved_by_bramuel",
+        "richard_collins": "approved_by_richard_collins",
+    }.get(who)
     if not fieldname:
         frappe.throw(f"Unknown sign-off: {who}")
 

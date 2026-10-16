@@ -887,11 +887,16 @@
       ${a.blocked ? `<div class="none">${esc(a.blocked)}</div>` : ""}
       ${a.sign_off ? `
       <div class="card__head" style="margin:18px 0 10px"><h3>Approved</h3></div>
-      <div class="signoff${a.sign_off.done ? " signoff--on" : ""}">
-        <label><input type="checkbox" data-signoff="bramuel"
-          ${a.sign_off.bramuel ? "checked" : ""}> Bramuel</label>
-        <label><input type="checkbox" data-signoff="richard_collins"
-          ${a.sign_off.richard_collins ? "checked" : ""}> Richard Collins</label>
+      <div class="signoff">
+        ${[
+          ["elvis_koskey", "Elvis Koskey", "General Manager"],
+          ["bramuel", "Bramuel", "Farm Manager"],
+          ["richard_collins", "Richard Collins", "Consultant"],
+        ].map(([key, name, role]) => `
+          <label class="signoff__item${a.sign_off[key] ? " signoff__item--on" : ""}">
+            <input type="checkbox" data-signoff="${key}" ${a.sign_off[key] ? "checked" : ""}>
+            <span class="signoff__mark">✓</span>${esc(name)} — ${esc(role)}
+          </label>`).join("")}
       </div>` : ""}
       <div class="btnrow">
         <button class="btn" data-edit-prog="${esc(c.name)}">Edit details</button>

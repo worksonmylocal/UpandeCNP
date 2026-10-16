@@ -18,10 +18,13 @@ class FertilizerProgramme(Document):
 	def require_sign_off(self):
 		"""The approval chain below is the generated-Workflow one, which stays
 		off until a farm actually asks for a consultant/farm-manager review.
-		Day to day, the only gate on submitting is this: Bramuel and Richard
-		Collins both have to tick their own box first - a plain sign-off, not
-		a workflow, because nobody asked for one of those either."""
+		Day to day, the only gate on submitting is this: Elvis Koskey, Bramuel
+		and Richard Collins all have to tick their own box first - a plain
+		sign-off, not a workflow, because nobody asked for one of those
+		either."""
 		missing = []
+		if not self.approved_by_elvis_koskey:
+			missing.append("Elvis Koskey")
 		if not self.approved_by_bramuel:
 			missing.append("Bramuel")
 		if not self.approved_by_richard_collins:
