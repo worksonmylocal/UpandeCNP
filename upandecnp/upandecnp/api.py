@@ -2015,6 +2015,7 @@ def _build_programme_detail(programme_name):
         "production_calendar": doc.production_calendar,
         "blocks": len(doc.get("block_yield_data") or []),
         "lines": len(doc.get("programme_lines") or []),
+        "sections": sorted({b.section for b in doc.get("block_yield_data") or [] if b.section}),
         "products": [
             {
                 "product": r.product,
@@ -2202,17 +2203,21 @@ def desk_save_rates(programme, rates):
 
 
 @frappe.whitelist()
-def export_programme_excel(programme):
-    """One sheet, one table per section, one row per block - every product's
-    amount/tree, month(s) of application and total Kg/Ha side by side, so an
-    agronomist can hand this to someone who never opens the desk."""
+def export_programme_excel(programme, section=None):
+    """One sheet, one row per block - every product's Kg/Ha and round-by-
+    round split side by side, so an agronomist can hand this to someone who
+    never opens the desk. With `section`, only that section's blocks are
+    included, same format."""
     from upandecnp.upandecnp.utils.excel_export import build_programme_workbook
 
     doc = frappe.get_doc("Fertilizer Programme", programme)
     doc.check_permission("read")
-    workbook = build_programme_workbook(doc)
+    if section and not any(b.section == section for b in doc.get("block_yield_data", [])):
+        frappe.throw(f"{programme} has no blocks in {section}.")
+    workbook = build_programme_workbook(doc, section=section)
 
-    frappe.response.filename = f"{programme.replace('/', '-')}.xlsx"
+    suffix = f" - {section}" if section else ""
+    frappe.response.filename = f"{programme.replace('/', '-')}{suffix}.xlsx"
     frappe.response.filecontent = workbook
     frappe.response.type = "download"
 

@@ -26,11 +26,16 @@ HEADER_FILL = PatternFill("solid", fgColor="E5E7EB")
 CENTER = Alignment(horizontal="center", vertical="center")
 
 
-def build_programme_workbook(doc):
-	"""doc: a Fertilizer Programme Document. Returns the .xlsx bytes."""
+def build_programme_workbook(doc, section=None):
+	"""doc: a Fertilizer Programme Document. section: when given, only that
+	section's blocks are included - everything else (which products get
+	columns, each one's Tier Kg/Ha, the round months) is then worked out
+	from just that subset, same as a full export would for the whole farm.
+	Returns the .xlsx bytes."""
 	blocks = {
 		b.block: {"section": b.section, "area_ha": flt(b.area_ha), "tree_count": cint(b.tree_count)}
 		for b in doc.get("block_yield_data", [])
+		if not section or b.section == section
 	}
 
 	products = {}          # code -> display name
@@ -42,6 +47,8 @@ def build_programme_workbook(doc):
 	product_months = {}    # product -> months in first-seen (= round) order
 
 	for line in doc.get("programme_lines", []):
+		if line.block not in blocks:
+			continue
 		code = line.fertilizer_product
 		products[code] = line.fertilizer_product_name or code
 		yield_tier.setdefault(line.block, line.yield_tier)

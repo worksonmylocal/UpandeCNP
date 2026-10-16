@@ -1508,6 +1508,65 @@
             body, size: "wide", foot: [{ label: "Close" }] });
   }
 
+  function downloadExcel(programme, section) {
+    let url = "/api/method/upandecnp.upandecnp.api.export_programme_excel?programme="
+      + encodeURIComponent(programme);
+    if (section) url += "&section=" + encodeURIComponent(section);
+    window.open(url, "_blank");
+  }
+
+  /** Export Excel - whole programme, or just one section in the same
+   *  format. Sections come straight off this programme's own blocks, so
+   *  there's nothing to pick when it's scoped to just one already. */
+  function openExportChoice(c) {
+    const sections = c.sections || [];
+    if (sections.length <= 1) {
+      downloadExcel(c.name, sections[0]);
+      return;
+    }
+
+    const body = document.createElement("div");
+    const renderChoice = () => {
+      body.innerHTML = `
+        <div class="queue">
+          <div class="qrow" data-export-scope="programme" style="cursor:pointer">
+            <div class="qrow__mark" style="background:transparent">📘</div>
+            <div><div class="qrow__name">Entire Programme</div>
+            <div class="qrow__meta">Every section, ${sections.length} in total</div></div>
+          </div>
+          <div class="qrow" data-export-scope="section" style="cursor:pointer">
+            <div class="qrow__mark" style="background:transparent">📄</div>
+            <div><div class="qrow__name">Section</div>
+            <div class="qrow__meta">Pick one section to export on its own</div></div>
+          </div>
+        </div>`;
+    };
+    const renderSections = () => {
+      body.innerHTML = `
+        <div class="queue">${sections.map((s) => `
+          <div class="qrow" data-export-section="${esc(s)}" style="cursor:pointer">
+            <div class="qrow__mark" style="background:transparent">📄</div>
+            <div><div class="qrow__name">${esc(s)}</div></div>
+          </div>`).join("")}</div>`;
+    };
+    renderChoice();
+
+    const m = modal({
+      title: "Export Excel", sub: c.name,
+      body, foot: [{ label: "Cancel" }],
+    });
+    body.addEventListener("click", (e) => {
+      const scope = e.target.closest("[data-export-scope]");
+      if (scope) {
+        if (scope.dataset.exportScope === "programme") { downloadExcel(c.name); m.close(); }
+        else renderSections();
+        return;
+      }
+      const sec = e.target.closest("[data-export-section]");
+      if (sec) { downloadExcel(c.name, sec.dataset.exportSection); m.close(); }
+    });
+  }
+
   // --------------------------------------------------------------------- actions
   async function act(button) {
     const kind = button.dataset.act;
@@ -1515,8 +1574,7 @@
     if (!c) return;
 
     if (kind === "export_excel") {
-      window.open("/api/method/upandecnp.upandecnp.api.export_programme_excel?programme="
-        + encodeURIComponent(c.name), "_blank");
+      openExportChoice(c);
       return;
     }
     if (kind === "delete_draft") {
