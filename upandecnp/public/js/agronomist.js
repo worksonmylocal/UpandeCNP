@@ -1588,26 +1588,20 @@
   /** Every block this programme covers, grouped by section, one Kg/Ha input
    *  per product per block - scrollable as one screen rather than a popup
    *  per block, since the whole point is editing all of them in one sitting. */
-  async function openRatesGrid(name) {
-    let grid;
-    try { grid = await call("desk_get_rate_grid", { programme: name }); }
-    catch (e) { return; }
-
-    const body = document.createElement("div");
-    body.style.maxHeight = "70vh";
-    body.style.overflowY = "auto";
-    body.innerHTML = grid.sections.map((sec) => `
+  function gridTableHtml(grid) {
+    return grid.sections.map((sec) => `
       <div class="card" style="margin-bottom:16px">
         <div class="card__head"><h3>${esc(sec.section || "(No section)")}</h3>
           <span class="meta">${sec.blocks.length} block${sec.blocks.length === 1 ? "" : "s"}</span></div>
         <table class="gridtbl">
           <thead><tr>
-            <th>Block</th><th>Area (ha)</th><th>Trees</th>
+            <th>Block</th><th>Tier</th><th>Area (ha)</th><th>Trees</th>
             ${grid.products.map((p) => `<th>${esc(p.product_name)}<br><small>Kg/Ha</small></th>`).join("")}
           </tr></thead>
           <tbody>
             ${sec.blocks.map((b) => `<tr data-row-block="${esc(b.block)}">
-              <td>${esc(b.block)}</td><td>${num(b.area_ha, 2)}</td><td>${num(b.tree_count)}</td>
+              <td>${esc(b.block)}</td><td>${esc(b.yield_tier || "—")}</td>
+              <td>${num(b.area_ha, 2)}</td><td>${num(b.tree_count)}</td>
               ${grid.products.map((p) => {
                 const r = (b.rates || []).find((x) => x.product === p.product);
                 return `<td><input type="number" step="any" data-rate data-product="${esc(p.product)}"
@@ -1617,13 +1611,127 @@
           </tbody>
         </table>
       </div>`).join("") || `<div class="none">No blocks on this programme yet - pull them first.</div>`;
+  }
+
+  /** Round Tier / Round Block - the guided rounding tool above the free-form
+   * grid. Tier rounding sets one Kg/Ha across every block sharing a
+   * (Section, Yield Tier) for the chosen product - each block's own total
+   * then follows from its own area. Block rounding sets one block's total
+   * Kg directly - the figure the agronomist actually reads off the ground
+   * (e.g. "732 kg for this block") - and only that block's dose per tree
+   * changes. Tier rounding is meant to be applied first, since a later
+   * block rounding simply overrides whatever a tier rounding set. */
+  function roundingToolHtml(grid) {
+    const tiers = [];
+    const seen = new Set();
+    grid.sections.forEach((sec) => (sec.blocks || []).forEach((b) => {
+      if (!b.yield_tier) return;
+      const key = sec.section + "::" + b.yield_tier;
+      if (seen.has(key)) return;
+      seen.add(key);
+      tiers.push({ section: sec.section, yield_tier: b.yield_tier });
+    }));
+    const blocks = [];
+    grid.sections.forEach((sec) => (sec.blocks || []).forEach((b) => blocks.push(b)));
+
+    return `
+      <div class="card" style="margin-bottom:16px">
+        <div class="card__head"><h3>Round Tier or Round Block</h3>
+          <span class="meta">Apply straight away - the grid below updates to match</span></div>
+        <div class="field"><label>Product</label>
+          <select id="rt-product">${grid.products.map((p) =>
+            `<option value="${esc(p.product)}">${esc(p.product_name)}</option>`).join("")}</select>
+        </div>
+        <div class="field"><label>Scope</label>
+          <select id="rt-scope">
+            <option value="tier">Round Tier - one Kg/Ha across every block in a tier</option>
+            <option value="block">Round Block - one total Kg for a single block</option>
+          </select>
+        </div>
+        <div id="rt-tier-fields" class="field">
+          <label>Tier</label>
+          <select id="rt-tier">${tiers.map((t) =>
+            `<option value="${esc(t.section)}::${esc(t.yield_tier)}">${esc(t.section)} · ${esc(t.yield_tier)}</option>`).join("")
+            || `<option value="">No tiers yet - calculate the programme first</option>`}</select>
+          <label style="margin-top:10px">New Kg/Ha</label>
+          <input type="number" step="any" id="rt-tier-value" placeholder="e.g. 366">
+        </div>
+        <div id="rt-block-fields" class="field" style="display:none">
+          <label>Block</label>
+          <select id="rt-block">${blocks.map((b) =>
+            `<option value="${esc(b.block)}">${esc(b.block)} (${num(b.area_ha, 2)} ha)</option>`).join("")}</select>
+          <label style="margin-top:10px">New total Kg</label>
+          <input type="number" step="any" id="rt-block-value" placeholder="e.g. 732">
+        </div>
+        <button class="btn btn--ink" id="rt-apply" style="margin-top:12px">Apply</button>
+      </div>`;
+  }
+
+  function wireRoundingTool(root, name, grid, onApplied) {
+    const scopeSel = $("#rt-scope", root);
+    scopeSel.addEventListener("change", () => {
+      const tier = scopeSel.value === "tier";
+      $("#rt-tier-fields", root).style.display = tier ? "" : "none";
+      $("#rt-block-fields", root).style.display = tier ? "none" : "";
+    });
+
+    $("#rt-apply", root).addEventListener("click", async () => {
+      const product = $("#rt-product", root).value;
+      const rates = [];
+      if (scopeSel.value === "tier") {
+        const [section, yield_tier] = $("#rt-tier", root).value.split("::");
+        const kg_per_ha = Number($("#rt-tier-value", root).value);
+        if (!section || !Number.isFinite(kg_per_ha)) { toast("Choose a tier and a Kg/Ha value.", "bad"); return; }
+        grid.sections.forEach((sec) => {
+          if (sec.section !== section) return;
+          (sec.blocks || []).forEach((b) => {
+            if (b.yield_tier === yield_tier) rates.push({ block: b.block, product, kg_per_ha });
+          });
+        });
+      } else {
+        const block = $("#rt-block", root).value;
+        const total_kg = Number($("#rt-block-value", root).value);
+        if (!block || !Number.isFinite(total_kg)) { toast("Choose a block and a total Kg value.", "bad"); return; }
+        rates.push({ block, product, total_kg });
+      }
+      if (!rates.length) { toast("Nothing to apply.", "bad"); return; }
+      try {
+        await call("desk_save_rates", { programme: name, rates });
+        toast(`${rates.length === 1 ? "Block" : "Tier"} rounding applied.`, "good");
+        await onApplied();
+      } catch (e) { /* already surfaced */ }
+    });
+  }
+
+  async function openRatesGrid(name) {
+    let grid;
+    try { grid = await call("desk_get_rate_grid", { programme: name }); }
+    catch (e) { return; }
+
+    const body = document.createElement("div");
+    body.style.maxHeight = "70vh";
+    body.style.overflowY = "auto";
+    const toolSlot = document.createElement("div");
+    const gridSlot = document.createElement("div");
+    body.appendChild(toolSlot);
+    body.appendChild(gridSlot);
+
+    function renderAll() {
+      toolSlot.innerHTML = roundingToolHtml(grid);
+      gridSlot.innerHTML = gridTableHtml(grid);
+      wireRoundingTool(body, name, grid, async () => {
+        grid = await call("desk_get_rate_grid", { programme: name });
+        renderAll();
+      });
+    }
+    renderAll();
 
     modal({
-      title: "Edit Programme", sub: `${name} · one Kg/Ha per product, per block`,
+      title: "Edit Programme", sub: `${name} · round by tier or block, or edit any cell directly`,
       size: "wide", body,
       foot: [
         { label: "Cancel" },
-        { label: "Save", cls: "btn--ink", onClick: async (h) => {
+        { label: "Save grid", cls: "btn--ink", onClick: async (h) => {
             const rates = [];
             $$("tr[data-row-block]", body).forEach((tr) => {
               const block = tr.dataset.rowBlock;

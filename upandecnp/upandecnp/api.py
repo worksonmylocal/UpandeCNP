@@ -2116,11 +2116,12 @@ def desk_get_rate_grid(programme):
         for b in doc.get("block_yield_data", [])
     }
 
-    products, totals = {}, {}
+    products, totals, yield_tier_by_block = {}, {}, {}
     for line in doc.get("programme_lines", []):
         products[line.fertilizer_product] = line.fertilizer_product_name or line.fertilizer_product
         key = (line.block, line.fertilizer_product)
         totals[key] = totals.get(key, 0) + flt(line.total_kg)
+        yield_tier_by_block.setdefault(line.block, line.yield_tier)
 
     sections = {}
     for block, info in blocks.items():
@@ -2131,7 +2132,8 @@ def desk_get_rate_grid(programme):
             "kg_per_ha": round(totals.get((block, code), 0) / info["area_ha"], 2) if info["area_ha"] else 0,
         } for code, name in products.items()]
         section["blocks"].append({
-            "block": block, "area_ha": info["area_ha"], "tree_count": info["tree_count"], "rates": rates,
+            "block": block, "area_ha": info["area_ha"], "tree_count": info["tree_count"],
+            "yield_tier": yield_tier_by_block.get(block), "rates": rates,
         })
 
     for section in sections.values():
@@ -2145,10 +2147,14 @@ def desk_get_rate_grid(programme):
 
 @frappe.whitelist()
 def desk_save_rates(programme, rates):
-    """Apply agronomist-edited KG/Ha rates back onto a programme's lines.
+    """Apply agronomist-edited rates back onto a programme's lines.
 
-    Each (block, product) rate is turned into a new annual total
-    (kg_per_ha x block.area_ha), then every one of that block+product's
+    Each (block, product) entry gives either a Kg/Ha (for Tier-level
+    rounding - the same rate applied across every block in a tier, each
+    block's own total then following from its own area) or a total_kg
+    directly (for Block-level rounding - the one figure the agronomist
+    actually looks at on the ground, e.g. "732 kg for this block"). Either
+    way it becomes a new annual total, and every one of that block+product's
     existing monthly lines is scaled by the same ratio - preserving however
     the Production Calendar originally split the season across rounds,
     rather than collapsing it back into one lump sum."""
@@ -2169,13 +2175,13 @@ def desk_save_rates(programme, rates):
         by_key.setdefault((line.block, line.fertilizer_product), []).append(line)
 
     for r in rates:
-        block, product, kg_per_ha = r["block"], r["product"], flt(r["kg_per_ha"])
+        block, product = r["block"], r["product"]
         rows = by_key.get((block, product))
         area = areas.get(block, 0)
         if not rows or not area:
             continue
         old_total = sum(flt(row.total_kg) for row in rows)
-        new_total = kg_per_ha * area
+        new_total = flt(r["total_kg"]) if r.get("total_kg") is not None else flt(r.get("kg_per_ha")) * area
         if old_total <= 0:
             if new_total > 0:
                 frappe.throw(
