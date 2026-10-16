@@ -1,14 +1,18 @@
 """Builds the downloadable Excel workbook for a Fertilizer Programme.
 
 Follows the agronomist's own template: one flat table, Section and Block as
-the first columns, then every product's own rounds side by side - the
-column header is the actual month that round falls in (not "Round 1"), the
-cell under it is that round's share of the product's annual total (e.g.
-"20%" under "November"), and the next column over is the per-tree gram
-dose for that same round.
+the first columns, then every product's own figures side by side - a Kg/Ha
+for the tier the block sits in and a Kg/Ha for the block itself (these match
+once nobody has hand-rounded anything in Edit Programme, and diverge exactly
+where they have), then one column pair per actual round, headed by the
+month it falls in (not "Round 1"), with that round's share of the product's
+annual total underneath the month (e.g. "20%" under "November") and the
+per-tree gram dose next to it. A product with no real application anywhere
+in the programme (nothing but 0% rounds) is left out entirely.
 """
 
 import re
+from collections import Counter
 from io import BytesIO
 
 from frappe.utils import cint, flt
@@ -19,6 +23,7 @@ from openpyxl.utils import get_column_letter
 from upandecnp.upandecnp.utils.rounding import round_half_up
 
 HEADER_FILL = PatternFill("solid", fgColor="E5E7EB")
+CENTER = Alignment(horizontal="center", vertical="center")
 
 
 def build_programme_workbook(doc):
@@ -50,7 +55,33 @@ def build_programme_workbook(doc):
 		if line.application_month not in seen:
 			seen.append(line.application_month)
 
-	product_list = sorted(products.items(), key=lambda p: p[1])
+	def block_total(block, code):
+		return sum(total_kg for _, total_kg, _ in rounds.get((block, code), []))
+
+	def block_kg_ha(block, code):
+		area = blocks.get(block, {}).get("area_ha") or 0
+		return round(block_total(block, code) / area, 2) if area else 0
+
+	# A product with nothing but 0% rounds everywhere isn't actually being
+	# applied this programme - no point giving it columns.
+	product_list = [
+		(code, name) for code, name in sorted(products.items(), key=lambda p: p[1])
+		if sum(block_total(b, code) for b in blocks) > 0
+	]
+
+	# Tier Kg/Ha is the rate most of a tier's blocks actually carry - the
+	# mode, not an average, so one hand-rounded outlier block doesn't drag
+	# the "tier" figure away from what every other block in it still is.
+	tier_kg_ha = {}
+	for code, _ in product_list:
+		by_tier = {}
+		for block, info in blocks.items():
+			tier = yield_tier.get(block)
+			if not tier:
+				continue
+			by_tier.setdefault((info["section"], tier), []).append(block_kg_ha(block, code))
+		for key, values in by_tier.items():
+			tier_kg_ha[(key[0], key[1], code)] = Counter(values).most_common(1)[0][0]
 
 	sections = {}
 	for block, info in blocks.items():
@@ -62,68 +93,77 @@ def build_programme_workbook(doc):
 	ws.title = safe_name[:31]
 
 	fixed_cols = 5  # Section, Block, Area, No of Trees, Tier
-	col_span = {code: 2 * len(product_months.get(code, [])) for code, _ in product_list}
-	n_cols = fixed_cols + sum(col_span.values())
+	# 2 columns for Tier/Block Kg/Ha, then 2 per actual round.
+	col_span = {code: 2 + 2 * len(product_months.get(code, [])) for code, _ in product_list}
 
-	product_row, month_row = 1, 2
+	product_row, sub_row = 1, 2
 	for col, label in enumerate(("Section", "Block", "Area", "No of Trees", "Tier"), start=1):
 		cell = ws.cell(row=product_row, column=col, value=label)
 		cell.font = Font(bold=True)
 		cell.fill = HEADER_FILL
-		ws.merge_cells(start_row=product_row, start_column=col, end_row=month_row, end_column=col)
+		cell.alignment = CENTER
+		ws.merge_cells(start_row=product_row, start_column=col, end_row=sub_row, end_column=col)
 
 	col = fixed_cols + 1
 	for code, name in product_list:
 		span = col_span[code]
-		if not span:
-			continue
 		cell = ws.cell(row=product_row, column=col, value=name)
 		cell.font = Font(bold=True)
 		cell.fill = HEADER_FILL
-		cell.alignment = Alignment(horizontal="center")
+		cell.alignment = CENTER
 		ws.merge_cells(start_row=product_row, start_column=col, end_row=product_row, end_column=col + span - 1)
+
+		for offset, label in enumerate(("Kg/Ha (Tier)", "Kg/Ha (Block)")):
+			c = ws.cell(row=sub_row, column=col + offset, value=label)
+			c.font = Font(bold=True)
+			c.fill = HEADER_FILL
+			c.alignment = CENTER
+		col += 2
+
 		for month in product_months[code]:
-			month_cell = ws.cell(row=month_row, column=col, value=month)
-			gtree_cell = ws.cell(row=month_row, column=col + 1, value="G/Tree")
+			month_cell = ws.cell(row=sub_row, column=col, value=month)
+			gtree_cell = ws.cell(row=sub_row, column=col + 1, value="G/Tree")
 			for c in (month_cell, gtree_cell):
 				c.font = Font(bold=True)
 				c.fill = HEADER_FILL
-				c.alignment = Alignment(horizontal="center")
+				c.alignment = CENTER
 			col += 2
 
-	row = month_row + 1
+	row = sub_row + 1
 	for section_name in sorted(sections):
 		section_blocks = sorted(sections[section_name])
 		section_start_row = row
 		for block in section_blocks:
 			info = blocks[block]
-			ws.cell(row=row, column=2, value=block)
-			ws.cell(row=row, column=3, value=info["area_ha"])
-			ws.cell(row=row, column=4, value=info["tree_count"])
-			ws.cell(row=row, column=5, value=yield_tier.get(block) or "—")
+			tier = yield_tier.get(block)
+			for c, value in ((2, block), (3, info["area_ha"]), (4, info["tree_count"]), (5, tier or "—")):
+				cell = ws.cell(row=row, column=c, value=value)
+				cell.alignment = CENTER
 
 			col = fixed_cols + 1
 			for code, _ in product_list:
-				months = product_months.get(code, [])
-				if not months:
-					continue
+				this_block_kg_ha = block_kg_ha(block, code)
+				this_tier_kg_ha = tier_kg_ha.get((info["section"], tier, code), this_block_kg_ha)
+				for value in (this_tier_kg_ha, this_block_kg_ha):
+					ws.cell(row=row, column=col, value=value).alignment = CENTER
+					col += 1
+
 				by_month = {m: (total_kg, dose) for m, total_kg, dose in rounds.get((block, code), [])}
 				annual_total = sum(total_kg for total_kg, _ in by_month.values())
-				for month in months:
+				for month in product_months[code]:
 					total_kg, dose = by_month.get(month, (0, 0))
 					pct = int(round_half_up(total_kg / annual_total * 100)) if annual_total else 0
 					# The month itself is the column header above - this cell is
 					# that round's share of the product's annual total, e.g.
 					# "20%" under the "November" header.
-					ws.cell(row=row, column=col, value=f"{pct}%")
-					ws.cell(row=row, column=col + 1, value=round(dose, 1))
+					ws.cell(row=row, column=col, value=f"{pct}%").alignment = CENTER
+					ws.cell(row=row, column=col + 1, value=round(dose, 1)).alignment = CENTER
 					col += 2
 			row += 1
 
-		ws.cell(row=section_start_row, column=1, value=section_name)
+		ws.cell(row=section_start_row, column=1, value=section_name).alignment = CENTER
 		if row - 1 > section_start_row:
 			ws.merge_cells(start_row=section_start_row, start_column=1, end_row=row - 1, end_column=1)
-		ws.cell(row=section_start_row, column=1).alignment = Alignment(vertical="top")
 
 	ws.column_dimensions["A"].width = 24
 	ws.column_dimensions["B"].width = 16
@@ -132,6 +172,9 @@ def build_programme_workbook(doc):
 	ws.column_dimensions["E"].width = 10
 	col = fixed_cols + 1
 	for code, _ in product_list:
+		ws.column_dimensions[get_column_letter(col)].width = 13
+		ws.column_dimensions[get_column_letter(col + 1)].width = 13
+		col += 2
 		for _ in product_months.get(code, []):
 			ws.column_dimensions[get_column_letter(col)].width = 16
 			ws.column_dimensions[get_column_letter(col + 1)].width = 10
