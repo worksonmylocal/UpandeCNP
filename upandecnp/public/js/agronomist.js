@@ -22,6 +22,15 @@
   // "" for all. Every farm picker, list and new record below honours it.
   let state = { farm: "", season: "", data: null, scope: "" };
 
+  // Same vocabulary as Crop Nutrient Rule / Fertilizer Schedule - products
+  // are grouped under these on the Load Products list so "under Nitrogen,
+  // choose CAN" reads the way the agronomist thinks about it.
+  const NUTRIENT_LABELS = {
+    N: "Nitrogen", P: "Phosphate", K: "Potassium", Ca: "Calcium",
+    Mg: "Magnesium", S: "Sulphur", Mn: "Manganese", B: "Boron",
+    Mo: "Molybdenum", Zn: "Zinc",
+  };
+
   // ------------------------------------------------------------------ transport
   async function call(method, args = {}, { quiet = false } = {}) {
     let res, data;
@@ -489,8 +498,11 @@
         { name: "season_notes", label: "Notes", type: "text" },
       ],
       tables: [
-        { name: "fertilizer_schedule", label: "Fertilizer Schedule", fields: [
-          { name: "fertilizer_product", label: "Item", type: "link", doctype: "Item" },
+        { name: "fertilizer_schedule", label: "Fertilizer Schedule",
+          help: "By nutrient, not by Item - Potassium isn't set here, it has its own Potassium Schedule below.",
+          fields: [
+          { name: "nutrient", label: "Nutrient", type: "select",
+            options: ["N","P","Ca","Mg","S","Mn","B","Mo","Zn"] },
           { name: "application_month", label: "Month", type: "select", options: ["January","February","March","April","May","June","July","August","September","October","November","December"] },
           { name: "percentage", label: "%", type: "float" },
         ] },
@@ -880,26 +892,36 @@
           ${a.editable && a.ready_to_send ? "" : "disabled"}>Submit programme</button>
       </div>`;
 
-    // products, each with the item it draws from and whether stock covers it
-    const rows = (c.products || []).map((p) => {
-      const short = p.shortfall > 0;
-      return `<div class="qrow">
-        <div class="qrow__mark" style="background:transparent">
-          <span class="mark mark--${p.item ? "yes" : "no"}">${p.item ? "✓" : "✕"}</span>
-        </div>
-        <div>
-          <div class="qrow__name">${esc(p.item_name || p.item || "No item chosen yet")}</div>
-          <div class="qrow__meta">${esc(p.product)}${p.item ? " · " + esc(p.item) : ""} ·
-            needs ${num(p.required)} kg, ${num(p.available)} kg in stock</div>
-        </div>
-        <div class="qrow__right">
-          ${!p.item ? pill("not chosen", "bad")
-            : short ? pill("short " + num(p.shortfall) + " kg", "bad")
-                    : pill("covered", "good")}
-          <button class="btn" data-choose="${esc(p.product)}"
-            ${c.actions && c.actions.editable ? "" : "disabled"}>${p.item ? "Change" : "Choose"}</button>
-        </div>
-      </div>`;
+    // products, grouped by nutrient - "under Nitrogen, choose CAN" - each
+    // still with the item it draws from and whether stock covers it
+    const byNutrient = {};
+    (c.products || []).forEach((p) => {
+      const key = p.nutrient || "—";
+      (byNutrient[key] = byNutrient[key] || []).push(p);
+    });
+    const rows = Object.keys(byNutrient).sort().map((nutrient) => {
+      const productRows = byNutrient[nutrient].map((p) => {
+        const short = p.shortfall > 0;
+        return `<div class="qrow">
+          <div class="qrow__mark" style="background:transparent">
+            <span class="mark mark--${p.item ? "yes" : "no"}">${p.item ? "✓" : "✕"}</span>
+          </div>
+          <div>
+            <div class="qrow__name">${esc(p.item_name || p.item || "No item chosen yet")}</div>
+            <div class="qrow__meta">${esc(p.product)}${p.item ? " · " + esc(p.item) : ""} ·
+              needs ${num(p.required)} kg, ${num(p.available)} kg in stock</div>
+          </div>
+          <div class="qrow__right">
+            ${!p.item ? pill("not chosen", "bad")
+              : short ? pill("short " + num(p.shortfall) + " kg", "bad")
+                      : pill("covered", "good")}
+            <button class="btn" data-choose="${esc(p.product)}"
+              ${c.actions && c.actions.editable ? "" : "disabled"}>${p.item ? "Change" : "Choose"}</button>
+          </div>
+        </div>`;
+      }).join("");
+      return `<div class="pagehead__eyebrow" style="margin:14px 0 6px">
+        ${esc(NUTRIENT_LABELS[nutrient] || nutrient)}</div>${productRows}`;
     }).join("");
     $("#prod-meta").textContent = (c.products || []).length + " products";
     $("#prod-body").innerHTML = rows

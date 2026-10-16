@@ -7,8 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "section_break_fujp",
-  "fertilizer_product",
-  "fertilizer_product_name",
+  "nutrient",
   "application_month",
   "percentage"
  ],
@@ -18,11 +17,12 @@
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "fertilizer_product",
-   "fieldtype": "Link",
-   "in_list_view": 0,
-   "label": "Fertilizer Product",
-   "options": "Item",
+   "description": "Which nutrient this round applies - Potassium is set on the separate Potassium Schedule instead, since MOP and K2SO4 need their own percentages.",
+   "fieldname": "nutrient",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Nutrient",
+   "options": "N\nP\nCa\nMg\nS\nMn\nB\nMo\nZn",
    "reqd": 1
   },
   {
@@ -39,21 +39,13 @@
    "in_list_view": 1,
    "label": "Percentage",
    "reqd": 1
-  },
-  {
-   "fetch_from": "fertilizer_product.item_name",
-   "fieldname": "fertilizer_product_name",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Product Name",
-   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-10-02 20:00:00.000000",
+ "modified": "2026-10-16 13:00:00.000000",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Fertilizer Schedule",

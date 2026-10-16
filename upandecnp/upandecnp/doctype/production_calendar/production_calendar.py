@@ -14,18 +14,18 @@ class ProductionCalendar(Document):
 	def validate_fertilizer_schedule_percentages(self):
 		totals = {}
 		for row in self.get("fertilizer_schedule", []):
-			totals.setdefault(row.fertilizer_product, 0)
-			totals[row.fertilizer_product] += flt(row.percentage)
+			totals.setdefault(row.nutrient, 0)
+			totals[row.nutrient] += flt(row.percentage)
 
-		for product, total in totals.items():
+		for nutrient, total in totals.items():
 			if total - 100 > 0.01:
 				frappe.throw(
-					f"Fertilizer Schedule: {product} application percentages add up to {total}%, "
+					f"Fertilizer Schedule: {nutrient} application percentages add up to {total}%, "
 					f"which is over 100%. Reduce one or more monthly percentages."
 				)
 			if 100 - total > 0.01:
 				frappe.throw(
-					f"Fertilizer Schedule: {product} application percentages add up to {total}%, "
+					f"Fertilizer Schedule: {nutrient} application percentages add up to {total}%, "
 					f"but must total exactly 100%."
 				)
 

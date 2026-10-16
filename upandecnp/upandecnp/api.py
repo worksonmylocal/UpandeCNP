@@ -1999,6 +1999,9 @@ def _build_programme_detail(programme_name):
     the one the desk happens to be focused on. The "All programmes" list
     needs exactly this for whichever row someone taps."""
     doc = frappe.get_doc("Fertilizer Programme", programme_name)
+    nutrient_by_product = {
+        fp.name: fp.nutrient for fp in frappe.get_all("Fertilizer Product", fields=["name", "nutrient"])
+    }
     return {
         "name": doc.name,
         "season": doc.season,
@@ -2015,6 +2018,7 @@ def _build_programme_detail(programme_name):
         "products": [
             {
                 "product": r.product,
+                "nutrient": nutrient_by_product.get(r.product),
                 "item": r.fertilizer_item,
                 "item_name": r.item_name,
                 "available": flt(r.available_qty),

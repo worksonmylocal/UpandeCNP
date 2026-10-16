@@ -21,7 +21,11 @@ Algorithm (per the agronomist's spec, reproduced exactly):
      into programme_lines - which one supplies a given round is decided by the
      Production Calendar's Potassium Schedule, not by picking one up front.
   5. Annual per-block totals are split across months using the Production
-     Calendar's Fertilizer Schedule (unchanged from the old engine).
+     Calendar's Fertilizer Schedule - keyed by nutrient (N, P, Ca, ...), not
+     by Item, so swapping which Item fulfils a rule never touches the split.
+     Potassium is the one exception: it is keyed by product (MOP vs K2SO4)
+     on the separate Potassium Schedule, because the two need different
+     percentages, not a shared one.
   6. A programme may cover only part of the year. Rounds scheduled outside
      the window are dropped, NOT redistributed into it - running Jan-May
      should apply five months of nutrition, not a year's worth compressed.
@@ -189,41 +193,39 @@ def distribute_to_blocks(blocks, final_product_kg_per_ha, fertilizer_product, yi
 	return lines
 
 
-def _schedule_map(rows):
+def _schedule_map(rows, key_field):
 	m = {}
 	for row in rows:
-		m.setdefault(row.fertilizer_product, []).append(
+		m.setdefault(row.get(key_field), []).append(
 			(row.application_month, flt(row.percentage) / 100.0)
 		)
 	return m
 
 
 def apply_monthly_schedule(annual_lines, calendar_doc, allowed_months=None):
-	schedule_map = _schedule_map(calendar_doc.get("fertilizer_schedule", []))
-	split_schedule_map = _schedule_map(calendar_doc.get("potassium_schedule", []))
+	# Keyed by nutrient, not Item - a CAN rule is "N" whichever spelling of
+	# CAN the programme actually draws from, so swapping Items never touches
+	# which months it's scheduled into.
+	nutrient_schedule_map = _schedule_map(calendar_doc.get("fertilizer_schedule", []), "nutrient")
+	# Potassium is the exception: MOP and K2SO4 need different percentages,
+	# not a shared one, so this one is still keyed by product (Item).
+	split_schedule_map = _schedule_map(calendar_doc.get("potassium_schedule", []), "fertilizer_product")
 
 	allowed = set(allowed_months) if allowed_months else None
 
 	monthly_lines = []
 	for line in annual_lines:
-		# Potassium (and any future multi-source nutrient) is scheduled from
-		# the Potassium Schedule - a percentage there is of that product's own
-		# total, not a share of a combined pool, so MOP and K2SO4 are each
-		# looked up and split independently even though both always apply.
-		primary, fallback = (
-			(split_schedule_map, schedule_map) if line.get("is_split_schedule")
-			else (schedule_map, split_schedule_map)
-		)
-		# The calendar is written against whichever Item was current when it
-		# was set up. If this programme swapped to a different Item for the
-		# same product, fall back to the schedule of the Item the rule names,
-		# so swapping Items doesn't silently break the split.
-		schedule = (
-			primary.get(line["fertilizer_product"])
-			or primary.get(line.get("scheduled_as"))
-			or fallback.get(line["fertilizer_product"])
-			or fallback.get(line.get("scheduled_as"))
-		)
+		if line.get("is_split_schedule"):
+			# The calendar is written against whichever Item was current when
+			# it was set up. If this programme swapped to a different Item for
+			# the same product, fall back to the schedule of the Item the rule
+			# names, so swapping Items doesn't silently break the split.
+			schedule = (
+				split_schedule_map.get(line["fertilizer_product"])
+				or split_schedule_map.get(line.get("scheduled_as"))
+			)
+		else:
+			schedule = nutrient_schedule_map.get(line.get("nutrient"))
 		if not schedule:
 			frappe.throw(
 				f"No monthly application schedule configured for {line['fertilizer_product']} "
@@ -297,9 +299,10 @@ def calculate_programme(programme_name):
 				item_for_rule(rule, chosen), tier_label, section,
 				product=rule.get("product"),
 			)
-			# Remember the Item the rule names, so apply_monthly_schedule can
-			# still find a schedule if this programme swapped to another Item.
 			for line in lines:
+				line["nutrient"] = rule.nutrient
+				# Remember the Item the rule names, so apply_monthly_schedule
+				# can still find a schedule if this programme swapped Items.
 				line["scheduled_as"] = rule.fertilizer_product
 				if rule.nutrient_source_group:
 					line["is_split_schedule"] = True
