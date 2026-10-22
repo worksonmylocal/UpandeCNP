@@ -2,6 +2,8 @@ import frappe
 from frappe.model.document import Document
 from frappe.utils import flt
 
+from upandecnp.upandecnp.utils.farm_permissions import resolve_farm_scope
+
 
 class FertilizerBudget(Document):
 
@@ -55,11 +57,19 @@ class FertilizerBudget(Document):
 
     @frappe.whitelist()
     def fetch_from_programme(self):
-        """Populate budget lines from the linked Fertilizer Programme."""
+        """Populate budget lines from the linked Fertilizer Programme.
+
+        Frappe only checks read on this Budget to invoke the method at all,
+        and a plain self.save() below checks write on it too - neither says
+        anything about the Programme named in fertilizer_programme, which is
+        attacker-controlled data on this same doc. Without this, a caller
+        scoped to one farm could point a budget at another farm's Programme
+        and pull its requirement totals."""
         if not self.fertilizer_programme:
             frappe.throw("Please set the Fertilizer Programme first.")
 
         programme = frappe.get_doc("Fertilizer Programme", self.fertilizer_programme)
+        resolve_farm_scope(frappe.session.user, programme.farm)
 
         requirements = {}
         for line in programme.get("programme_lines", []):

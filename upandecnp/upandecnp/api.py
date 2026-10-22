@@ -4,6 +4,7 @@ These reuse the existing DocType logic so the workflow stays consistent.
 """
 
 import frappe
+from frappe.rate_limiter import rate_limit
 from frappe.utils import cint, flt, now_datetime, today
 from upandecnp.upandecnp.utils.calculation_engine import MONTHS, farm_warehouse, get_stock
 from upandecnp.upandecnp.utils.farm_permissions import resolve_farm_scope
@@ -64,13 +65,20 @@ def _attach_product_names(rows, code_field="fertilizer_product", name_field=None
 
 
 @frappe.whitelist(allow_guest=True)
+@rate_limit(limit=20, seconds=3600)
 def mobile_login(usr, pwd):
     """Token login for the bundled mobile app. Session cookies don't survive
     the app's cross-origin calls to the server - browsers only send
     SameSite=Lax cookies (Frappe's default) on top-level navigation, never
     on cross-site fetch/XHR - so the app authenticates once here and uses
     the returned api_key/api_secret as an Authorization header on every
-    later call instead of relying on a cookie."""
+    later call instead of relying on a cookie.
+
+    This is a custom whitelisted method, not Frappe's own /api/method/login,
+    so none of Frappe's login throttling applies to it on its own - without
+    this decorator it is an unauthenticated, unthrottled credential-
+    verification oracle. 20 attempts/hour/IP, same ceiling the CRM app in
+    this estate uses for its own password-checking endpoint."""
     from frappe.core.doctype.user.user import User
 
     result = User.find_by_credentials(usr, pwd)
@@ -641,6 +649,14 @@ def add_applicators(employees, block=None):
     Each employee is validated on its own and failures are collected rather
     than raised, because a crew of six with one person already on somebody
     else's team should add the other five and say so - not refuse the lot.
+
+    The writes below go through frappe.db.set_value rather than the document
+    API, so DocPerm on Employee never enters into it - deliberately, since
+    this app has no say over core HR's Employee permissions and routing
+    through them could just as easily lock a legitimate supervisor out as
+    stop a bad actor. _current_employee() (any caller must be a real,
+    linked Employee) and _block_scope_guard() (that block's farm must be
+    one this caller is scoped to) are the checks that exist instead.
     """
     if isinstance(employees, str):
         employees = frappe.parse_json(employees)
@@ -652,8 +668,10 @@ def add_applicators(employees, block=None):
     if not supervisor:
         frappe.throw("You don't have an Employee record linked to your account.")
 
-    if block and not frappe.db.exists("Farm Block", block):
-        frappe.throw(f"Block {block} does not exist.")
+    if block:
+        if not frappe.db.exists("Farm Block", block):
+            frappe.throw(f"Block {block} does not exist.")
+        _block_scope_guard(block)
 
     added, failed = [], []
     for employee in employees:
@@ -1706,6 +1724,7 @@ def get_product_items(product, farm=None):
     of them. So the agronomist picks the Item, and sees the stock while
     picking it.
     """
+    farm = resolve_farm_scope(frappe.session.user, farm)
     doc = frappe.get_doc("Fertilizer Product", product)
     terms = doc.terms()
     if not terms:
@@ -1872,8 +1891,13 @@ def push_application(plan, reason=None, scope="product"):
     scope="product" slides only this block's rounds of this same product,
     which is the usual case. scope="block" slides every product for the
     block, for when the block itself could not be worked at all.
+
+    Every target below is saved with ignore_permissions=True, so nothing
+    here goes through DocPerm at all - this is the only thing standing
+    between any authenticated user and pushing any farm's plans.
     """
     doc = frappe.get_doc("Block Fertilizer Plan", plan)
+    resolve_farm_scope(frappe.session.user, doc.farm)
     if doc.status in ("Applied", "Verified"):
         frappe.throw(f"{plan} is already {doc.status} - there is nothing to push.")
 

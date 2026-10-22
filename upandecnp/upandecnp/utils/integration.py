@@ -209,7 +209,24 @@ def mark_plan_issued_from_stock_entry(doc, method=None):
     method set this directly) but was never carried over when store requests
     moved to the standard Material Request + Item Requisition workflow.
     Without this, a fully-approved-and-issued request would never show up as
-    ready in the field app's Record Application flow."""
+    ready in the field app's Record Application flow.
+
+    Stock Entry is the busiest DocType on the site, so a bug here must never
+    abort someone else's stock transaction - log and move on. The query
+    below also depends on custom_block_fertilizer_plan, a CNP Custom Field
+    on a core DocType: if that field were ever removed, this would otherwise
+    take every Stock Entry referencing a Material Request down with it.
+    """
+    try:
+        _mark_plan_issued_from_stock_entry(doc)
+    except Exception:
+        frappe.log_error(
+            title="mark_plan_issued_from_stock_entry failed",
+            message=f"Stock Entry {doc.name}\n{frappe.get_traceback()}",
+        )
+
+
+def _mark_plan_issued_from_stock_entry(doc):
     mr_names = {item.material_request for item in doc.items if item.material_request}
     if not mr_names:
         return
@@ -337,39 +354,70 @@ def is_fertilizer(item_code):
 def update_budget_on_receipt(doc, method=None):
     """
     Hook: called when a Purchase Receipt is submitted.
-    Resolves the receiving warehouse back to a Farm, then updates the actuals
-    on that farm's most recent submitted Fertilizer Budget - a receipt for
-    one farm's warehouse must never update another farm's budget.
+    Resolves each receiving warehouse back to its own Farm, then updates the
+    actuals on that farm's most recent submitted Fertilizer Budget - a
+    receipt for one farm's warehouse must never update another farm's
+    budget, including when a single receipt spans more than one farm's
+    stores.
+
+    This runs inside the core submit transaction with no on_submit ordering
+    guarantee relative to anything else on the Purchase Receipt, so a bug
+    here must never be allowed to abort a receipt for every company on the
+    site over a reporting side-effect - log and move on, same as any other
+    best-effort hook on a shared core DocType.
     """
+    try:
+        _update_budget_on_receipt(doc)
+    except Exception:
+        frappe.log_error(
+            title="update_budget_on_receipt failed",
+            message=f"Purchase Receipt {doc.name}\n{frappe.get_traceback()}",
+        )
+
+
+def _update_budget_on_receipt(doc):
     fertilizer_items = [item for item in doc.get("items", []) if is_fertilizer(item.item_code)]
     if not fertilizer_items:
         return
 
     warehouses = {item.warehouse for item in fertilizer_items if item.warehouse}
-    farm = frappe.db.get_value("CNP Farm", {"warehouse": ["in", list(warehouses)]}, "name") if warehouses else None
-    if not farm:
+    if not warehouses:
         return
 
-    budgets = frappe.get_all(
-        "Fertilizer Budget",
-        filters={"docstatus": 1, "farm": farm},
-        fields=["name"],
-        order_by="creation desc",
-        limit=1,
-    )
-    if not budgets:
-        return
+    # One row per farm whose warehouse appears on this receipt - not one
+    # farm for the whole receipt. A receipt with lines in two farms' stores
+    # must update each farm's own budget with only its own lines.
+    farm_by_warehouse = dict(frappe.get_all(
+        "CNP Farm", filters={"warehouse": ["in", list(warehouses)]},
+        fields=["warehouse", "name"], as_list=True,
+    ))
 
-    budget = frappe.get_doc("Fertilizer Budget", budgets[0].name)
-
+    items_by_farm = {}
     for item in fertilizer_items:
-        budget.update_actuals_from_receipt(
-            item_code=item.item_code,
-            received_qty=flt(item.qty),
-            received_rate=flt(item.rate),
-        )
+        farm = farm_by_warehouse.get(item.warehouse)
+        if farm:
+            items_by_farm.setdefault(farm, []).append(item)
 
-    frappe.msgprint(
-        f"Fertilizer Budget {budget.name} updated with received quantities.",
-        alert=True,
-    )
+    for farm, items in items_by_farm.items():
+        budgets = frappe.get_all(
+            "Fertilizer Budget",
+            filters={"docstatus": 1, "farm": farm},
+            fields=["name"],
+            order_by="creation desc",
+            limit=1,
+        )
+        if not budgets:
+            continue
+
+        budget = frappe.get_doc("Fertilizer Budget", budgets[0].name)
+        for item in items:
+            budget.update_actuals_from_receipt(
+                item_code=item.item_code,
+                received_qty=flt(item.qty),
+                received_rate=flt(item.rate),
+            )
+
+        frappe.msgprint(
+            f"Fertilizer Budget {budget.name} updated with received quantities.",
+            alert=True,
+        )

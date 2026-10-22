@@ -3,7 +3,7 @@
   "docstatus": 0,
   "doctype": "Workflow",
   "document_type": "Fertilizer Store Request",
-  "is_active": 1,
+  "is_active": 0,
   "modified": "2026-07-06 18:03:26.987187",
   "name": "Fertilizer Store Request Workflow",
   "override_status": 0,

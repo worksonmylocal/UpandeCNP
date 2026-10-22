@@ -190,12 +190,6 @@ doc_events = {
     "Stock Entry": {
         "on_submit": "upandecnp.upandecnp.utils.integration.mark_plan_issued_from_stock_entry"
     },
-    "Fertilizer Store Request": {
-        "validate": [
-            "upandecnp.upandecnp.utils.farm_scope.set_farm_from_block",
-            "upandecnp.upandecnp.utils.farm_scope.set_company_from_farm",
-        ]
-    },
     "Fertilizer Application": {
         "validate": [
             "upandecnp.upandecnp.utils.farm_scope.set_farm_from_block",
@@ -361,7 +355,11 @@ fixtures = [
     # The workspace is a single Custom HTML Block; ship the block with it, or a
     # fresh site syncs a workspace pointing at something that isn't there.
     {"dt": "Custom HTML Block", "filters": [["name", "=", "UpandeCNP Navigation"]]},
-    {"dt": "Workflow", "filters": [["name", "=", "Fertilizer Store Request Workflow"]]},
+    # Fertilizer Store Request Workflow itself is no longer shipped as an
+    # active fixture - the DocType it runs on is superseded by Material
+    # Request and holds no rows (see upandecnp.patches - F-09). The states
+    # and actions below are generic, reusable workflow vocabulary, not
+    # specific to that one dead workflow, so they stay.
     {"dt": "Workflow State", "filters": [["name", "in", ["Requested", "Approved", "Issued", "Rejected"]]]},
     {"dt": "Workflow Action Master", "filters": [["name", "in", ["Approve", "Reject", "Issue"]]]},
 ]

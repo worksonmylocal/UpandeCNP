@@ -2,6 +2,8 @@ import frappe
 from frappe.model.document import Document
 from frappe.utils import flt
 
+from upandecnp.upandecnp.utils.farm_permissions import resolve_farm_scope
+
 
 class FertilizerProgramme(Document):
 
@@ -169,9 +171,15 @@ class FertilizerProgramme(Document):
 		Entire Farm (the default) pulls every block on the farm, same as
 		before Programme Scope existed. Section or Block narrows that to just
 		the chosen piece, so a programme can be built for one part of a farm
-		without touching the rest of it."""
+		without touching the rest of it.
+
+		This runs through a plain self.save() below, so Frappe checks write
+		on this Programme - but DocPerm is role-based, not farm-based, so it
+		says nothing about whether self.farm (set when the programme was
+		created) is one this caller is actually scoped to."""
 		if not self.farm:
 			frappe.throw("Please set the Farm first.")
+		resolve_farm_scope(frappe.session.user, self.farm)
 
 		filters = {"farm": self.farm}
 		if self.scope_type == "Section":
