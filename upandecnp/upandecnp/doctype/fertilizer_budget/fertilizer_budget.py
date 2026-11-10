@@ -92,12 +92,7 @@ class FertilizerBudget(Document):
         )
 
     def get_item_buying_price(self, item_code):
-        price = frappe.db.get_value(
-            "Item Price",
-            {"item_code": item_code, "buying": 1},
-            "price_list_rate",
-        )
-        return flt(price)
+        return flt(frappe.db.get_value("Item", item_code, "last_purchase_rate"))
 
     def update_actuals_from_receipt(self, item_code, received_qty, received_rate):
         """Update a budget line's actuals when fertilizer is received.

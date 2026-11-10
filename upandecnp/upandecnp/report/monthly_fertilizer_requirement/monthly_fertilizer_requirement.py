@@ -39,9 +39,7 @@ def get_data(programme):
     price_cache = {}
     def get_price(product):
         if product not in price_cache:
-            price_cache[product] = flt(frappe.db.get_value(
-                "Item Price", {"item_code": product, "buying": 1}, "price_list_rate"
-            ))
+            price_cache[product] = flt(frappe.db.get_value("Item", product, "last_purchase_rate"))
         return price_cache[product]
 
     rows = []

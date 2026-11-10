@@ -985,8 +985,7 @@ def get_monthly_breakdown(season=None, farm=None):
     price_cache = {}
     def price(prod):
         if prod not in price_cache:
-            price_cache[prod] = flt(frappe.db.get_value("Item Price",
-                {"item_code": prod, "buying": 1}, "price_list_rate"))
+            price_cache[prod] = flt(frappe.db.get_value("Item", prod, "last_purchase_rate"))
         return price_cache[prod]
 
     for prog in programmes:
@@ -1693,7 +1692,7 @@ def get_variance_alerts(farm=None, season=None):
 @frappe.whitelist()
 def get_computed_budget(farm=None, season=None):
     """Estimated fertilizer cost = season requirement (from submitted
-    Programme Lines) x Item buying price. Available immediately, without
+    Programme Lines) x Item Last Purchase Rate. Available immediately, without
     needing a manually created + submitted Fertilizer Budget document
     (that doctype is still used for tracking *actual* spend against
     Purchase Receipts - this is the always-on estimate)."""
