@@ -193,3 +193,70 @@ def build_programme_workbook(doc, section=None):
 	buf = BytesIO()
 	wb.save(buf)
 	return buf.getvalue()
+
+
+APPLICATION_COLUMNS = [
+	# (header, key, width)
+	("Application", "name", 22),
+	("Date", "application_date", 12),
+	("Farm", "farm", 12),
+	("Section", "section", 30),
+	("Block", "block", 18),
+	("Product code", "fertilizer_product", 14),
+	("Product", "fertilizer_product_name", 28),
+	("Planned (Kg)", "planned_quantity_kg", 13),
+	("Applied (Kg)", "actual_quantity_applied_kg", 13),
+	("Variance (Kg)", "variance_kg", 13),
+	("Applied in full", "applied_in_full_text", 14),
+	("Reason if partial", "partial_reason", 30),
+	("Method", "application_method", 18),
+	("Weather", "weather_conditions", 16),
+	("Supervisor", "supervisor_name", 24),
+	("Supervisor no.", "supervisor_employee_number", 14),
+	("Applicators", "applicators_text", 40),
+	("Store request", "material_request", 20),
+	("Stock entry", "stock_entry", 20),
+	("Round / plan", "block_fertilizer_plan", 44),
+	("Notes", "notes", 30),
+	("Recorded on", "creation_text", 18),
+]
+APPLICATION_TOTALS = ("planned_quantity_kg", "actual_quantity_applied_kg", "variance_kg")
+
+
+def build_applications_workbook(rows, title="Applications"):
+	"""rows: dicts from the desk's application query. One sheet, one row per
+	submitted Fertilizer Application, with a totals line so the sheet can be
+	read without a calculator. Returns the .xlsx bytes."""
+	wb = Workbook()
+	ws = wb.active
+	ws.title = title[:31]
+
+	for col, (header, _key, width) in enumerate(APPLICATION_COLUMNS, start=1):
+		cell = ws.cell(row=1, column=col, value=header)
+		cell.font = Font(bold=True)
+		cell.fill = HEADER_FILL
+		cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+		ws.column_dimensions[get_column_letter(col)].width = width
+	ws.freeze_panes = "A2"
+
+	for r, row in enumerate(rows, start=2):
+		for col, (_header, key, _width) in enumerate(APPLICATION_COLUMNS, start=1):
+			value = row.get(key)
+			if key in APPLICATION_TOTALS:
+				value = flt(value)
+			ws.cell(row=r, column=col, value=value)
+
+	last = len(rows) + 1
+	if rows:
+		total_row = last + 1
+		ws.cell(row=total_row, column=1, value="Total").font = Font(bold=True)
+		for col, (_header, key, _width) in enumerate(APPLICATION_COLUMNS, start=1):
+			if key in APPLICATION_TOTALS:
+				letter = get_column_letter(col)
+				cell = ws.cell(row=total_row, column=col, value=f"=SUM({letter}2:{letter}{last})")
+				cell.font = Font(bold=True)
+		ws.auto_filter.ref = f"A1:{get_column_letter(len(APPLICATION_COLUMNS))}{last}"
+
+	buf = BytesIO()
+	wb.save(buf)
+	return buf.getvalue()

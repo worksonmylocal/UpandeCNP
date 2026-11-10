@@ -1249,7 +1249,7 @@
           <div class="qrow__mark">${esc((r.block || "?").slice(0, 2))}</div>
           <div>
             <div class="qrow__name">${esc(r.item_code_name || r.item_code || r.name)}</div>
-            <div class="qrow__meta">${esc(r.block || "—")} · ${num(r.qty)} kg ·
+            <div class="qrow__meta">${esc(r.name)} · ${esc(r.block || "—")} · ${num(r.qty)} kg ·
               ${esc(r.employee_name || "unknown supervisor")} · ${esc(r.transaction_date || "")}</div>
           </div>
           <div class="qrow__right">${pill(r.state || "—",
@@ -1259,29 +1259,108 @@
     } catch (e) { el.innerHTML = `<div class="none">Could not load requests.</div>`; }
   }
 
-  function openRequest(idx) {
+  /** A store request opened up: the Material Request behind it, in full, with
+   *  Approve and Reject for whoever the approval workflow lets act on it.
+   *  The buttons come from the workflow itself (what this user may do right
+   *  now), so nobody is offered something the system would then refuse. */
+  async function openRequest(idx) {
     const r = (state.requests || [])[idx];
     if (!r) return;
-    const body = `
-      <div class="statline"><span class="statline__k">Supervisor</span>
-        <span class="statline__v">${esc(r.employee_name || r.employee || "—")}</span></div>
-      <div class="statline"><span class="statline__k">Amount requested</span>
-        <span class="statline__v">${num(r.qty)} kg</span></div>
-      <div class="statline"><span class="statline__k">Product</span>
-        <span class="statline__v">${esc(r.item_code_name || r.item_code || "—")}</span></div>
-      <div class="statline"><span class="statline__k">Block</span>
-        <span class="statline__v">${esc(r.block || "—")}</span></div>
-      <div class="statline"><span class="statline__k">Section</span>
-        <span class="statline__v">${esc(r.section || "—")}</span></div>
-      <div class="statline"><span class="statline__k">For the month of</span>
-        <span class="statline__v">${esc(r.application_month || "—")}</span></div>
-      <div class="statline"><span class="statline__k">Raised on</span>
-        <span class="statline__v">${esc(r.transaction_date || "—")}</span></div>
-      <div class="statline"><span class="statline__k">Status</span>
-        <span class="statline__v">${esc(r.state || r.status || "—")}</span></div>
-      <div class="none" style="text-align:left">Request ${esc(r.name)}${
-        r.plan ? ` · plan ${esc(r.plan)}` : ""}</div>`;
-    modal({ title: "Store request", sub: r.block || "", body, foot: [{ label: "Close" }] });
+    const m = modal({ title: "Store request", sub: `${r.name} · ${r.block || ""}`, size: "wide",
+      body: `<div class="skel"></div>`, foot: [{ label: "Close" }] });
+    let d;
+    try {
+      d = await call("get_store_request_detail", { name: r.name });
+    } catch (e) {
+      m.body.innerHTML = `<div class="none">${esc(e.message || "Could not load this request.")}</div>`;
+      return;
+    }
+    if (!m.el.isConnected) return;   // closed while loading
+    m.body.innerHTML = requestDetailHtml(d, r);
+
+    const foot = [];
+    if (d.actions.includes("Approve")) foot.push({ label: "Approve", cls: "btn--good",
+      onClick: () => decideRequest(m, d, "Approve") });
+    if (d.actions.includes("Reject")) foot.push({ label: "Reject", cls: "btn--bad",
+      onClick: () => decideRequest(m, d, "Reject") });
+    foot.push({ label: "Close" });
+    m.setFoot(foot);
+  }
+
+  function requestDetailHtml(d, r) {
+    const line = (k, v) => `<div class="statline"><span class="statline__k">${k}</span>
+      <span class="statline__v">${v}</span></div>`;
+    const pi = d.plan_info || {};
+    const tone = d.state === "Approved" || d.state === "Issued" ? "good"
+      : d.state === "Rejected" || d.state === "Cancelled" ? "bad" : "warn";
+    const desk = `/app/material-request/${encodeURIComponent(d.name)}`;
+    const items = (d.items || []).map((i) => `
+      <div class="qrow">
+        <div class="qrow__mark">${esc((i.item_code || "?").slice(0, 2))}</div>
+        <div><div class="qrow__name">${esc(i.item_name || i.item_code)}</div>
+          <div class="qrow__meta">${num(i.qty, 1)} ${esc(i.uom || "")}
+            ${i.warehouse ? " · " + esc(i.warehouse) : ""}${i.cost_center ? " · " + esc(i.cost_center) : ""}
+            ${i.purpose ? " · " + esc(i.purpose) : ""}${i.employee_name ? " · for " + esc(i.employee_name) : ""}</div></div>
+      </div>`).join("");
+    const notes = (d.notes || []).map((n) => `
+      <div class="statline"><span class="statline__k">${esc(n.by)} · ${esc(n.on)}</span>
+        <span class="statline__v" style="text-align:right;white-space:normal">${esc(n.text)}</span></div>`).join("");
+    return `
+      <div style="margin-bottom:10px">${pill(d.workflow_state || d.state, tone)}</div>
+      ${line("Material Request", `<a href="${desk}" target="_blank" rel="noopener">${esc(d.name)} ↗</a>`)}
+      ${line("Raised by", esc(d.requested_by || r.employee_name || "—"))}
+      ${line("Raised on", esc(d.created || d.transaction_date || "—"))}
+      ${line("Required by", esc(d.schedule_date || "—"))}
+      ${line("Farm", esc(d.farm || "—"))}
+      ${line("Company", esc(d.company || "—"))}
+      ${d.business_unit ? line("Business unit", esc(d.business_unit)) : ""}
+      ${d.request_type ? line("Request type", esc(d.request_type)) : ""}
+      ${line("Issuing store", esc(d.warehouse || "—"))}
+      ${d.programme ? line("Programme", esc(d.programme)) : ""}
+      ${line("Block · section", `${esc(pi.block || r.block || "—")} · ${esc(pi.section || r.section || "—")}`)}
+      ${line("Round", `${esc(pi.application_month || "—")}${pi.application_year ? " " + pi.application_year : ""}
+        · ${num(pi.total_kg_required, 1)} kg planned`)}
+      ${line("Issued so far", `${num(d.per_ordered, 0)}%`)}
+      <div class="card__head" style="margin:16px 0 8px"><h3>Items requested</h3></div>
+      <div class="queue">${items || `<div class="none">No items.</div>`}</div>
+      ${notes ? `<div class="card__head" style="margin:16px 0 4px"><h3>Notes</h3></div>${notes}` : ""}
+      ${d.waiting_on_someone_else ? `<div class="none" style="text-align:left">Waiting for approval. Only the
+        people the approval workflow names (a Farm Manager) can approve or reject it - you can't from here.</div>` : ""}`;
+  }
+
+  /** Approve asks to be sure; Reject asks why (the supervisor and the store
+   *  should not have to guess). Both are the workflow's own actions, applied
+   *  as the person clicking. */
+  function decideRequest(parent, d, action) {
+    return new Promise((resolve) => {
+      const rejecting = action === "Reject";
+      const body = rejecting
+        ? `<div class="none" style="text-align:left;padding:0 0 10px">Tell the supervisor and the store why
+            ${esc(d.name)} is being rejected.</div>
+           <textarea id="reject-reason" rows="4" style="width:100%;padding:12px;border:1px solid var(--hairline);
+            border-radius:10px;font:inherit" placeholder="e.g. quantity is more than the block needs"></textarea>`
+        : `<div class="none" style="text-align:left;padding:0">Approve ${esc(d.name)}? It goes to the store to
+            be issued.</div>`;
+      const dlg = modal({
+        title: rejecting ? "Reject this request?" : "Approve this request?", body,
+        onClose: () => resolve(),
+        foot: [
+          { label: "Cancel" },
+          { label: rejecting ? "Reject request" : "Approve request", cls: rejecting ? "btn--bad" : "btn--good",
+            onClick: async () => {
+              const reason = rejecting ? ($("#reject-reason", dlg.el).value || "").trim() : "";
+              if (rejecting && !reason) throw new Error("Give a reason for rejecting.");
+              const res = await call("act_on_store_request", { name: d.name, action, reason });
+              dlg.close(); parent.close();
+              toast(`${d.name} ${rejecting ? "rejected" : "approved"} — now ${res.workflow_state || res.state}.`, "good");
+              await loadRequests();
+              resolve();
+            } },
+        ],
+      });
+      const t = $("#reject-reason", dlg.el);
+      if (t) t.focus();
+    });
   }
 
   async function loadApplications() {
@@ -1290,6 +1369,7 @@
         { farm: state.farm || null, season: state.season || null });
       state.apps = rows;
       $("#apps-meta").textContent = `${rows.length} recorded`;
+      $("#export-apps").disabled = !rows.length;
       $("#apps").innerHTML = rows.map((r, idx) => `
         <div class="qrow" data-app="${idx}" style="cursor:pointer">
           <div class="qrow__mark">${esc((r.block || "?").slice(0, 2))}</div>
@@ -1533,6 +1613,15 @@
     window.open(url, "_blank");
   }
 
+  /** Every recorded application for the farm and season in view, as one
+   *  sheet - the same scoping as the list, without its row cap. */
+  function downloadApplicationsExcel() {
+    const q = new URLSearchParams();
+    if (state.farm) q.set("farm", state.farm);
+    if (state.season && state.season !== "All Seasons") q.set("season", state.season);
+    window.open("/api/method/upandecnp.upandecnp.api.export_applications_excel?" + q.toString(), "_blank");
+  }
+
   /** Export Excel - whole programme, or just one section in the same
    *  format. Sections come straight off this programme's own blocks, so
    *  there's nothing to pick when it's scoped to just one already. */
@@ -1588,6 +1677,7 @@
   // --------------------------------------------------------------------- actions
   async function act(button) {
     const kind = button.dataset.act;
+    if (kind === "export_apps") { downloadApplicationsExcel(); return; }
     const c = state.data && state.data.current;
     if (!c) return;
 

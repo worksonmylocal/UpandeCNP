@@ -2626,23 +2626,140 @@ def get_desk_store_requests(farm=None, limit=200):
     return rows
 
 
+STORE_REQUEST_ACTIONS = ("Approve", "Reject")
+
+
+def _cnp_store_request(name):
+    """A Material Request this module raised, after checking the caller may
+    see its farm. Anything else is refused - this is not a back door to every
+    Material Request on a site that also runs fuel, chemicals and spares."""
+    if not name or not frappe.db.exists("Material Request", name):
+        frappe.throw(f"Material Request {name} was not found.")
+    mr = frappe.get_doc("Material Request", name)
+    if not mr.get("custom_block_fertilizer_plan"):
+        frappe.throw(f"{name} was not raised from the field app, so it is not handled here.")
+    resolve_farm_scope(frappe.session.user, mr.get("custom_farm"))
+    return mr
+
+
+def _store_request_actions(mr):
+    """The approval actions this user can really take on this request right
+    now - read from the Material Request workflow itself, so the desk offers
+    exactly what the system's own Approve/Reject buttons would, no more."""
+    from frappe.model.workflow import get_transitions, get_workflow_name, has_approval_access
+
+    if not get_workflow_name(mr.doctype):
+        return []
+    try:
+        transitions = get_transitions(mr)
+    except (frappe.PermissionError, frappe.ValidationError):
+        return []   # cannot read it, or it has no workflow state: nothing to offer
+    return [
+        t.action for t in transitions
+        if t.action in STORE_REQUEST_ACTIONS and has_approval_access(frappe.session.user, mr, t)
+    ]
+
+
 @frappe.whitelist()
-def get_desk_applications(farm=None, season=None, limit=100):
-    """Recorded applications, newest first, with enough on each row to decide
-    whether it needs opening."""
-    farm = resolve_farm_scope(frappe.session.user, farm)
+def get_store_request_detail(name):
+    """Everything on the Material Request behind a store request, for the
+    desk to show without sending anyone to search for it in the system -
+    plus which approval actions the caller may take on it."""
+    from upandecnp.upandecnp.utils.integration import categorize_request_status
+
+    mr = _cnp_store_request(name)
+    state = categorize_request_status(mr.get("workflow_state") or mr.status)
+
+    plan = frappe.db.get_value(
+        "Block Fertilizer Plan", mr.custom_block_fertilizer_plan,
+        ["block", "section", "application_month", "application_year",
+         "fertilizer_product", "total_kg_required", "status"], as_dict=True) or {}
+
+    items = [{
+        "item_code": i.item_code, "item_name": i.item_name, "qty": i.qty, "uom": i.uom,
+        "ordered_qty": i.get("ordered_qty"), "warehouse": i.warehouse,
+        "cost_center": i.cost_center, "purpose": i.get("custom_purpose"),
+        "employee_name": i.get("employee_name") or i.get("custom_employee_name"),
+    } for i in mr.get("items", [])]
+
+    notes = [
+        {"by": frappe.db.get_value("User", c.owner, "full_name") or c.owner,
+         "on": str(c.creation)[:16], "text": frappe.utils.strip_html_tags(c.content or "").strip()}
+        for c in frappe.get_all(
+            "Comment",
+            filters={"reference_doctype": "Material Request", "reference_name": name,
+                     "comment_type": "Comment"},
+            fields=["owner", "creation", "content"], order_by="creation desc", limit_page_length=5)
+    ]
+
+    actions = _store_request_actions(mr)
+    return {
+        "name": mr.name, "state": state, "workflow_state": mr.get("workflow_state"),
+        "docstatus": mr.docstatus, "per_ordered": flt(mr.get("per_ordered")),
+        "transaction_date": mr.transaction_date, "schedule_date": mr.get("schedule_date"),
+        "company": mr.company, "farm": mr.get("custom_farm"),
+        "business_unit": mr.get("custom_business_unit"),
+        "request_type": mr.get("custom_request_type"),
+        "material_request_type": mr.material_request_type,
+        "warehouse": mr.get("set_warehouse"), "programme": mr.get("custom_fertilizer_programme"),
+        "plan": mr.custom_block_fertilizer_plan, "plan_info": plan,
+        "requested_by": frappe.db.get_value("User", mr.owner, "full_name") or mr.owner,
+        "created": str(mr.creation)[:16], "items": items, "notes": notes,
+        "actions": actions,
+        # Said plainly when the request is waiting but this user is not the
+        # one who can move it - so the missing buttons are not a mystery.
+        "waiting_on_someone_else": state == "Pending Approval" and not actions,
+    }
+
+
+@frappe.whitelist()
+def act_on_store_request(name, action, reason=None):
+    """Approve or reject a store request - the workflow's own action, applied
+    as the person clicking, so the same roles, the same self-approval rule and
+    the same audit trail apply as when it is done in the system."""
+    from frappe.model.workflow import apply_workflow
+    from upandecnp.upandecnp.utils.integration import categorize_request_status
+
+    if action not in STORE_REQUEST_ACTIONS:
+        frappe.throw(f"Unknown action: {action}")
+    reason = (reason or "").strip()
+    if action == "Reject" and not reason:
+        frappe.throw("Give a reason for rejecting, so the supervisor and the store know why.")
+
+    mr = _cnp_store_request(name)
+    if action not in _store_request_actions(mr):
+        frappe.throw(
+            f"You can't {action.lower()} {name} right now. It is "
+            f"{mr.get('workflow_state') or mr.status}, and only the people the approval "
+            "workflow names can move it.")
+
+    apply_workflow(mr, action)
+    mr.reload()
+    if reason:
+        mr.add_comment("Comment", f"{'Approved' if action == 'Approve' else 'Rejected'} "
+                                  f"from the Agronomist Desk: {reason}")
+    return {"name": mr.name,
+            "state": categorize_request_status(mr.get("workflow_state") or mr.status),
+            "workflow_state": mr.get("workflow_state")}
+
+
+def _application_rows(farm=None, season=None, limit=None):
+    """Submitted Fertilizer Applications, newest first, shared by the desk list
+    and the Excel export so the two can never disagree about what is
+    "recorded". limit=None means all of them."""
     filters = {"docstatus": 1}
     if farm:
         filters["farm"] = farm
     rows = frappe.get_all(
         "Fertilizer Application", filters=filters,
-        fields=["name", "block", "fertilizer_product", "application_date",
+        fields=["name", "block", "farm", "fertilizer_product", "application_date",
                 "planned_quantity_kg", "actual_quantity_applied_kg", "variance_kg",
                 "applied_in_full", "partial_reason", "application_method",
                 "weather_conditions", "supervisor", "supervisor_name",
-                "block_fertilizer_plan", "material_request"],
+                "supervisor_employee_number", "block_fertilizer_plan",
+                "material_request", "stock_entry", "notes", "creation"],
         order_by="application_date desc, modified desc",
-        limit_page_length=cint(limit) or 100,
+        limit_page_length=cint(limit) if limit else 0,
     )
     if season and season != "All Seasons":
         names = set(frappe.get_all("Block Fertilizer Plan",
@@ -2650,12 +2767,55 @@ def get_desk_applications(farm=None, season=None, limit=100):
         rows = [r for r in rows if r.block_fertilizer_plan in names]
     _attach_product_names(rows)
 
+    applicators = {}
+    for a in frappe.get_all(
+        "Fertilizer Application Applicator",
+        filters={"parent": ["in", [r.name for r in rows]]} if rows else {"parent": ""},
+        fields=["parent", "employee_name"], order_by="idx asc",
+    ):
+        if a.employee_name:
+            applicators.setdefault(a.parent, []).append(a.employee_name)
     for r in rows:
-        applicators = frappe.get_all(
-            "Fertilizer Application Applicator",
-            filters={"parent": r.name}, fields=["employee_name"], pluck="employee_name")
-        r["applicators"] = [a for a in applicators if a]
+        r["applicators"] = applicators.get(r.name, [])
     return rows
+
+
+@frappe.whitelist()
+def get_desk_applications(farm=None, season=None, limit=100):
+    """Recorded applications, newest first, with enough on each row to decide
+    whether it needs opening."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
+    return _application_rows(farm, season, cint(limit) or 100)
+
+
+@frappe.whitelist()
+def export_applications_excel(farm=None, season=None):
+    """Every recorded application for the farm and season in view, as one
+    Excel sheet. Same scoping and the same rows as the Applications tab -
+    only the row cap is lifted, so the file is the whole record, not the
+    first hundred."""
+    from upandecnp.upandecnp.utils.excel_export import build_applications_workbook
+
+    farm = resolve_farm_scope(frappe.session.user, farm)
+    rows = _application_rows(farm, season)
+
+    # Section is not stored on the application - it is wherever the block sits
+    # now, so a corrected section shows up on old records too.
+    sections = dict(frappe.get_all(
+        "Farm Block", filters={"name": ["in", list({r.block for r in rows if r.block})]},
+        fields=["name", "section"], as_list=True,
+    )) if rows else {}
+    for r in rows:
+        r["section"] = sections.get(r.block)
+        r["applied_in_full_text"] = "Yes" if r.applied_in_full else "No"
+        r["applicators_text"] = ", ".join(r.get("applicators") or [])
+        r["creation_text"] = frappe.utils.format_datetime(r.creation, "yyyy-MM-dd HH:mm") if r.creation else ""
+
+    workbook = build_applications_workbook(rows)
+    label = " - ".join(x.replace("/", "-") for x in (farm, season) if x and x != "All Seasons")
+    frappe.response.filename = f"Fertilizer Applications{' - ' + label if label else ''}.xlsx"
+    frappe.response.filecontent = workbook
+    frappe.response.type = "download"
 
 
 @frappe.whitelist()

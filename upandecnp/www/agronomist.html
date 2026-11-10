@@ -98,7 +98,12 @@
 
   <div class="tabpanel" id="tab-applications">
     <div class="card">
-      <div class="card__head"><h3>Recorded applications</h3><span class="meta" id="apps-meta"></span></div>
+      <div class="card__head"><h3>Recorded applications</h3>
+        <div style="display:flex;gap:14px;align-items:center">
+          <span class="meta" id="apps-meta"></span>
+          <button class="btn" id="export-apps" data-act="export_apps" disabled
+            title="Download every recorded application for this farm and season">Export to Excel</button>
+        </div></div>
       <div class="queue queue--5" id="apps"><div class="skel"></div></div>
     </div>
     <div class="card">
