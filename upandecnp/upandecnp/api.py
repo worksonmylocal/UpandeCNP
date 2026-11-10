@@ -15,6 +15,16 @@ def _current_employee():
     return frappe.db.get_value("Employee", {"user_id": frappe.session.user}, "name")
 
 
+def _supervisor_farm(supervisor):
+    """The Farm (Employee.custom_farm - HR's own farm/unit field, populated on
+    every Employee record on this site) the supervisor themselves belongs to.
+    Used to keep the team roster to the supervisor's own farm: Employee has no
+    CNP-level scoping of its own, and company alone is too wide - Lokitela,
+    Endebess, Saboti and Vale all share one company (Kaitet Ltd.), so a
+    company-only filter mixed all four farms' staff together."""
+    return frappe.db.get_value("Employee", supervisor, "custom_farm") if supervisor else None
+
+
 def _section_scope_guard(section):
     """frappe.get_all() bypasses permission_query_conditions, so every
     endpoint that takes a raw section/block name (not already routed through
@@ -607,16 +617,24 @@ def get_available_employees_for_team(search=None, limit=50):
     open. A supervisor is looking for one person whose name they already
     know, so the useful shape is "the first few that match what I typed".
 
-    Still scoped to the caller's company: this instance hosts unrelated
-    businesses, and without it someone searching "John" wades through other
-    companies' staff. Anyone already on a team is excluded - they are taken
-    off their current team first if they need to move.
+    Scoped to the supervisor's own Farm (Employee.custom_farm): this instance
+    hosts unrelated businesses and several farms under the same company, and
+    without it someone searching "John" wades through every other farm's
+    staff too - Lokitela, Endebess, Saboti and Vale all share one company
+    (Kaitet Ltd.), so company alone doesn't separate them. Falls back to
+    company if the supervisor's own Employee record has no Farm set, rather
+    than returning nothing. Anyone already on a team is excluded - they are
+    taken off their current team first if they need to move.
     """
     supervisor = _current_employee()
     filters = {"status": "Active", "custom_field_supervisor": ["is", "not set"]}
-    company = frappe.db.get_value("Employee", supervisor, "company") if supervisor else None
-    if company:
-        filters["company"] = company
+    farm = _supervisor_farm(supervisor)
+    if farm:
+        filters["custom_farm"] = farm
+    else:
+        company = frappe.db.get_value("Employee", supervisor, "company") if supervisor else None
+        if company:
+            filters["company"] = company
 
     or_filters = None
     if search and str(search).strip():
@@ -655,8 +673,11 @@ def add_applicators(employees, block=None):
     this app has no say over core HR's Employee permissions and routing
     through them could just as easily lock a legitimate supervisor out as
     stop a bad actor. _current_employee() (any caller must be a real,
-    linked Employee) and _block_scope_guard() (that block's farm must be
-    one this caller is scoped to) are the checks that exist instead.
+    linked Employee), _block_scope_guard() (that block's farm must be one
+    this caller is scoped to) and the supervisor's own Farm (checked against
+    each employee below - the picker already narrows to it, this is the
+    actual enforcement, in case a client ever sends an id the picker didn't
+    offer) are the checks that exist instead.
     """
     if isinstance(employees, str):
         employees = frappe.parse_json(employees)
@@ -667,6 +688,7 @@ def add_applicators(employees, block=None):
     supervisor = _current_employee()
     if not supervisor:
         frappe.throw("You don't have an Employee record linked to your account.")
+    supervisor_farm = _supervisor_farm(supervisor)
 
     if block:
         if not frappe.db.exists("Farm Block", block):
@@ -677,11 +699,15 @@ def add_applicators(employees, block=None):
     for employee in employees:
         row = frappe.db.get_value(
             "Employee", employee,
-            ["name", "employee_name", "status", "custom_field_supervisor"],
+            ["name", "employee_name", "status", "custom_field_supervisor", "custom_farm"],
             as_dict=True,
         )
         if not row or row.status != "Active":
             failed.append({"employee": employee, "reason": "not an active employee"})
+            continue
+        if supervisor_farm and row.custom_farm and row.custom_farm != supervisor_farm:
+            failed.append({"employee": row.employee_name or employee,
+                           "reason": f"belongs to {row.custom_farm}, not {supervisor_farm}"})
             continue
         if row.custom_field_supervisor and row.custom_field_supervisor != supervisor:
             failed.append({"employee": row.employee_name or employee,
@@ -702,16 +728,25 @@ def add_applicators(employees, block=None):
 @frappe.whitelist()
 def add_applicator(employee):
     """Add an Employee to the current supervisor's field team. Any active
-    Employee not already on someone else's team can be added - this only
-    ever touches custom_field_supervisor, never the HR reports_to line."""
+    Employee on the supervisor's own Farm, not already on someone else's
+    team, can be added - this only ever touches custom_field_supervisor,
+    never the HR reports_to line."""
     supervisor = _current_employee()
     if not supervisor:
         frappe.throw("You don't have an Employee record linked to your account.")
+    supervisor_farm = _supervisor_farm(supervisor)
 
-    if not frappe.db.exists("Employee", {"name": employee, "status": "Active"}):
+    row = frappe.db.get_value(
+        "Employee", {"name": employee, "status": "Active"},
+        ["custom_field_supervisor", "custom_farm"], as_dict=True,
+    )
+    if not row:
         frappe.throw("That employee doesn't exist or isn't active.")
 
-    current_supervisor = frappe.db.get_value("Employee", employee, "custom_field_supervisor")
+    if supervisor_farm and row.custom_farm and row.custom_farm != supervisor_farm:
+        frappe.throw(f"That employee belongs to {row.custom_farm}, not {supervisor_farm}.")
+
+    current_supervisor = row.custom_field_supervisor
     if current_supervisor and current_supervisor != supervisor:
         frappe.throw("That employee is already on another supervisor's team.")
 
