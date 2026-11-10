@@ -1714,11 +1714,11 @@ def get_computed_budget(farm=None, season=None):
     prices = {}
     if required:
         for row in frappe.get_all(
-            "Item Price",
-            filters={"item_code": ["in", list(required.keys())], "buying": 1},
-            fields=["item_code", "price_list_rate"],
+            "Item",
+            filters={"name": ["in", list(required.keys())]},
+            fields=["name", "last_purchase_rate"],
         ):
-            prices.setdefault(row.item_code, flt(row.price_list_rate))
+            prices.setdefault(row.name, flt(row.last_purchase_rate))
 
     lines = []
     total = 0
@@ -2814,8 +2814,7 @@ def get_programme_summary(programme):
             continue
         if row.fertilizer_item not in prices:
             prices[row.fertilizer_item] = flt(frappe.db.get_value(
-                "Item Price", {"item_code": row.fertilizer_item, "buying": 1},
-                "price_list_rate"))
+                "Item", row.fertilizer_item, "last_purchase_rate"))
         cost += flt(row.required_qty) * prices[row.fertilizer_item]
 
     plans = frappe.get_all(
