@@ -789,9 +789,9 @@ async function screenHome(tok) {
         <div class="stat-grid">
             <div class="stat"><small>Pending applications</small><b id="s-pending">–</b></div>
             <div class="stat"><small>Ready to record</small><b id="s-ready">–</b></div>
-            <div class="stat"><small>Pending store requests</small><b id="s-requests">–</b></div>
+            <div class="stat"><small>My store requests</small><b id="s-requests">–</b></div>
             <div class="stat"><small>Recorded by you</small><b id="s-mine">–</b></div>
-            <div class="stat"><small>Applications today</small><b id="s-today">–</b></div>
+            <div class="stat"><small>Recorded today</small><b id="s-today">–</b></div>
             <div class="stat"><small>Upcoming blocks</small><b id="s-upcoming">–</b></div>
         </div>`);
 
@@ -1052,7 +1052,7 @@ async function screenStoreRequests(tok) {
     S(tok, spinner());
     try {
         const reqs = await call("get_store_requests", {});
-        if (!reqs || !reqs.length) { S(tok, empty("No store requests yet.")); return; }
+        if (!reqs || !reqs.length) { S(tok, empty("You haven't raised any store requests yet.")); return; }
         const pillFor = (s) => s === "Issued" ? "good" : s === "Approved" ? "info" : s === "Rejected" ? "bad" : (s === "Cancelled" || s === "Draft") ? "mute" : "warn";
         S(tok, reqs.map((r) => `
             <div class="row tight top">
@@ -1104,7 +1104,7 @@ async function screenApplicatorDetail(tok) {
     const back = backLink("Back to team", "go", 'data-view="team"');
     S(tok, back + `<div class="card">${spinner()}</div>`);
     let stats = null;
-    try { stats = ((await call("get_operator_activity", { employees: [a.name], group_by: "operator" })) || [])[0] || null; } catch (e) { stats = null; }
+    try { stats = ((await call("get_operator_activity", { employees: [a.name], group_by: "operator", recorded_by_me: 1 })) || [])[0] || null; } catch (e) { stats = null; }
     if (tok !== renderToken) return;
     S(tok, back + `<div class="card"><h3>${esc(a.employee_name)}</h3>
         <div class="meta">${a.custom_assigned_block ? "📍 " + esc(a.custom_assigned_block) : "No block assigned"}</div>
@@ -1258,7 +1258,9 @@ function screenRecordBlock(tok) {
 async function selectRecordBlock(block) {
     try {
         const plans = (await call("get_pending_plans_for_block", { block })) || [];
-        const issued = plans.filter((p) => p.status === "Issued");
+        // The block just picked: the server's list for a block used to leave it
+        // off, and the record form needs it to find the crew.
+        const issued = plans.filter((p) => p.status === "Issued").map((p) => ({ ...p, block }));
         issued.forEach((p) => { planStore[p.name] = p; });
         if (issued.length === 1) go({ view: "plan-action", plan: issued[0], planMode: "record", planReturn: "record-block" });
         else if (issued.length > 1) go({ view: "record-plans", recordPlans: issued });
