@@ -74,8 +74,115 @@ def _attach_product_names(rows, code_field="fertilizer_product", name_field=None
     return rows
 
 
+# --------------------------------------------------------------------------
+# Helpers shared by the field app's endpoints.
+# --------------------------------------------------------------------------
+
+def _idempotent(request_id, fn):
+    """Run `fn` once per client-supplied request id.
+
+    A phone that loses the response to a write cannot know whether the server
+    got it, so it sends the same request again later - which, for a store
+    request or a recorded application, would otherwise raise a second Material
+    Request or move stock twice. The first result is remembered (per user, for
+    a week) and handed back for any repeat. Without an id this just runs.
+    """
+    if not request_id:
+        return fn()
+    key = f"cnp_idem:{frappe.session.user}:{request_id}"
+    hit = frappe.cache.get_value(key)
+    if hit is not None:
+        return hit
+    result = fn()
+    frappe.cache.set_value(key, result, expires_in_sec=7 * 24 * 3600)
+    return result
+
+
+def _clean_date(value, what="date"):
+    """A date the app supplies for something it did while offline. Work done
+    in a field with no signal is synced later, and must land on the day it
+    happened, not the day the phone found a connection - but never in the
+    future, and not so far back that it is a typo."""
+    if not value:
+        return frappe.utils.today()
+    try:
+        d = frappe.utils.getdate(value)
+    except Exception:
+        frappe.throw(f"That {what} is not a valid date.")
+    today_d = frappe.utils.getdate(frappe.utils.today())
+    if d > today_d:
+        frappe.throw(f"The {what} cannot be in the future.")
+    if (today_d - d).days > 14:
+        frappe.throw(f"The {what} is more than two weeks old - ask the agronomist to enter it.")
+    return str(d)
+
+
+def _my_request_names():
+    """Material Requests this user raised from the field app: made under their
+    login, or naming their Employee on the item row (the supervisor sits on
+    the item, not the parent, on this site)."""
+    names = set(frappe.get_all(
+        "Material Request",
+        filters={"owner": frappe.session.user, "custom_block_fertilizer_plan": ["is", "set"]},
+        pluck="name"))
+    employee = _current_employee()
+    if employee:
+        col = next((c for c in ("employee", "custom_employee")
+                    if frappe.db.has_column("Material Request Item", c)), None)
+        if col:
+            names |= set(frappe.get_all(
+                "Material Request Item",
+                filters={col: employee, "parenttype": "Material Request"}, pluck="parent"))
+    return list(names)
+
+
+def _my_application_or_filters():
+    """or_filters matching the Fertilizer Applications this user recorded."""
+    conditions = [["owner", "=", frappe.session.user]]
+    employee = _current_employee()
+    if employee:
+        conditions.append(["supervisor", "=", employee])
+    return conditions
+
+
+def _latest_requests_by_plan(plan_names):
+    """The most recent Material Request for each plan, in one query. This used
+    to be one query per plan, which on a few hundred plans was most of what a
+    section screen cost the server."""
+    if not plan_names:
+        return {}
+    latest = {}
+    for r in frappe.get_all(
+        "Material Request",
+        filters={"custom_block_fertilizer_plan": ["in", list(plan_names)]},
+        fields=["name", "status", "workflow_state", "custom_block_fertilizer_plan"],
+        order_by="creation desc",
+    ):
+        latest.setdefault(r.custom_block_fertilizer_plan, r)
+    return latest
+
+
+def _attach_request_status(plans):
+    from upandecnp.upandecnp.utils.integration import categorize_request_status
+
+    latest = _latest_requests_by_plan([p["name"] for p in plans])
+    for p in plans:
+        req = latest.get(p["name"])
+        p["request_name"] = req.name if req else None
+        p["request_status"] = (
+            categorize_request_status(req.workflow_state or req.status) if req else None)
+    return plans
+
+
 @frappe.whitelist(allow_guest=True)
-@rate_limit(limit=20, seconds=3600)
+# Two limiters, deliberately. Per address alone, one office Wi-Fi - every
+# supervisor's phone behind the same public IP - shared a single allowance of
+# 20 an hour and locked the whole crew out together. The per-account limit
+# below is the one that stops password guessing against a person; the
+# per-address limit stays as a much higher ceiling against one machine trying
+# many accounts.
+@rate_limit(limit=600, seconds=3600)
+@rate_limit(key="usr", limit=12, seconds=3600)
 def mobile_login(usr, pwd):
     """Token login for the bundled mobile app. Session cookies don't survive
     the app's cross-origin calls to the server - browsers only send
@@ -86,9 +193,8 @@ def mobile_login(usr, pwd):
 
     This is a custom whitelisted method, not Frappe's own /api/method/login,
     so none of Frappe's login throttling applies to it on its own - without
-    this decorator it is an unauthenticated, unthrottled credential-
-    verification oracle. 20 attempts/hour/IP, same ceiling the CRM app in
-    this estate uses for its own password-checking endpoint."""
+    the decorators above it is an unauthenticated, unthrottled credential-
+    verification oracle."""
     from frappe.core.doctype.user.user import User
 
     result = User.find_by_credentials(usr, pwd)
@@ -143,8 +249,6 @@ def get_blocks_with_pending_work():
 @frappe.whitelist()
 def get_pending_plans_for_block(block, programme=None):
     """Return the pending fertilizer plans for a block, with any linked request status."""
-    from upandecnp.upandecnp.utils.integration import categorize_request_status
-
     _block_scope_guard(block)
     filters = {"docstatus": 1, "block": block, "status": ["in", ["Planned", "Issued"]]}
     if programme:
@@ -152,28 +256,14 @@ def get_pending_plans_for_block(block, programme=None):
     plans = frappe.get_all(
         "Block Fertilizer Plan",
         filters=filters,
-        fields=["name", "fertilizer_product", "application_month",
+        # block is part of the answer: Record Application carries these plans
+        # straight to the form, which needs the block to load its crew.
+        fields=["name", "block", "fertilizer_product", "application_month",
                 "total_kg_required", "status"],
         order_by="application_month",
     )
 
-    for p in plans:
-        # Find the most recent store request (Material Request) for this plan
-        requests = frappe.get_all(
-            "Material Request",
-            filters={"custom_block_fertilizer_plan": p["name"]},
-            fields=["name", "status", "workflow_state"],
-            order_by="creation desc",
-            limit=1,
-        )
-        if requests:
-            p["request_name"] = requests[0].name
-            p["request_status"] = categorize_request_status(requests[0].workflow_state or requests[0].status)
-        else:
-            p["request_name"] = None
-            p["request_status"] = None
-
-    return _attach_product_names(plans)
+    return _attach_product_names(_attach_request_status(plans))
 
 
 @frappe.whitelist()
@@ -204,8 +294,6 @@ def get_sections_with_pending_work(farm=None, programme=None):
 def get_pending_plans_for_section(section, programme=None):
     """Same shape as get_pending_plans_for_block, scoped to every block in
     a Section instead of a single block."""
-    from upandecnp.upandecnp.utils.integration import categorize_request_status
-
     _section_scope_guard(section)
     filters = {"docstatus": 1, "section": section, "status": ["in", ["Planned", "Issued"]]}
     if programme:
@@ -218,22 +306,7 @@ def get_pending_plans_for_section(section, programme=None):
         order_by="block, application_month",
     )
 
-    for p in plans:
-        requests = frappe.get_all(
-            "Material Request",
-            filters={"custom_block_fertilizer_plan": p["name"]},
-            fields=["name", "status", "workflow_state"],
-            order_by="creation desc",
-            limit=1,
-        )
-        if requests:
-            p["request_name"] = requests[0].name
-            p["request_status"] = categorize_request_status(requests[0].workflow_state or requests[0].status)
-        else:
-            p["request_name"] = None
-            p["request_status"] = None
-
-    return _attach_product_names(plans)
+    return _attach_product_names(_attach_request_status(plans))
 
 
 @frappe.whitelist()
@@ -310,9 +383,10 @@ def get_home_metrics(farm=None, programme=None):
     on a patchy orchard connection shouldn't make five round trips to fill
     one screen.
 
-    "Mine" is deliberately the applications this supervisor recorded, not the
-    farm's total, so the number means something personal next to the
-    farm-wide ones."""
+    What is the supervisor's own is kept to them: the applications they
+    recorded (total and today) and the store requests they raised. The
+    plan-based figures - how much is outstanding, ready to record, season
+    progress - describe the farm's work and stay farm-wide."""
     farm = resolve_farm_scope(frappe.session.user, farm)
 
     plan_filter = {"docstatus": 1}
@@ -331,18 +405,21 @@ def get_home_metrics(farm=None, programme=None):
     app_filter = {"docstatus": 1}
     if farm:
         app_filter["farm"] = farm
-    mine = frappe.db.count("Fertilizer Application",
-                           dict(app_filter, owner=frappe.session.user))
+    mine_filters = _my_application_or_filters()
+    mine = len(frappe.get_all("Fertilizer Application", filters=app_filter,
+                              or_filters=mine_filters, pluck="name"))
+    today_count = len(frappe.get_all(
+        "Fertilizer Application", filters=dict(app_filter, application_date=today()),
+        or_filters=mine_filters, pluck="name"))
 
-    today_count = frappe.db.count("Fertilizer Application",
-                                  dict(app_filter, application_date=today()))
-
-    request_filter = {"custom_fertilizer_programme": ["is", "set"],
-                      "docstatus": ["<", 2], "status": ["!=", "Issued"],
-                      "per_ordered": ["<", 100]}
-    if farm:
-        request_filter["custom_farm"] = farm
-    pending_requests = frappe.db.count("Material Request", request_filter)
+    pending_requests = 0
+    my_requests = _my_request_names()
+    if my_requests:
+        request_filter = {"name": ["in", my_requests], "docstatus": ["<", 2],
+                          "status": ["!=", "Issued"], "per_ordered": ["<", 100]}
+        if farm:
+            request_filter["custom_farm"] = farm
+        pending_requests = frappe.db.count("Material Request", request_filter)
 
     return {
         "pending_applications": pending,
@@ -358,41 +435,67 @@ def get_home_metrics(farm=None, programme=None):
 
 @frappe.whitelist()
 def get_applications_today(farm=None):
-    """Count of Fertilizer Applications recorded today - the field app's
-    home-screen headline stat."""
+    """Count of Fertilizer Applications this user recorded today - the field
+    app's home-screen headline stat."""
     farm = resolve_farm_scope(frappe.session.user, farm)
     filters = {"docstatus": 1, "application_date": frappe.utils.today()}
     if farm:
         filters["farm"] = farm
-    return frappe.db.count("Fertilizer Application", filters)
+    return len(frappe.get_all("Fertilizer Application", filters=filters,
+                              or_filters=_my_application_or_filters(), pluck="name"))
 
 
 @frappe.whitelist()
-def create_store_request(block_fertilizer_plan, quantity, employee=None):
+def create_store_request(block_fertilizer_plan, quantity, employee=None, client_request_id=None):
     """Create a Material Request (Material Issue) from the field page, in the
-    same format used for every other store-issue category on this site."""
+    same format used for every other store-issue category on this site.
+
+    Safe to repeat: a phone that never saw the answer sends the same request
+    again, and neither the request id nor an already-open request of this
+    user's for the same plan is allowed to become a second Material Request."""
     from upandecnp.upandecnp.utils.integration import create_material_issue_request, categorize_request_status
 
-    if not employee:
-        employee = _current_employee()
+    def _create():
+        block = frappe.db.get_value("Block Fertilizer Plan", block_fertilizer_plan, "block")
+        if not block:
+            frappe.throw(f"Block Fertilizer Plan {block_fertilizer_plan} was not found.")
+        _block_scope_guard(block)
 
-    mr = create_material_issue_request(block_fertilizer_plan, quantity, employee)
-    return {"name": mr.name, "status": categorize_request_status(mr.workflow_state or mr.status)}
+        mine = _my_request_names()
+        if mine:
+            for r in frappe.get_all(
+                "Material Request",
+                filters={"name": ["in", mine], "docstatus": ["<", 2],
+                         "custom_block_fertilizer_plan": block_fertilizer_plan},
+                fields=["name", "status", "workflow_state"], order_by="creation desc",
+            ):
+                state = categorize_request_status(r.workflow_state or r.status)
+                if state not in ("Rejected", "Cancelled"):
+                    return {"name": r.name, "status": state, "already_requested": True}
+
+        emp = employee or _current_employee()
+        mr = create_material_issue_request(block_fertilizer_plan, quantity, emp)
+        return {"name": mr.name, "status": categorize_request_status(mr.workflow_state or mr.status)}
+
+    return _idempotent(client_request_id, _create)
 
 
 @frappe.whitelist()
 def get_store_requests(farm=None, programme=None):
-    """All Fertiliser Issuing Material Requests for the caller's farm scope,
-    with a colour-coded status - the field app's "status of requests"
-    view."""
+    """The Fertiliser Issuing Material Requests this user raised, with a
+    colour-coded status - the field app's "status of requests" view. Someone
+    else's requests are theirs to follow, not this supervisor's."""
     from upandecnp.upandecnp.utils.integration import categorize_request_status
 
     farm = resolve_farm_scope(frappe.session.user, farm)
+    mine = _my_request_names()
+    if not mine:
+        return []
     # Identify this app's requests by the link fields it sets itself, not by
     # the site-wide custom_request_type category - that field exists on some
     # sites and not others, and a missing column takes the whole query down.
     # This screen lists per-plan store issues, so key off the plan link.
-    filters = {"custom_block_fertilizer_plan": ["is", "set"]}
+    filters = {"custom_block_fertilizer_plan": ["is", "set"], "name": ["in", mine]}
     if farm:
         filters["custom_farm"] = farm
     if programme:
@@ -438,13 +541,30 @@ def get_store_requests(farm=None, programme=None):
 def record_application(block_fertilizer_plan, actual_quantity, applied_in_full=None,
                        partial_reason=None, employee=None, material_request=None,
                        operators=None, application_method=None, weather_conditions=None,
-                       store_request=None):
+                       store_request=None, application_date=None, client_request_id=None):
     """Create a Fertilizer Application from the field page. `employee` is the
     supervisor recording the entry (defaults to the logged-in user's
     Employee); `operators` is the list of applicators who actually did the
     work (a block is too big for one person), picked from the supervisor's
-    team roster (see get_my_applicators)."""
+    team roster (see get_my_applicators).
+
+    `application_date` is the day the work was done, sent by a phone that may
+    only reach the server later; without it the entry is dated today.
+    Recording moves stock, so it is idempotent: a repeat of the same
+    `client_request_id` returns the first result, and a round that has already
+    been recorded cannot be recorded again."""
+    return _idempotent(client_request_id, lambda: _record_application(
+        block_fertilizer_plan, actual_quantity, partial_reason, employee, material_request,
+        operators, application_method, weather_conditions, store_request, application_date))
+
+
+def _record_application(block_fertilizer_plan, actual_quantity, partial_reason, employee,
+                        material_request, operators, application_method, weather_conditions,
+                        store_request, application_date):
     plan = frappe.get_doc("Block Fertilizer Plan", block_fertilizer_plan)
+    _block_scope_guard(plan.block)
+    if plan.status in ("Applied", "Verified"):
+        frappe.throw(f"{plan.block} · {plan.fertilizer_product} has already been recorded.")
 
     if not employee:
         employee = _current_employee()
@@ -474,7 +594,7 @@ def record_application(block_fertilizer_plan, actual_quantity, applied_in_full=N
         "material_request": material_request or store_request,
         "block": plan.block,
         "fertilizer_product": plan.fertilizer_product,
-        "application_date": frappe.utils.today(),
+        "application_date": _clean_date(application_date, "application date"),
         "planned_quantity_kg": planned,
         "actual_quantity_applied_kg": flt(actual_quantity),
         "partial_reason": partial_reason,
@@ -505,6 +625,97 @@ def get_issued_request_for_plan(block_fertilizer_plan):
         limit=1,
     )
     return mr[0].name if mr else None
+
+
+@frappe.whitelist()
+def get_field_bootstrap(programme=None, farm=None):
+    """Everything the field app's main screens read, in one call.
+
+    The app used to fetch each screen separately, every time it was opened -
+    a couple of dozen requests to get through a morning, from phones that all
+    share one connection. This answers them together so the app can fill its
+    offline copy in a single round trip, and then work from that copy.
+
+    Each part is exactly what its own endpoint returns (it calls them), so the
+    app stores them under the same names it would otherwise have fetched. A
+    part that fails is left out and named under `errors` rather than failing
+    the lot - one broken query must not leave a supervisor with nothing.
+    """
+    farm = resolve_farm_scope(frappe.session.user, farm)
+    errors = {}
+
+    def part(name, fn):
+        try:
+            return fn()
+        except Exception as e:  # noqa: BLE001 - reported, not hidden
+            errors[name] = str(e)[:200]
+            frappe.clear_last_message()
+            return None
+
+    out = {
+        "server_time": str(frappe.utils.now_datetime()),
+        "user": frappe.session.user,
+        "employee": _current_employee(),
+        "farm": farm,
+        "programme": programme,
+    }
+    out["programmes"] = part("programmes", lambda: get_field_programmes(farm=farm))
+    out["home"] = part("home", lambda: get_home_metrics(farm=farm, programme=programme))
+    out["upcoming"] = part("upcoming", lambda: get_upcoming_and_overdue(farm=farm, programme=programme))
+    out["block_progress"] = part("block_progress", lambda: get_block_progress(farm=farm))
+    out["store_requests"] = part("store_requests", lambda: get_store_requests(farm=farm, programme=programme))
+    out["applicators_by_section"] = part("applicators_by_section", get_my_applicators_by_section)
+    out["attendance"] = part("attendance", get_attendance_by_block)
+
+    out["sections_pending"] = part("sections_pending", lambda: get_sections_with_pending_work(farm=farm, programme=programme))
+    out["plans_by_section"] = {}
+    for sec in out["sections_pending"] or []:
+        name = sec["section"]
+        plans = part(f"plans:{name}", lambda n=name: get_pending_plans_for_section(n, programme=programme))
+        if plans is not None:
+            out["plans_by_section"][name] = plans
+
+    out["sections_issued"] = part("sections_issued", lambda: get_sections_with_issued_work(farm=farm, programme=programme))
+    out["issued_blocks_by_section"] = {}
+    for sec in out["sections_issued"] or []:
+        name = sec["section"]
+        blocks = part(f"issued_blocks:{name}", lambda n=name: get_issued_blocks_in_section(n, programme=programme))
+        if blocks is not None:
+            out["issued_blocks_by_section"][name] = blocks
+
+    out["sections_all"] = part("sections_all", lambda: get_all_sections(farm=farm))
+    out["blocks_by_section"] = {}
+    for sec in out["sections_all"] or []:
+        blocks = part(f"blocks:{sec.name}", lambda n=sec.name: get_blocks_in_section(n))
+        if blocks is not None:
+            out["blocks_by_section"][sec.name] = blocks
+
+    # What Record Application needs for the rounds that are ready: who is on
+    # each block's crew, and which issued request stands behind each round -
+    # so an application can be recorded with no signal at all.
+    issued_plans = [p["name"] for plans in out["plans_by_section"].values() for p in plans
+                    if p.get("status") == "Issued"]
+    issued_blocks = sorted({p["block"] for plans in out["plans_by_section"].values() for p in plans
+                            if p.get("status") == "Issued" and p.get("block")})
+    out["applicators_by_block"] = {}
+    for b in issued_blocks:
+        crew = part(f"crew:{b}", lambda blk=b: get_applicators_for_block(blk))
+        if crew is not None:
+            out["applicators_by_block"][b] = crew
+
+    out["issued_request_by_plan"] = {pl: None for pl in issued_plans}
+    if issued_plans:
+        for r in frappe.get_all(
+            "Material Request",
+            filters={"custom_block_fertilizer_plan": ["in", issued_plans], "docstatus": 1,
+                     "per_ordered": [">=", 100]},
+            fields=["name", "custom_block_fertilizer_plan"], order_by="creation asc",
+        ):
+            if not out["issued_request_by_plan"].get(r.custom_block_fertilizer_plan):
+                out["issued_request_by_plan"][r.custom_block_fertilizer_plan] = r.name
+
+    out["errors"] = errors
+    return out
 
 
 def _is_my_applicator(employee, supervisor):
@@ -783,12 +994,14 @@ def assign_block(employee, block):
 
 
 @frappe.whitelist()
-def mark_attendance(employee, status):
-    """Mark (or update) today's Field Attendance for an applicator on the
-    current supervisor's team. Idempotent per employee/day - a second call
-    the same day updates the existing row instead of duplicating it."""
+def mark_attendance(employee, status, attendance_date=None):
+    """Mark (or update) Field Attendance for an applicator on the current
+    supervisor's team - today's, or the day the phone says it was marked if
+    that was while offline. Idempotent per employee/day - a second call the
+    same day updates the existing row instead of duplicating it."""
     if status not in ("Present", "Absent"):
         frappe.throw("Status must be Present or Absent.")
+    on_date = _clean_date(attendance_date, "attendance date")
 
     supervisor = _current_employee()
     if not _is_my_applicator(employee, supervisor):
@@ -802,7 +1015,7 @@ def mark_attendance(employee, status):
 
     existing = frappe.db.exists("Field Attendance", {
         "employee": employee,
-        "attendance_date": today(),
+        "attendance_date": on_date,
     })
     if existing:
         doc = frappe.get_doc("Field Attendance", existing)
@@ -815,7 +1028,7 @@ def mark_attendance(employee, status):
         doc = frappe.get_doc({
             "doctype": "Field Attendance",
             "employee": employee,
-            "attendance_date": today(),
+            "attendance_date": on_date,
             "status": status,
             "marked_by": supervisor,
             "block": block,
@@ -1569,7 +1782,8 @@ def get_partial_applications(farm=None, season=None):
 
 
 @frappe.whitelist()
-def get_operator_activity(farm=None, season=None, employees=None, group_by="supervisor"):
+def get_operator_activity(farm=None, season=None, employees=None, group_by="supervisor",
+                          recorded_by_me=0):
     """Applications count and total kg, grouped by Employee. Defaults to
     `supervisor` (who recorded the entry - used by the dashboards). Pass
     group_by="operator" and an `employees` list to get real applicator
@@ -1578,8 +1792,16 @@ def get_operator_activity(farm=None, season=None, employees=None, group_by="supe
     necessarily who did the physical work. Since an application can now
     have several applicators (a block is too big for one person), an
     application's kg is counted once per applicator on it when grouping by
-    operator - it's a per-person activity count, not a stock ledger."""
+    operator - it's a per-person activity count, not a stock ledger.
+
+    `recorded_by_me` keeps it to applications this user recorded, which is
+    what the field app's applicator screen asks for; the dashboards leave it
+    off and see everyone's."""
     farm = resolve_farm_scope(frappe.session.user, farm)
+    only_mine = None
+    if cint(recorded_by_me):
+        only_mine = set(frappe.get_all("Fertilizer Application", filters={"docstatus": 1},
+                                       or_filters=_my_application_or_filters(), pluck="name"))
     # "applied_by" was this field's name before supervisor absorbed it; accept
     # it so a cached dashboard page doesn't start erroring mid-session.
     if group_by == "applied_by":
@@ -1610,6 +1832,7 @@ def get_operator_activity(farm=None, season=None, employees=None, group_by="supe
                 "Fertilizer Application", filters=app_filters,
                 fields=["name", "actual_quantity_applied_kg", "block_fertilizer_plan"],
             )
+            if only_mine is None or a.name in only_mine
         }
         if season:
             plan_names = set(frappe.get_all("Block Fertilizer Plan", filters={"season": season}, pluck="name"))
@@ -1636,7 +1859,9 @@ def get_operator_activity(farm=None, season=None, employees=None, group_by="supe
     if employees:
         filters["supervisor"] = ["in", employees]
     apps = frappe.get_all("Fertilizer Application", filters=filters,
-        fields=["supervisor", "actual_quantity_applied_kg", "block_fertilizer_plan"])
+        fields=["name", "supervisor", "actual_quantity_applied_kg", "block_fertilizer_plan"])
+    if only_mine is not None:
+        apps = [a for a in apps if a.name in only_mine]
 
     if season:
         plan_names = set(frappe.get_all("Block Fertilizer Plan", filters={"season": season}, pluck="name"))
