@@ -34,7 +34,7 @@
   "blocks": [
     {
       "name": "AIRSTRIP BLK 1",
-      "section": "Lokitela-70 Ha-2022 Planting",
+      "section": "Lokitela-54 Ha-2024 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 3.4,
@@ -44,7 +44,7 @@
     },
     {
       "name": "AIRSTRIP BLK 10",
-      "section": "Lokitela-70 Ha-2022 Planting",
+      "section": "Lokitela-54 Ha-2024 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 3.632,
@@ -54,7 +54,7 @@
     },
     {
       "name": "AIRSTRIP BLK 11",
-      "section": "Lokitela-70 Ha-2022 Planting",
+      "section": "Lokitela-54 Ha-2024 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 1.484,
@@ -64,7 +64,7 @@
     },
     {
       "name": "AIRSTRIP BLK 2",
-      "section": "Lokitela-70 Ha-2022 Planting",
+      "section": "Lokitela-54 Ha-2024 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 2.84,
@@ -74,7 +74,7 @@
     },
     {
       "name": "AIRSTRIP BLK 3",
-      "section": "Lokitela-70 Ha-2022 Planting",
+      "section": "Lokitela-54 Ha-2024 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 3.104,
@@ -84,7 +84,7 @@
     },
     {
       "name": "AIRSTRIP BLK 4",
-      "section": "Lokitela-70 Ha-2022 Planting",
+      "section": "Lokitela-54 Ha-2024 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 3.104,
@@ -94,7 +94,7 @@
     },
     {
       "name": "AIRSTRIP BLK 5",
-      "section": "Lokitela-70 Ha-2022 Planting",
+      "section": "Lokitela-54 Ha-2024 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 2.2,
@@ -104,7 +104,7 @@
     },
     {
       "name": "AIRSTRIP BLK 6",
-      "section": "Lokitela-70 Ha-2022 Planting",
+      "section": "Lokitela-54 Ha-2024 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 2.128,
@@ -114,7 +114,7 @@
     },
     {
       "name": "AIRSTRIP BLK 7",
-      "section": "Lokitela-70 Ha-2022 Planting",
+      "section": "Lokitela-54 Ha-2024 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 3.228,
@@ -124,7 +124,7 @@
     },
     {
       "name": "AIRSTRIP BLK 8",
-      "section": "Lokitela-70 Ha-2022 Planting",
+      "section": "Lokitela-54 Ha-2024 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 3.136,
@@ -134,7 +134,7 @@
     },
     {
       "name": "AIRSTRIP BLK 9",
-      "section": "Lokitela-70 Ha-2022 Planting",
+      "section": "Lokitela-54 Ha-2024 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 3.068,
@@ -264,7 +264,7 @@
     },
     {
       "name": "BONDENI BLK 1",
-      "section": "Lokitela-54 Ha-2024 Planting",
+      "section": "Lokitela-70 Ha-2022 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 2.4,
@@ -274,7 +274,7 @@
     },
     {
       "name": "BONDENI BLK 2",
-      "section": "Lokitela-54 Ha-2024 Planting",
+      "section": "Lokitela-70 Ha-2022 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 2.52,
@@ -284,7 +284,7 @@
     },
     {
       "name": "BONDENI BLK 3",
-      "section": "Lokitela-54 Ha-2024 Planting",
+      "section": "Lokitela-70 Ha-2022 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 3.32,
@@ -294,7 +294,7 @@
     },
     {
       "name": "BONDENI BLK 4",
-      "section": "Lokitela-54 Ha-2024 Planting",
+      "section": "Lokitela-70 Ha-2022 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 3.12,
@@ -304,7 +304,7 @@
     },
     {
       "name": "BONDENI BLK 5",
-      "section": "Lokitela-54 Ha-2024 Planting",
+      "section": "Lokitela-70 Ha-2022 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 3.72,
@@ -314,7 +314,7 @@
     },
     {
       "name": "BONDENI BLK 6",
-      "section": "Lokitela-54 Ha-2024 Planting",
+      "section": "Lokitela-70 Ha-2022 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 3.53,
@@ -324,7 +324,7 @@
     },
     {
       "name": "BONDENI BLK 7",
-      "section": "Lokitela-54 Ha-2024 Planting",
+      "section": "Lokitela-70 Ha-2022 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 3.37,
@@ -334,7 +334,7 @@
     },
     {
       "name": "BONDENI BLK 8",
-      "section": "Lokitela-54 Ha-2024 Planting",
+      "section": "Lokitela-70 Ha-2022 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 3.3,
@@ -384,7 +384,7 @@
     },
     {
       "name": "DAIRY BLK 5",
-      "section": "Lokitela-70 Ha-2022 Planting",
+      "section": "Lokitela-54 Ha-2024 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 1.432,
@@ -394,7 +394,7 @@
     },
     {
       "name": "DAIRY BLK 6",
-      "section": "Lokitela-70 Ha-2022 Planting",
+      "section": "Lokitela-54 Ha-2024 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 1.456,
@@ -404,7 +404,7 @@
     },
     {
       "name": "DAIRY BLK 7",
-      "section": "Lokitela-70 Ha-2022 Planting",
+      "section": "Lokitela-54 Ha-2024 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 1.192,
@@ -414,7 +414,7 @@
     },
     {
       "name": "DAIRY BLK 8",
-      "section": "Lokitela-70 Ha-2022 Planting",
+      "section": "Lokitela-54 Ha-2024 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 0.912,
@@ -424,7 +424,7 @@
     },
     {
       "name": "DAIRY BLK 9",
-      "section": "Lokitela-70 Ha-2022 Planting",
+      "section": "Lokitela-54 Ha-2024 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 1.716,
@@ -434,7 +434,7 @@
     },
     {
       "name": "KINYORO BLK 1",
-      "section": "Lokitela-54 Ha-2024 Planting",
+      "section": "Lokitela-70 Ha-2022 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 2.16,
@@ -444,7 +444,7 @@
     },
     {
       "name": "KINYORO BLK 2",
-      "section": "Lokitela-54 Ha-2024 Planting",
+      "section": "Lokitela-70 Ha-2022 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 2.05,
@@ -454,7 +454,7 @@
     },
     {
       "name": "KINYORO BLK 3",
-      "section": "Lokitela-54 Ha-2024 Planting",
+      "section": "Lokitela-70 Ha-2022 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 3.12,
@@ -464,7 +464,7 @@
     },
     {
       "name": "KINYORO BLK 4",
-      "section": "Lokitela-54 Ha-2024 Planting",
+      "section": "Lokitela-70 Ha-2022 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 3.94,
@@ -484,7 +484,7 @@
     },
     {
       "name": "MIMA BLK 10",
-      "section": "Lokitela-70 Ha-2022 Planting",
+      "section": "Lokitela-54 Ha-2024 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 4.432,
@@ -494,7 +494,7 @@
     },
     {
       "name": "MIMA BLK 11",
-      "section": "Lokitela-70 Ha-2022 Planting",
+      "section": "Lokitela-54 Ha-2024 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 1.488,
@@ -504,7 +504,7 @@
     },
     {
       "name": "MIMA BLK 12",
-      "section": "Lokitela-70 Ha-2022 Planting",
+      "section": "Lokitela-54 Ha-2024 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 1.448,
@@ -514,7 +514,7 @@
     },
     {
       "name": "MIMA BLK 13",
-      "section": "Lokitela-70 Ha-2022 Planting",
+      "section": "Lokitela-54 Ha-2024 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 1.484,
@@ -524,7 +524,7 @@
     },
     {
       "name": "MIMA BLK 14",
-      "section": "Lokitela-70 Ha-2022 Planting",
+      "section": "Lokitela-54 Ha-2024 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 1.852,
@@ -534,7 +534,7 @@
     },
     {
       "name": "MIMA BLK 15",
-      "section": "Lokitela-70 Ha-2022 Planting",
+      "section": "Lokitela-54 Ha-2024 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 1.428,
@@ -614,7 +614,7 @@
     },
     {
       "name": "MIMA BLK 9",
-      "section": "Lokitela-70 Ha-2022 Planting",
+      "section": "Lokitela-54 Ha-2024 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 3.88,
@@ -704,7 +704,7 @@
     },
     {
       "name": "WESA BLK 1",
-      "section": "Lokitela-54 Ha-2024 Planting",
+      "section": "Lokitela-70 Ha-2022 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 2.41,
@@ -714,7 +714,7 @@
     },
     {
       "name": "WESA BLK 10",
-      "section": "Lokitela-54 Ha-2024 Planting",
+      "section": "Lokitela-70 Ha-2022 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 1.8,
@@ -724,7 +724,7 @@
     },
     {
       "name": "WESA BLK 11",
-      "section": "Lokitela-54 Ha-2024 Planting",
+      "section": "Lokitela-70 Ha-2022 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 3.26,
@@ -734,7 +734,7 @@
     },
     {
       "name": "WESA BLK 2",
-      "section": "Lokitela-54 Ha-2024 Planting",
+      "section": "Lokitela-70 Ha-2022 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 3.47,
@@ -744,7 +744,7 @@
     },
     {
       "name": "WESA BLK 3",
-      "section": "Lokitela-54 Ha-2024 Planting",
+      "section": "Lokitela-70 Ha-2022 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 3.47,
@@ -754,7 +754,7 @@
     },
     {
       "name": "WESA BLK 4",
-      "section": "Lokitela-54 Ha-2024 Planting",
+      "section": "Lokitela-70 Ha-2022 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 3.47,
@@ -764,7 +764,7 @@
     },
     {
       "name": "WESA BLK 5",
-      "section": "Lokitela-54 Ha-2024 Planting",
+      "section": "Lokitela-70 Ha-2022 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 3.52,
@@ -774,7 +774,7 @@
     },
     {
       "name": "WESA BLK 6",
-      "section": "Lokitela-54 Ha-2024 Planting",
+      "section": "Lokitela-70 Ha-2022 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 3.2,
@@ -784,7 +784,7 @@
     },
     {
       "name": "WESA BLK 7",
-      "section": "Lokitela-54 Ha-2024 Planting",
+      "section": "Lokitela-70 Ha-2022 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 2.52,
@@ -794,7 +794,7 @@
     },
     {
       "name": "WESA BLK 8",
-      "section": "Lokitela-54 Ha-2024 Planting",
+      "section": "Lokitela-70 Ha-2022 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 2.72,
@@ -804,7 +804,7 @@
     },
     {
       "name": "WESA BLK 9",
-      "section": "Lokitela-54 Ha-2024 Planting",
+      "section": "Lokitela-70 Ha-2022 Planting",
       "crop": "Hass Avocado",
       "variety": "Hass",
       "area_ha": 3.58,
