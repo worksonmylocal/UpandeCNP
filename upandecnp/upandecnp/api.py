@@ -2022,7 +2022,7 @@ def get_product_items(product, farm=None):
 
 
 @frappe.whitelist()
-def load_programme_products(programme):
+def load_programme_products(programme, product=None):
     """List the products this crop needs, leaving the Item for each unchosen.
 
     Deliberately does NOT pick an Item. Which of several near-identical Items
@@ -2042,6 +2042,18 @@ def load_programme_products(programme):
         if rule.product and rule.product not in seen:
             seen.add(rule.product)
             products.append(rule.product)
+
+    # One product only: the programme is generated for that product alone.
+    # Blank (or "all") keeps the long-standing behaviour of every product.
+    product = (product or "").strip() or None
+    if product:
+        if product not in products:
+            frappe.throw(
+                f"Crop {doc.crop} has no nutrient rule for <b>{frappe.utils.escape_html(product)}</b>."
+            )
+        products = [product]
+    single = product
+    doc.single_product = single
 
     if not products:
         frappe.throw(
@@ -2063,7 +2075,7 @@ def load_programme_products(programme):
             "available_qty": get_stock(chosen, wh) if chosen else 0,
         })
     doc.save()
-    return {"products": products, "already_chosen": len(already)}
+    return {"products": products, "already_chosen": len(already), "single": bool(single)}
 
 
 @frappe.whitelist()

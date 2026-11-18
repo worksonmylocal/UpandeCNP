@@ -17,6 +17,7 @@
   "crop",
   "production_calendar",
   "section_break_products",
+  "single_product",
   "product_selections",
   "period_type",
   "start_month",
@@ -179,6 +180,14 @@
    "fieldname": "section_break_products",
    "fieldtype": "Section Break",
    "label": "Fertilizer Products"
+  },
+  {
+   "description": "Leave blank to plan every product on the crop's nutrient rules. Pick one to generate the programme for just that product. Set with Load Products.",
+   "fieldname": "single_product",
+   "fieldtype": "Link",
+   "label": "Calculate For (one product)",
+   "options": "Fertilizer Product",
+   "read_only": 1
   },
   {
    "description": "Which actual Item each product is drawn from this season. Use \"Load Products\" to fill this from the crop's nutrient rules, then pick an Item for each - stock is shown so you don't plan against an empty store.",

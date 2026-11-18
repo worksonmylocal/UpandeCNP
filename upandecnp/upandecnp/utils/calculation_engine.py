@@ -250,6 +250,23 @@ def apply_monthly_schedule(annual_lines, calendar_doc, allowed_months=None):
 	return monthly_lines
 
 
+def rules_for_programme(programme, crop_doc):
+	"""The nutrient rules this programme is generated from: all of them, or -
+	when the agronomist picked one product with Load Products - only the
+	rules naming that product."""
+	rules = list(crop_doc.get("nutrient_rules", []))
+	single = programme.get("single_product")
+	if not single:
+		return rules
+	rules = [r for r in rules if r.get("product") == single]
+	if not rules:
+		frappe.throw(
+			f"No nutrient rule on crop {crop_doc.name} names <b>{single}</b>. "
+			"Use Load Products to pick a product again."
+		)
+	return rules
+
+
 @frappe.whitelist()
 def calculate_programme(programme_name):
 	programme = frappe.get_doc("Fertilizer Programme", programme_name)
@@ -280,11 +297,12 @@ def calculate_programme(programme_name):
 
 	groups = group_blocks_by_section_tier(programme, crop_doc)
 	chosen = resolve_products(programme)
+	rules = rules_for_programme(programme, crop_doc)
 
 	annual_lines = []
 
 	for (section, tier_label), group in groups.items():
-		for rule in crop_doc.get("nutrient_rules", []):
+		for rule in rules:
 			norm = norms.get(rule.nutrient)
 			leaf_pct = (
 				get_leaf_adjustment_pct(crop_doc, norm, section, tier_label)

@@ -23,21 +23,7 @@ frappe.ui.form.on("Fertilizer Programme", {
                     frappe.msgprint("Please set the Crop first.");
                     return;
                 }
-                frappe.call({
-                    method: "upandecnp.upandecnp.api.load_programme_products",
-                    args: { programme: frm.doc.name },
-                    callback(r) {
-                        if (r.message) {
-                            frm.reload_doc();
-                            const n = r.message.products.length;
-                            frappe.show_alert({
-                                message: `${n} product${n === 1 ? "" : "s"} to choose an Item for. `
-                                    + `Click "Choose" on each row.`,
-                                indicator: "blue"
-                            });
-                        }
-                    }
-                });
+                load_products_dialog(frm);
             }, __("Actions"));
 
             frm.add_custom_button(__("Run Calculation Engine"), function() {
@@ -196,3 +182,51 @@ frappe.ui.form.on("Fertilizer Programme Product", {
         if (row.product && !row.fertilizer_item) choose_item_for(frm, row);
     },
 });
+
+
+/* Load Products: every product on the crop's nutrient rules, or just one.
+ * Picking one makes the programme - and the calculation - cover only that
+ * product, so nobody has to carry (or choose Items for) the rest. */
+function load_products_dialog(frm) {
+    frappe.db.get_doc("Crop", frm.doc.crop).then((crop) => {
+        const products = [];
+        (crop.nutrient_rules || []).forEach((r) => {
+            if (r.product && !products.includes(r.product)) products.push(r.product);
+        });
+        if (!products.length) {
+            frappe.msgprint(__("No nutrient rule on crop {0} names a Fertilizer Product yet.", [frm.doc.crop]));
+            return;
+        }
+        const run = (product) => frappe.call({
+            method: "upandecnp.upandecnp.api.load_programme_products",
+            args: { programme: frm.doc.name, product: product || "" },
+            freeze: true,
+            callback(r) {
+                if (!r.message) return;
+                frm.reload_doc();
+                const n = r.message.products.length;
+                frappe.show_alert({
+                    message: r.message.single
+                        ? __("Programme will be generated for {0} only. Click \"Choose\" to pick its Item.", [r.message.products[0]])
+                        : __("{0} products to choose an Item for. Click \"Choose\" on each row.", [n]),
+                    indicator: "blue",
+                });
+            },
+        });
+        if (products.length === 1) return run(products[0]);
+        const d = new frappe.ui.Dialog({
+            title: __("Load Products"),
+            fields: [
+                {
+                    fieldtype: "Select", fieldname: "product", label: __("Products"), reqd: 1,
+                    options: ["", ...products].map((p) => ({ value: p, label: p || __("All products ({0})", [products.length]) })),
+                    default: frm.doc.single_product || "",
+                    description: __("Pick one product to generate the programme for just that product."),
+                },
+            ],
+            primary_action_label: __("Load"),
+            primary_action(v) { d.hide(); run(v.product); },
+        });
+        d.show();
+    });
+}
