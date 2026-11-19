@@ -4,6 +4,7 @@ import frappe
 def after_install():
     create_roles()
     create_material_request_custom_field()
+    create_correction_support()
     create_employee_custom_fields()
     set_site_config()
     seed_crop_data()
@@ -98,6 +99,27 @@ def create_material_request_custom_field():
             "read_only": 1,
         }).insert(ignore_permissions=True)
         print("UpandeCNP: created Material Request custom_block_fertilizer_plan field")
+
+
+def create_correction_support():
+    """What approved corrections need on the records they replace: a "corrected"
+    tag and a link back to the request, on Material Request (Fertilizer
+    Application carries its own fields), and the role that may decide them."""
+    for fieldname, spec in {
+        "custom_corrected": {"label": "Corrected", "fieldtype": "Check", "insert_after": "custom_block_fertilizer_plan",
+                             "read_only": 1, "description": "Replaced an earlier request after an approved correction."},
+        "custom_corrected_from": {"label": "Corrected From", "fieldtype": "Link", "options": "Material Request",
+                                  "insert_after": "custom_corrected", "read_only": 1},
+        "custom_correction_request": {"label": "Correction Request", "fieldtype": "Link",
+                                      "options": "Correction Request", "insert_after": "custom_corrected_from",
+                                      "read_only": 1},
+    }.items():
+        if not frappe.db.exists("Custom Field", f"Material Request-{fieldname}"):
+            frappe.get_doc({"doctype": "Custom Field", "dt": "Material Request", "fieldname": fieldname,
+                            **spec}).insert(ignore_permissions=True)
+    if not frappe.db.exists("Role", "CNP Correction Approver"):
+        frappe.get_doc({"doctype": "Role", "role_name": "CNP Correction Approver",
+                        "desk_access": 1}).insert(ignore_permissions=True)
 
 
 def create_employee_custom_fields():

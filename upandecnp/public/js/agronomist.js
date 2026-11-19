@@ -1248,7 +1248,7 @@
         <div class="qrow" data-req="${idx}" style="cursor:pointer">
           <div class="qrow__mark">${esc((r.block || "?").slice(0, 2))}</div>
           <div>
-            <div class="qrow__name">${esc(r.item_code_name || r.item_code || r.name)}</div>
+            <div class="qrow__name">${esc(r.item_code_name || r.item_code || r.name)}${r.corrected ? " " + pill("corrected", "info") : ""}</div>
             <div class="qrow__meta">${esc(r.name)} · ${esc(r.block || "—")} · ${num(r.qty)} kg ·
               ${esc(r.employee_name || "unknown supervisor")} · ${esc(r.transaction_date || "")}</div>
           </div>
@@ -1374,7 +1374,7 @@
         <div class="qrow" data-app="${idx}" style="cursor:pointer">
           <div class="qrow__mark">${esc((r.block || "?").slice(0, 2))}</div>
           <div>
-            <div class="qrow__name">${esc(r.fertilizer_product_name || r.fertilizer_product)}</div>
+            <div class="qrow__name">${esc(r.fertilizer_product_name || r.fertilizer_product)}${r.corrected ? " " + pill("corrected", "info") : ""}</div>
             <div class="qrow__meta">${esc(r.block)} · ${num(r.actual_quantity_applied_kg, 1)} kg ·
               ${esc(r.application_date || "")} · ${esc(r.supervisor_name || "")}</div>
           </div>
@@ -2205,6 +2205,91 @@
     await draw();
   }
 
+
+  // ------------------------------------------------------------------ corrections
+  /* A supervisor asks, from the field app, to change the quantity on something
+   * already submitted. Only the correction approver (Bramuel) can decide; the
+   * rest of the desk can read. Approving replaces the original with a tagged,
+   * corrected record. */
+  let corr = null;
+
+  function corrKind(st) { return st === "Approved" ? "good" : st === "Rejected" ? "bad" : "warn"; }
+
+  async function loadCorrections() {
+    const f = $("#corr-filter");
+    try {
+      corr = await call("get_desk_corrections", {
+        farm: state.farm && state.farm !== "All Farms" ? state.farm : null,
+        status: f ? f.value : "Pending",
+      }, { quiet: true });
+    } catch (e) { return; }
+    const n = corr.pending || 0;
+    const badge = $("#corr-badge");
+    if (badge) { badge.textContent = n; badge.style.display = n && (!f || f.value === "Pending" || f.value === "All") ? "" : "none"; }
+    renderCorrections();
+  }
+
+  function renderCorrections() {
+    if (!corr) return;
+    const rows = corr.rows || [];
+    $("#corr-meta").textContent = `${rows.length} request${rows.length === 1 ? "" : "s"}`;
+    $("#corr-list").innerHTML = rows.map((r) => `
+      <div class="qrow" data-corr="${esc(r.name)}" style="cursor:pointer">
+        <div class="qrow__mark">${esc((r.requester_name || "?").slice(0, 2).toUpperCase())}</div>
+        <div>
+          <div class="qrow__name">${esc(r.requester_name || r.requested_by)} · ${esc(r.request_type)}</div>
+          <div class="qrow__meta">${esc(r.block || "")} · ${esc(r.fertilizer_product_name || r.fertilizer_product || "")} ·
+            <b>${num(r.original_quantity, 1)} → ${num(r.corrected_quantity, 1)} kg</b> ·
+            ${esc(String(r.requested_on || "").slice(0, 16))}</div>
+        </div>
+        <div class="qrow__right">${pill(r.status, corrKind(r.status))}</div>
+      </div>`).join("") || `<div class="none">No ${esc(($("#corr-filter") || {}).value === "All" ? "" : (($("#corr-filter") || {}).value || "").toLowerCase() + " ")}corrections.</div>`;
+  }
+
+  async function openCorrection(name) {
+    let c;
+    try { c = await call("get_correction_detail", { name }); } catch (e) { return; }
+    const rec = c.record || {};
+    const delta = c.corrected_quantity - c.original_quantity;
+    const body = document.createElement("div");
+    body.innerHTML = `
+      <div class="kpi-grid" style="margin-bottom:16px">
+        <div class="kpi"><div class="kpi__label">Original</div><div class="kpi__value">${num(c.original_quantity, 1)}</div><div class="kpi__unit">kg</div></div>
+        <div class="kpi"><div class="kpi__label">Corrected to</div><div class="kpi__value">${num(c.corrected_quantity, 1)}</div>
+          <div class="kpi__unit">${delta >= 0 ? "+" : ""}${num(delta, 1)} kg</div></div>
+        <div class="kpi"><div class="kpi__label">Status</div><div class="kpi__value ${corrKind(c.status)}" style="font-size:20px">${esc(c.status)}</div>
+          <div class="kpi__unit">${esc(c.reviewed_by ? "by " + c.reviewed_by : "waiting for a decision")}</div></div>
+      </div>
+      <div class="none" style="text-align:left;padding:0 0 12px">
+        <b>${esc(c.request_type)}</b> ${esc(c.reference)} · ${esc(c.block || "")} · ${esc(c.fertilizer_product_name || c.fertilizer_product || "")}<br>
+        Asked by <b>${esc(c.requester_name || c.requested_by)}</b> on ${esc(String(c.requested_on || "").slice(0, 16))}
+        ${rec.date ? `<br>Original dated ${esc(rec.date)}` : ""}
+        ${rec.planned ? `<br>Planned ${num(rec.planned, 1)} kg · variance after correction ${num(rec.variance_after, 1)} kg` : ""}
+        ${rec.supervisor ? `<br>Supervisor ${esc(rec.supervisor)}${(rec.applicators || []).length ? " · applicators: " + esc(rec.applicators.join(", ")) : ""}` : ""}
+        ${rec.state ? `<br>Store request is ${esc(rec.state)}` : ""}
+      </div>
+      <div class="field"><label>Reason given</label>
+        <div style="padding:12px 14px;border:1px solid var(--hairline);border-radius:12px;background:var(--surface)">${esc(c.reason)}</div></div>
+      ${c.review_note ? `<div class="field"><label>Decision note</label><div style="padding:12px 14px;border:1px solid var(--hairline);border-radius:12px;background:var(--surface)">${esc(c.review_note)}</div></div>` : ""}
+      ${c.replaced_by ? `<div class="none" style="text-align:left;padding:0 0 12px">Replaced by <b>${esc(c.replaced_by)}</b> (tagged corrected).</div>` : ""}
+      ${c.blocked ? `<div class="none" style="text-align:left;color:var(--bad);padding:0 0 12px">${esc(c.blocked)} It can only be rejected.</div>` : ""}
+      ${c.can_decide ? `<div class="field"><label>Note ${""}<small>(required to reject)</small></label><textarea data-corr-note placeholder="Optional for approval"></textarea></div>
+        <div class="none" style="text-align:left;padding:0">${esc(c.effect || "")}</div>` : ""}`;
+    const foot = [{ label: "Close" }];
+    if (c.can_decide) {
+      const decide = (action) => async (h) => {
+        const note = ($("[data-corr-note]", body) || {}).value || "";
+        if (action === "Reject" && !note.trim()) { toast("Give a reason for rejecting.", "bad"); return; }
+        await call("decide_correction", { name, action, note });
+        toast(action === "Approve" ? "Approved - the record has been corrected." : "Rejected.", "good");
+        h.close(); await loadCorrections();
+      };
+      foot.push({ label: "Reject", cls: "btn--bad", onClick: decide("Reject") });
+      if (!c.blocked) foot.push({ label: "Approve", cls: "btn--ink", onClick: decide("Approve") });
+    }
+    modal({ title: `Correction ${c.name}`, sub: `${c.request_type} · ${c.block || ""}`, body, foot });
+  }
+
   // ------------------------------------------------------------------ bootstrap
   function tabs() {
     $$(".tab").forEach((t) => t.addEventListener("click", () => {
@@ -2217,6 +2302,7 @@
       if (which === "stock") loadStock();
       if (which === "setup") renderSetup();
       if (which === "micro") loadMicro();
+      if (which === "corrections") loadCorrections();
       // Poll only while someone is looking: a list that refreshes itself is
       // the point of the tab, but not a reason to hit the server from a hidden
       // one all afternoon.
@@ -2256,6 +2342,7 @@
     $("#block-search").addEventListener("input", () => drawBlocks());
     $("#farm").addEventListener("change", (e) => { state.farm = e.target.value; load(); });
     $("#season").addEventListener("change", (e) => { state.season = e.target.value; load(); });
+    $("#corr-filter").addEventListener("change", () => loadCorrections());
 
     // One listener for the whole page: the buttons are re-rendered constantly,
     // so binding them individually would leak handlers on every refresh.
@@ -2264,6 +2351,8 @@
       if (a) return act(a);
       const ch = e.target.closest("[data-choose]");
       if (ch) return chooseItem(ch.dataset.choose);
+      const cr = e.target.closest("[data-corr]");
+      if (cr) return openCorrection(cr.dataset.corr);
       const mn = e.target.closest("[data-micro-new]");
       if (mn) return openMicroCreate(mn.dataset.microNew);
       const mo = e.target.closest("[data-micro-open]");
@@ -2297,5 +2386,6 @@
 
     load().catch(() => {});
     loadSupervisors().catch(() => {});
+    loadCorrections().catch(() => {});    // fills the tab's pending count
   });
 })();

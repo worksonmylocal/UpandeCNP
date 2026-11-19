@@ -1,0 +1,260 @@
+{
+ "actions": [],
+ "autoname": "format:COR-{#####}",
+ "creation": "2026-11-19 09:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "sec_what",
+  "request_type",
+  "reference_doctype",
+  "reference",
+  "block",
+  "col_a",
+  "fertilizer_product",
+  "fertilizer_product_name",
+  "block_fertilizer_plan",
+  "farm",
+  "sec_qty",
+  "original_quantity",
+  "corrected_quantity",
+  "reason",
+  "col_b",
+  "requested_by",
+  "requester_name",
+  "employee",
+  "requested_on",
+  "sec_review",
+  "status",
+  "reviewed_by",
+  "reviewed_on",
+  "review_note",
+  "replaced_by",
+  "client_request_id"
+ ],
+ "fields": [
+  {
+   "fieldname": "sec_what",
+   "fieldtype": "Section Break",
+   "label": "What is being corrected"
+  },
+  {
+   "fieldname": "request_type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "Application\nStore Request",
+   "reqd": 1,
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "reference_doctype",
+   "fieldtype": "Data",
+   "label": "Document Type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reference",
+   "fieldtype": "Dynamic Link",
+   "label": "Record",
+   "options": "reference_doctype",
+   "reqd": 1,
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "block",
+   "fieldtype": "Link",
+   "label": "Block",
+   "options": "Farm Block",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "col_a",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "fertilizer_product",
+   "fieldtype": "Link",
+   "label": "Product",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "fertilizer_product_name",
+   "fieldtype": "Data",
+   "label": "Product Name",
+   "fetch_from": "fertilizer_product.item_name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "block_fertilizer_plan",
+   "fieldtype": "Link",
+   "label": "Block Fertilizer Plan",
+   "options": "Block Fertilizer Plan",
+   "read_only": 1
+  },
+  {
+   "fieldname": "farm",
+   "fieldtype": "Link",
+   "label": "Farm",
+   "options": "CNP Farm",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sec_qty",
+   "fieldtype": "Section Break",
+   "label": "The correction"
+  },
+  {
+   "fieldname": "original_quantity",
+   "fieldtype": "Float",
+   "label": "Original (kg)",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "corrected_quantity",
+   "fieldtype": "Float",
+   "label": "Corrected (kg)",
+   "reqd": 1,
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "reason",
+   "fieldtype": "Small Text",
+   "label": "Reason",
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "col_b",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "requested_by",
+   "fieldtype": "Link",
+   "label": "Requested By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "requester_name",
+   "fieldtype": "Data",
+   "label": "Requester",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "label": "Employee",
+   "options": "Employee",
+   "read_only": 1
+  },
+  {
+   "fieldname": "requested_on",
+   "fieldtype": "Datetime",
+   "label": "Requested On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sec_review",
+   "fieldtype": "Section Break",
+   "label": "Decision"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Pending\nApproved\nRejected",
+   "default": "Pending",
+   "in_list_view": 1,
+   "read_only": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "reviewed_by",
+   "fieldtype": "Link",
+   "label": "Decided By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reviewed_on",
+   "fieldtype": "Datetime",
+   "label": "Decided On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "review_note",
+   "fieldtype": "Small Text",
+   "label": "Note",
+   "read_only": 1
+  },
+  {
+   "fieldname": "replaced_by",
+   "fieldtype": "Data",
+   "label": "Replaced By",
+   "read_only": 1,
+   "description": "The record that replaced the original once this was approved."
+  },
+  {
+   "fieldname": "client_request_id",
+   "fieldtype": "Data",
+   "label": "Client Request Id",
+   "hidden": 1,
+   "read_only": 1,
+   "no_copy": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-11-19 09:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "UpandeCNP",
+ "name": "Correction Request",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
+  },
+  {
+   "role": "CNP Correction Approver",
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "write": 1,
+   "create": 1
+  },
+  {
+   "role": "CNP Agronomist",
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1
+  },
+  {
+   "role": "General Manager",
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "reference",
+ "track_changes": 1
+}

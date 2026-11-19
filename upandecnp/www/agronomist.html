@@ -56,6 +56,7 @@
     <button class="tab" data-tab="applications">Applications</button>
     <button class="tab" data-tab="stock">Stock</button>
     <button class="tab" data-tab="supervisors">Supervisors <span class="tab-badge tab-badge--live" id="sup-badge" style="display:none"></span></button>
+    <button class="tab" data-tab="corrections">Corrections <span class="tab-badge" id="corr-badge" style="display:none"></span></button>
     <button class="tab" data-tab="setup">Setup &amp; Master Data</button>
   </div>
 
@@ -131,6 +132,21 @@
       <div class="card__head"><h3>Everything the engine reads</h3>
         <span class="meta">Opens here — no need for the doctype forms</span></div>
       <div class="opengrid" id="setup-grid"></div>
+    </div>
+  </div>
+
+  <div class="tabpanel" id="tab-corrections">
+    <div class="card">
+      <div class="card__head"><h3>Correction requests</h3>
+        <div style="display:flex;gap:14px;align-items:center">
+          <span class="meta" id="corr-meta"></span>
+          <div class="selectpill"><select id="corr-filter">
+            <option>Pending</option><option>Approved</option><option>Rejected</option><option>All</option></select></div>
+        </div></div>
+      <div class="queue" id="corr-list"><div class="skel"></div></div>
+      <div class="none" style="text-align:left;padding-top:14px">
+        Supervisors ask from the field app. Approving cancels the original record and puts a corrected
+        one in its place; the supervisor sees the outcome in the app.</div>
     </div>
   </div>
 

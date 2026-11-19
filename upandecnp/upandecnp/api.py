@@ -501,11 +501,12 @@ def get_store_requests(farm=None, programme=None):
     if programme:
         filters["custom_fertilizer_programme"] = programme
 
+    extra = ["custom_corrected"] if frappe.db.has_column("Material Request", "custom_corrected") else []
     requests = frappe.get_all(
         "Material Request",
         filters=filters,
         fields=["name", "custom_block_fertilizer_plan", "workflow_state", "status",
-                "per_ordered", "transaction_date", "docstatus"],
+                "per_ordered", "transaction_date", "docstatus"] + extra,
         order_by="creation desc",
         limit_page_length=100,
     )
@@ -533,6 +534,7 @@ def get_store_requests(farm=None, programme=None):
             "fertilizer_product": plan.fertilizer_product if plan else None,
             "date": r.transaction_date,
             "status": category,
+            "corrected": bool(r.get("custom_corrected")),
         })
     return _attach_product_names(result)
 
@@ -2847,6 +2849,8 @@ def get_desk_store_requests(farm=None, limit=200):
     emp_name_col = next(
         (c for c in ("employee_name", "custom_employee_name")
          if frappe.db.has_column("Material Request Item", c)), None)
+    corrected_select = ("mr.custom_corrected as corrected" if frappe.db.has_column("Material Request", "custom_corrected")
+                        else "0 as corrected")
     emp_select = f"mri.{emp_col} as employee" if emp_col else "null as employee"
     emp_name_select = (f"mri.{emp_name_col} as employee_name"
                        if emp_name_col else "null as employee_name")
@@ -2855,7 +2859,7 @@ def get_desk_store_requests(farm=None, limit=200):
         select mr.name, mr.transaction_date, mr.workflow_state, mr.status,
                mr.docstatus, mr.per_ordered, mr.custom_block_fertilizer_plan as plan,
                bfp.block, bfp.section, bfp.application_month,
-               mri.item_code, mri.qty, {emp_select}, {emp_name_select}
+               mri.item_code, mri.qty, {emp_select}, {emp_name_select}, {corrected_select}
         from `tabMaterial Request` mr
         left join `tabMaterial Request Item` mri on mri.parent = mr.name
         left join `tabBlock Fertilizer Plan` bfp
@@ -3007,7 +3011,7 @@ def _application_rows(farm=None, season=None, limit=None):
                 "applied_in_full", "partial_reason", "application_method",
                 "weather_conditions", "supervisor", "supervisor_name",
                 "supervisor_employee_number", "block_fertilizer_plan",
-                "material_request", "stock_entry", "notes", "creation"],
+                "material_request", "stock_entry", "notes", "creation", "corrected"],
         order_by="application_date desc, modified desc",
         limit_page_length=cint(limit) if limit else 0,
     )
@@ -3636,3 +3640,173 @@ def export_micro_excel(programme):
     frappe.response.filename = f"Micro - {doc.single_product or 'programme'} - {programme.replace('/', '-')}.xlsx"
     frappe.response.filecontent = build_micro_workbook(doc)
     frappe.response.type = "download"
+
+
+# ----------------------------------------------------------------- Corrections
+
+def _correction_row(cr):
+    return {
+        "name": cr.name, "request_type": cr.request_type, "reference": cr.reference,
+        "block": cr.block, "fertilizer_product": cr.fertilizer_product,
+        "original_quantity": flt(cr.original_quantity), "corrected_quantity": flt(cr.corrected_quantity),
+        "reason": cr.reason, "status": cr.status, "requested_by": cr.requested_by,
+        "requester_name": cr.requester_name, "requested_on": cr.requested_on,
+        "reviewed_by": cr.reviewed_by, "reviewed_on": cr.reviewed_on,
+        "review_note": cr.review_note, "replaced_by": cr.replaced_by, "farm": cr.farm,
+    }
+
+
+_CORRECTION_FIELDS = [
+    "name", "request_type", "reference", "block", "fertilizer_product", "original_quantity",
+    "corrected_quantity", "reason", "status", "requested_by", "requester_name", "requested_on",
+    "reviewed_by", "reviewed_on", "review_note", "replaced_by", "farm",
+]
+
+
+@frappe.whitelist()
+def get_correctable(programme=None):
+    """What this supervisor could ask to have corrected: their own recorded
+    applications and their own store requests that the store has not yet issued."""
+    from upandecnp.upandecnp.utils import corrections as C
+    from upandecnp.upandecnp.utils.integration import categorize_request_status
+
+    since = frappe.utils.add_days(frappe.utils.today(), -45)
+    apps = frappe.get_all(
+        "Fertilizer Application",
+        filters={"docstatus": 1, "application_date": [">=", since]},
+        or_filters=_my_application_or_filters(),
+        fields=["name", "block", "fertilizer_product", "application_date", "actual_quantity_applied_kg",
+                "planned_quantity_kg", "corrected"],
+        order_by="application_date desc, modified desc", limit_page_length=60)
+    for a in apps:
+        a["quantity"] = flt(a.pop("actual_quantity_applied_kg"))
+        a["pending"] = bool(C.pending_for("Fertilizer Application", a["name"]))
+    _attach_product_names(apps)
+
+    mine = _my_request_names()
+    reqs = []
+    if mine:
+        for r in frappe.get_all(
+            "Material Request",
+            filters={"name": ["in", mine], "docstatus": ["<", 2], "transaction_date": [">=", since]},
+            fields=["name", "custom_block_fertilizer_plan", "transaction_date", "workflow_state", "status",
+                    "per_ordered", "docstatus", "custom_corrected"],
+            order_by="creation desc", limit_page_length=60,
+        ):
+            state = categorize_request_status(r.workflow_state or r.status)
+            if state in ("Cancelled", "Rejected") or _is_issued(r) or C._issued(r.name):
+                continue
+            item = frappe.db.get_value("Material Request Item", {"parent": r.name},
+                                       ["item_code", "qty"], as_dict=True) or {}
+            reqs.append({
+                "name": r.name, "block": frappe.db.get_value("Block Fertilizer Plan", r.custom_block_fertilizer_plan, "block"),
+                "fertilizer_product": item.get("item_code"), "quantity": flt(item.get("qty")),
+                "date": r.transaction_date, "status": state, "corrected": r.custom_corrected,
+                "pending": bool(C.pending_for("Material Request", r.name)),
+            })
+        _attach_product_names(reqs)
+    return {"applications": apps, "store_requests": reqs}
+
+
+@frappe.whitelist()
+def request_correction(request_type, reference, corrected_quantity, reason, client_request_id=None, programme=None):
+    """Ask for a submitted application or store request to be corrected. Only
+    the person's own records; the change itself waits for the approver."""
+    from upandecnp.upandecnp.utils import corrections as C
+
+    def _create():
+        employee = _current_employee()
+        if request_type == "Application":
+            owner, sup = frappe.db.get_value("Fertilizer Application", reference, ["owner", "supervisor"]) or (None, None)
+            if not owner:
+                frappe.throw(f"Application {reference} was not found.")
+            if owner != frappe.session.user and not (employee and sup == employee):
+                frappe.throw("That application is not yours to correct.", frappe.PermissionError)
+            _block_scope_guard(frappe.db.get_value("Fertilizer Application", reference, "block"))
+        elif request_type == "Store Request":
+            if reference not in _my_request_names():
+                frappe.throw("That store request is not yours to correct.", frappe.PermissionError)
+        else:
+            frappe.throw("A correction is for an Application or a Store Request.")
+        cr = C.create_request(request_type, reference, corrected_quantity, reason,
+                              frappe.session.user, employee, client_request_id)
+        return {"name": cr.name, "status": cr.status}
+
+    return _idempotent(client_request_id, _create)
+
+
+@frappe.whitelist()
+def get_my_corrections(programme=None):
+    """The corrections this user asked for, newest first, with where each stands."""
+    rows = frappe.get_all("Correction Request", filters={"requested_by": frappe.session.user},
+                          fields=_CORRECTION_FIELDS, order_by="creation desc", limit_page_length=100)
+    _attach_product_names(rows)
+    return rows
+
+
+@frappe.whitelist()
+def get_desk_corrections(farm=None, status=None):
+    """Every correction request on the farm, for the agronomist desk."""
+    from upandecnp.upandecnp.utils.corrections import is_approver
+
+    farm = resolve_farm_scope(frappe.session.user, farm)
+    filters = {}
+    if farm:
+        filters["farm"] = farm
+    if status and status != "All":
+        filters["status"] = status
+    rows = frappe.get_all("Correction Request", filters=filters, fields=_CORRECTION_FIELDS,
+                          order_by="creation desc", limit_page_length=200)
+    _attach_product_names(rows)
+    return {"rows": rows, "can_decide": is_approver(),
+            "pending": sum(1 for r in rows if r.status == "Pending")}
+
+
+@frappe.whitelist()
+def get_correction_detail(name):
+    """One request with what it would change - the original record beside it."""
+    from upandecnp.upandecnp.utils import corrections as C
+
+    cr = frappe.get_doc("Correction Request", name)
+    resolve_farm_scope(frappe.session.user, cr.farm)
+    out = _correction_row(cr)
+    out["can_decide"] = C.is_approver() and cr.status == "Pending"
+    _attach_product_names([out])
+    if cr.request_type == "Application" and frappe.db.exists("Fertilizer Application", cr.reference):
+        a = frappe.get_doc("Fertilizer Application", cr.reference)
+        out["record"] = {
+            "doctype": "Fertilizer Application", "date": a.application_date, "planned": flt(a.planned_quantity_kg),
+            "variance_after": round(flt(cr.corrected_quantity) - flt(a.planned_quantity_kg), 2),
+            "supervisor": a.supervisor_name, "applicators": [r.employee_name for r in a.applicators],
+            "method": a.application_method, "docstatus": a.docstatus,
+        }
+        out["effect"] = ("The recorded application is cancelled and replaced by a corrected one at "
+                         f"{flt(cr.corrected_quantity):g} kg; the stock entry is reversed and re-issued at that quantity.")
+    elif frappe.db.exists("Material Request", cr.reference):
+        m = frappe.get_doc("Material Request", cr.reference)
+        out["record"] = {
+            "doctype": "Material Request", "date": m.transaction_date, "docstatus": m.docstatus,
+            "state": categorize_request_status_safe(m), "warehouse": m.get("set_warehouse"),
+        }
+        problem = C.store_request_problem(m) if cr.status == "Pending" else None
+        out["blocked"] = problem
+        out["effect"] = ("The store request is cancelled and a new one for "
+                         f"{flt(cr.corrected_quantity):g} kg takes its place; it goes back to approval.")
+    return out
+
+
+def categorize_request_status_safe(mr):
+    from upandecnp.upandecnp.utils.integration import categorize_request_status
+    return categorize_request_status(mr.get("workflow_state") or mr.status)
+
+
+@frappe.whitelist()
+def decide_correction(name, action, note=None):
+    """Approve or reject a correction. Only the correction approver can."""
+    from upandecnp.upandecnp.utils import corrections as C
+
+    if action not in ("Approve", "Reject"):
+        frappe.throw(f"Unknown action: {action}")
+    resolve_farm_scope(frappe.session.user, frappe.db.get_value("Correction Request", name, "farm"))
+    cr = C.approve(name, note) if action == "Approve" else C.reject(name, note)
+    return {"name": cr.name, "status": cr.status, "replaced_by": cr.replaced_by}
