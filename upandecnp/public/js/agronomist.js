@@ -1925,8 +1925,8 @@
   }
 
   /** Choosing the item a product is drawn from, with stock and the rule in view. */
-  async function chooseItem(product) {
-    const c = state.data && state.data.current;
+  async function chooseItem(product, programmeName, onDone) {
+    const c = programmeName ? { name: programmeName } : state.data && state.data.current;
     if (!c) return;
     let choices;
     try { choices = await call("get_product_choices", { programme: c.name, product }); }
@@ -1970,7 +1970,7 @@
           { programme: c.name, product, item: row.dataset.pick });
         toast(`${product} will be drawn from ${row.dataset.pick}.`, "good");
         m.close();
-        await load();
+        if (onDone) await onDone(); else await load();
       } catch (err) { /* already surfaced */ }
     });
   }
@@ -1995,6 +1995,216 @@
     }).join("");
   }
 
+
+  // ------------------------------------------------------------ micro-programme
+  /* Micro-elements (Borax first) are planned from one typed rate: kg per tree is
+   * the rate over the planting density, and a block's requirement is its tree
+   * count times that - the agronomist's own sheet, done for them. A micro
+   * programme is a programme like any other once submitted, so its plans reach
+   * the field app and its requests and applications flow the usual way. */
+  const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July",
+    "August", "September", "October", "November", "December"];
+  let micro = null;
+
+  function microTabVisible() {
+    // Lokitela only, for now.
+    const on = /lokitela/i.test(state.scope || "");
+    const tab = $('.tab[data-tab="micro"]');
+    if (tab) tab.style.display = on ? "" : "none";
+    return on;
+  }
+
+  async function loadMicro() {
+    if (!microTabVisible()) return;
+    try { micro = await call("get_micro_desk", { farm: state.farm && state.farm !== "All Farms" ? state.farm : null }); }
+    catch (e) { return; }
+    renderMicro();
+  }
+
+  function renderMicro() {
+    if (!micro) return;
+    $("#micro-products").innerHTML = (micro.products || []).map((p) => `
+      <button class="opentile" data-micro-new="${esc(p.name)}">
+        <span class="opentile__ic" style="background:#e8f1ef;color:#24463c">${esc(p.nutrient)}</span>
+        <span><span class="opentile__lb">${esc(p.product_name || p.name)}</span>
+        <span class="opentile__sub">Plan from a kg/ha rate</span></span>
+      </button>`).join("") || `<div class="none">No micro-element products set up yet.</div>`;
+
+    $("#micro-meta").textContent = `${(micro.programmes || []).length} programme${(micro.programmes || []).length === 1 ? "" : "s"}`;
+    $("#micro-list").innerHTML = (micro.programmes || []).map((p) => `
+      <div class="qrow" data-micro-open="${esc(p.name)}" style="cursor:pointer">
+        <div class="qrow__mark">${esc((p.product || "?").slice(0, 2))}</div>
+        <div>
+          <div class="qrow__name">${esc(p.product || "")} · ${num(p.rate, 1)} kg/ha · ${esc(p.month || "")}</div>
+          <div class="qrow__meta">${esc(p.name)} · ${esc(p.scope || "")} · ${num(p.blocks)} blocks ·
+            ${p.calculated ? num(p.kg, 1) + " kg" : "not calculated"} ·
+            <span style="color:var(--signal)">open</span></div>
+        </div>
+        <div class="qrow__right">${statePill(p)}</div>
+      </div>`).join("") || `<div class="none">No micro programmes yet. Pick a product above to start one.</div>`;
+  }
+
+  /** Scope, product and rate in one popup - the same questions in the order
+   *  the agronomist thinks of them. */
+  function openMicroCreate(product) {
+    const wrap = document.createElement("div");
+    const optList = (arr) => arr.map((o) => `<option value="${esc(o)}">${esc(o)}</option>`).join("");
+    const seasons = (micro.seasons || []).filter((x) => x && x !== "All Seasons");
+    wrap.innerHTML = `
+      <div class="field"><label>Scope <span class="req">*</span></label>
+        <select data-m="scope_type">
+          <option>Entire Farm</option><option>Section</option><option>Block</option></select></div>
+      <div class="field" data-for="Section" style="display:none"><label>Section <span class="req">*</span></label>
+        <select data-m="scope_section">${optList(micro.sections || [])}</select></div>
+      <div class="field" data-for="Block" style="display:none"><label>Block <span class="req">*</span></label>
+        <select data-m="scope_block">${optList(micro.blocks || [])}</select></div>
+      <div class="field"><label>Product <span class="req">*</span></label>
+        <select data-m="product">${(micro.products || []).map((p) =>
+          `<option value="${esc(p.name)}"${p.name === product ? " selected" : ""}>${esc(p.product_name || p.name)}</option>`).join("")}</select></div>
+      <div class="field"><label>Rate (kg/ha) <span class="req">*</span></label>
+        <input type="number" step="any" min="0" data-m="rate_kg_ha" placeholder="e.g. 20">
+        <small data-m-hint>Kg per tree and each block's requirement are worked out from this.</small></div>
+      <div class="field"><label>Trees per ha</label>
+        <input type="number" min="1" data-m="trees_per_ha" value="250"></div>
+      <div class="field"><label>Application month <span class="req">*</span></label>
+        <select data-m="month">${optList(MONTH_NAMES).replace(`value="${MONTH_NAMES[new Date().getMonth()]}"`,
+          `value="${MONTH_NAMES[new Date().getMonth()]}" selected`)}</select></div>
+      <div class="field"><label>Method of application</label>
+        <select data-m="method"><option>Hand</option><option>Mechanical spreader</option>
+          <option>Fertigation</option><option>Foliar Spray</option><option>Other</option></select></div>
+      ${seasons.length > 1 ? `<div class="field"><label>Season</label>
+        <select data-m="season">${optList(seasons)}</select></div>` : ""}
+      <div class="field"><label>Special instructions</label><textarea data-m="notes"></textarea></div>`;
+    const g = (k) => ($(`[data-m="${k}"]`, wrap) || {}).value;
+    const sync = () => $$("[data-for]", wrap).forEach((f) => { f.style.display = f.dataset.for === g("scope_type") ? "" : "none"; });
+    wrap.addEventListener("change", sync);
+    wrap.addEventListener("input", () => {
+      const r = Number(g("rate_kg_ha")), t = Number(g("trees_per_ha")) || 250;
+      $("[data-m-hint]", wrap).textContent = r > 0
+        ? `${num(r, 2)} kg/ha ÷ ${num(t)} trees = ${(Math.round(r / t * 1000) / 1000).toFixed(3)} kg per tree.`
+        : "Kg per tree and each block's requirement are worked out from this.";
+    });
+
+    modal({
+      title: "New micro programme", sub: "Choose where it applies, what, and how much.", body: wrap,
+      foot: [{ label: "Cancel" }, { label: "Create programme", cls: "btn--ink", onClick: async (h) => {
+        const rate = Number(g("rate_kg_ha"));
+        if (!(rate > 0)) { toast("Enter a rate above 0 kg/ha.", "bad"); return; }
+        const args = {
+          product: g("product"), rate_kg_ha: rate, trees_per_ha: Number(g("trees_per_ha")) || 250,
+          month: g("month"), method: g("method"), notes: g("notes") || null,
+          scope_type: g("scope_type"),
+          scope_section: g("scope_type") === "Section" ? g("scope_section") : null,
+          scope_block: g("scope_type") === "Block" ? g("scope_block") : null,
+          season: g("season") || null,
+          farm: state.farm && state.farm !== "All Farms" ? state.farm : null,
+        };
+        const r = await call("micro_create_programme", args);
+        h.close();
+        toast(`${r.name} created with ${r.blocks} block${r.blocks === 1 ? "" : "s"}. Choose the item next.`, "good");
+        await loadMicro();
+        openMicro(r.name);
+      } }],
+    });
+  }
+
+  async function openMicro(name) {
+    let m;
+    const draw = async () => {
+      let c;
+      try { c = await call("get_micro_detail", { programme: name }); } catch (e) { return; }
+      const draft = c.docstatus === 0;
+      const a = c.actions || {};
+      const so = a.sign_off || {};
+      const T = c.totals || {};
+      const body = document.createElement("div");
+      body.innerHTML = `
+        <div class="kpi-grid" style="margin-bottom:18px">
+          <div class="kpi"><div class="kpi__label">Rate</div><div class="kpi__value">${num(c.rate, 2)}</div>
+            <div class="kpi__unit">kg/ha · ${num(c.rate / (c.trees_per_ha || 250), 3)} kg per tree</div></div>
+          <div class="kpi"><div class="kpi__label">Area</div><div class="kpi__value">${num(T.area_ha, 2)}</div>
+            <div class="kpi__unit">ha · ${num(c.blocks)} blocks · ${num(T.trees)} trees</div></div>
+          <div class="kpi"><div class="kpi__label">Required</div><div class="kpi__value">${c.calculated ? num(T.kg, 1) : "—"}</div>
+            <div class="kpi__unit">kg of ${esc(c.product || "")} · ${esc(c.month || "")}</div></div>
+          <div class="kpi"><div class="kpi__label">Item</div>
+            <div class="kpi__value ${c.item ? "good" : "bad"}" style="font-size:18px">${esc(c.item_name || c.item || "Not chosen")}</div>
+            <div class="kpi__unit">${c.item ? num(c.available, 1) + " kg in stock" : "choose before calculating"}</div></div>
+        </div>
+        <div class="none" style="text-align:left;padding:0 0 14px">
+          ${esc(c.name)} · ${esc(c.scope_type)}: ${esc(c.scope || "")} · ${esc(c.season)} · ${statePill(c)}
+          ${c.method ? " · Method: " + esc(c.method) : ""}${c.notes ? "<br>" + esc(c.notes) : ""}</div>
+        ${draft ? `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+            <button class="btn" data-mact="choose">${c.item ? "Change item" : "Choose item"}</button>
+            <button class="btn" data-mact="calculate" ${c.item ? "" : "disabled"}>${c.calculated ? "Recalculate" : "Calculate"}</button>
+          </div>` : ""}
+        <table class="gridtbl"><thead><tr><th>Section</th><th>Block</th><th>Ha</th><th>Kg/Ha</th>
+          <th>Trees</th><th>Kg/Tree</th><th>Est. kg</th></tr></thead><tbody>
+          ${(c.rows || []).map((r) => `<tr><td>${esc(r.section || "")}</td><td>${esc(r.block)}</td>
+            <td>${num(r.area_ha, 2)}</td><td>${num(r.rate_kg_ha, 2)}</td><td>${num(r.trees)}</td>
+            <td>${r.kg_per_tree.toFixed(3)}</td><td><b>${c.calculated ? num(r.kg, 1) : "—"}</b></td></tr>`).join("")}
+          <tr><td colspan="2"><b>Total</b></td><td><b>${num(T.area_ha, 2)}</b></td><td></td>
+            <td><b>${num(T.trees)}</b></td><td></td><td><b>${c.calculated ? num(T.kg, 1) : "—"}</b></td></tr>
+        </tbody></table>
+        ${draft ? `<div class="none" style="text-align:left;padding:16px 0 0">
+          <b>Sign-off before submitting</b><br>
+          ${[["elvis_koskey", "Elvis Koskey"], ["bramuel", "Bramuel"], ["richard_collins", "Richard Collins"]].map(([k, l]) =>
+            `<label style="margin-right:18px"><input type="checkbox" data-msignoff="${k}" ${so[k] ? "checked" : ""}> ${l}</label>`).join("")}
+          </div>` : ""}`;
+
+      body.addEventListener("click", async (e) => {
+        const b = e.target.closest("[data-mact]");
+        if (!b) return;
+        b.disabled = true;
+        try {
+          if (b.dataset.mact === "choose") await chooseItem(c.product, name, async () => { await loadMicro(); await draw(); });
+          else if (b.dataset.mact === "calculate") {
+            const r = await call("desk_calculate", { programme: name });
+            toast(`${r.lines} blocks calculated.`, "good");
+            await loadMicro(); await draw();
+          }
+        } catch (err) { /* already surfaced */ }
+        finally { if (b.isConnected) b.disabled = false; }
+      });
+      body.addEventListener("change", async (e) => {
+        const i = e.target.closest("[data-msignoff]");
+        if (!i) return;
+        i.disabled = true;
+        try {
+          await call("desk_set_sign_off", { programme: name, who: i.dataset.msignoff, value: i.checked ? 1 : 0 });
+          await draw();
+        } catch (err) { i.checked = !i.checked; i.disabled = false; }
+      });
+
+      const foot = [{ label: "Export to Excel", onClick: async () => {
+        window.open("/api/method/upandecnp.upandecnp.api.export_micro_excel?programme=" + encodeURIComponent(name), "_blank");
+      } }];
+      if (draft) {
+        foot.push({ label: "Delete draft", cls: "btn--bad", onClick: async (h) => {
+          if (!(await confirmModal("Delete draft?", `${name} will be gone for good. This cannot be undone.`))) return;
+          await call("desk_delete_draft", { programme: name });
+          toast("Draft deleted.", "good"); h.close(); await loadMicro();
+        } });
+        foot.push({ label: "Submit programme", cls: "btn--ink", onClick: async (h) => {
+          if (!a.ready_to_send) {
+            toast(!c.item ? "Choose the item first." : !c.calculated ? "Run the calculation first."
+              : "All three sign-offs are needed before submitting.", "bad");
+            return;
+          }
+          await call("desk_submit_programme", { programme: name });
+          toast("Submitted — the block plans are created and visible in the field app.", "good");
+          h.close(); await loadMicro();
+        } });
+      } else foot.push({ label: "Close" });
+
+      if (!m) {
+        m = modal({ title: `${c.product || "Micro"} programme`, sub: c.name, body, size: "wide", foot });
+      } else {
+        m.body.innerHTML = ""; m.body.appendChild(body); m.setFoot(foot);
+      }
+    };
+    await draw();
+  }
+
   // ------------------------------------------------------------------ bootstrap
   function tabs() {
     $$(".tab").forEach((t) => t.addEventListener("click", () => {
@@ -2006,6 +2216,7 @@
       if (which === "applications") loadApplications();
       if (which === "stock") loadStock();
       if (which === "setup") renderSetup();
+      if (which === "micro") loadMicro();
       // Poll only while someone is looking: a list that refreshes itself is
       // the point of the tab, but not a reason to hit the server from a hidden
       // one all afternoon.
@@ -2034,6 +2245,7 @@
     renderKpis(d);
     renderProgramme(d);
     renderProgrammeList(d);
+    microTabVisible();
   }
 
   document.addEventListener("DOMContentLoaded", () => {
@@ -2052,6 +2264,10 @@
       if (a) return act(a);
       const ch = e.target.closest("[data-choose]");
       if (ch) return chooseItem(ch.dataset.choose);
+      const mn = e.target.closest("[data-micro-new]");
+      if (mn) return openMicroCreate(mn.dataset.microNew);
+      const mo = e.target.closest("[data-micro-open]");
+      if (mo) return openMicro(mo.dataset.microOpen);
       const lst = e.target.closest("[data-open-list]");
       if (lst) return openList(lst.dataset.openList).catch(() => {});
       const nw = e.target.closest("[data-new]");

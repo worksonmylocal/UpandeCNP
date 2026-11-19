@@ -260,3 +260,71 @@ def build_applications_workbook(rows, title="Applications"):
 	buf = BytesIO()
 	wb.save(buf)
 	return buf.getvalue()
+
+
+def build_micro_workbook(doc):
+	"""A micro programme laid out like the agronomist's own sheet: the rate box
+	and method of application on top, then one row per block."""
+	from upandecnp.upandecnp.utils.micro_programme import sheet_rows
+
+	rows, totals = sheet_rows(doc)
+	item = next((r.item_name or r.fertilizer_item for r in doc.get("product_selections", [])
+	             if r.fertilizer_item), doc.single_product or "")
+	wb = Workbook()
+	ws = wb.active
+	ws.title = "Micro programme"
+	bold = Font(bold=True)
+	peach = PatternFill("solid", fgColor="F8CBAD")
+	green = PatternFill("solid", fgColor="E2EFDA")
+
+	ws["A1"], ws["B1"], ws["C1"], ws["D1"] = f"{item} - {doc.name}", "Ha", "Kg/Ha", "Kg Required"
+	ws["E1"] = "Actual Used"
+	ws["B2"], ws["C2"], ws["D2"] = totals["area_ha"], flt(doc.micro_rate_kg_ha), totals["kg"]
+	for c in ("A1", "B1", "C1", "D1", "E1"):
+		ws[c].font = bold
+	ws["C2"].fill = green
+
+	methods = ["Hand", "Mechanical spreader", "Fertigation", "Foliar Spray", "Other"]
+	for i, m in enumerate(methods):
+		cell = ws.cell(row=4, column=3 + i, value=m)
+		cell.font = bold
+		cell.alignment = CENTER
+		if m == doc.micro_method:
+			cell.fill = peach
+	ws["A4"] = "Method of Application"
+	ws["A4"].font = bold
+	ws["A6"] = "Special instructions:"
+	ws["A6"].font = bold
+	ws["B6"] = doc.micro_notes or ""
+	ws["A7"] = f"Application month: {doc.micro_month or ''}"
+
+	head = ["Date", "Block No", "Fertilizer to Apply", "Ha", "Kg/Ha", "Trees", "Kg/Tree",
+	        "Plant/Ha", "Estimated Fert. Req. (kg)"]
+	for i, h in enumerate(head, start=1):
+		c = ws.cell(row=9, column=i, value=h)
+		c.font = bold
+		c.fill = HEADER_FILL
+		c.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+	r = 10
+	for row in rows:
+		ws.cell(row=r, column=2, value=row["block"])
+		ws.cell(row=r, column=3, value=item)
+		ws.cell(row=r, column=4, value=row["area_ha"]).number_format = "0.00"
+		ws.cell(row=r, column=5, value=row["rate_kg_ha"]).number_format = "0.00"
+		ws.cell(row=r, column=6, value=row["trees"]).number_format = "#,##0"
+		ws.cell(row=r, column=7, value=row["kg_per_tree"]).number_format = "0.000"
+		ws.cell(row=r, column=8, value=cint(doc.trees_per_ha) or 250)
+		ws.cell(row=r, column=9, value=row["kg"]).number_format = "0.0"
+		r += 1
+	ws.cell(row=r, column=1, value="Total").font = bold
+	for col, val, fmt in ((4, totals["area_ha"], "0.00"), (6, totals["trees"], "#,##0"), (9, totals["kg"], "#,##0.0")):
+		c = ws.cell(row=r, column=col, value=val)
+		c.font = bold
+		c.number_format = fmt
+
+	for col, w in zip("ABCDEFGHI", (16, 22, 26, 10, 10, 10, 10, 10, 18)):
+		ws.column_dimensions[col].width = w
+	buf = BytesIO()
+	wb.save(buf)
+	return buf.getvalue()

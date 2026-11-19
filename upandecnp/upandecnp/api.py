@@ -2043,10 +2043,21 @@ def load_programme_products(programme, product=None):
             seen.add(rule.product)
             products.append(rule.product)
 
+    if doc.get("programme_type") == "Micro":
+        # A micro-element is not on the crop's nutrient rules - it is its own
+        # rate, typed in - so the choice is among the micro products.
+        product = (product or "").strip()
+        if not product:
+            frappe.throw("Pick the micro-element this programme is for.")
+        products = [p["name"] for p in _micro_products()]
+        if product not in products:
+            frappe.throw(f"{frappe.utils.escape_html(product)} is not a micro-element product.")
+        products = [product]
+
     # One product only: the programme is generated for that product alone.
     # Blank (or "all") keeps the long-standing behaviour of every product.
     product = (product or "").strip() or None
-    if product:
+    if product and doc.get("programme_type") != "Micro":
         if product not in products:
             frappe.throw(
                 f"Crop {doc.crop} has no nutrient rule for <b>{frappe.utils.escape_html(product)}</b>."
@@ -2054,6 +2065,8 @@ def load_programme_products(programme, product=None):
         products = [product]
     single = product
     doc.single_product = single
+    if doc.get("programme_type") == "Micro":
+        products = [product]
 
     if not products:
         frappe.throw(
@@ -2245,7 +2258,7 @@ def get_agronomist_desk(farm=None, season=None):
     """
     farm = resolve_farm_scope(frappe.session.user, farm)
 
-    prog_filter = {}
+    prog_filter = {"programme_type": ["!=", "Micro"]}   # micro programmes have their own tab
     if farm:
         prog_filter["farm"] = farm
     if season and season != "All Seasons":
@@ -3253,12 +3266,18 @@ def get_field_programmes(farm=None):
     filters = {"docstatus": 1}
     if farm:
         filters["farm"] = farm
-    return frappe.get_all(
+    rows = frappe.get_all(
         "Fertilizer Programme", filters=filters,
         fields=["name", "season", "farm", "crop", "period_type",
-               "start_month", "end_month"],
+               "start_month", "end_month", "programme_type", "single_product"],
         order_by="modified desc",
     )
+    for r in rows:
+        r["programme_type"] = r.get("programme_type") or "Standard"
+    # Standard programmes first, so a phone that opens on "the first one"
+    # opens on the main programme and not on a micro-element round.
+    rows.sort(key=lambda r: r["programme_type"] == "Micro")
+    return rows
 
 
 @frappe.whitelist()
@@ -3488,3 +3507,132 @@ def get_active_supervisors(farm=None, window=15):
         },
         "window": window,
     }
+
+
+# ------------------------------------------------------------ Micro-programmes
+
+def _micro_products():
+    """Fertilizer Products that are micro-elements (Borax, ...)."""
+    from upandecnp.upandecnp.utils.micro_programme import MICRO_NUTRIENTS
+    return frappe.get_all(
+        "Fertilizer Product",
+        filters={"nutrient": ["in", list(MICRO_NUTRIENTS)], "disabled": 0},
+        fields=["name", "product_name", "nutrient"], order_by="name asc",
+    )
+
+
+def _micro_summary(doc):
+    from upandecnp.upandecnp.utils.micro_programme import sheet_rows
+    rows, totals = sheet_rows(doc)
+    return {
+        "name": doc.name, "season": doc.season, "farm": doc.farm,
+        "docstatus": doc.docstatus, "product": doc.single_product,
+        "month": doc.micro_month, "rate": flt(doc.micro_rate_kg_ha),
+        "scope_type": doc.scope_type,
+        "scope": doc.scope_section if doc.scope_type == "Section"
+                 else doc.scope_block if doc.scope_type == "Block" else doc.farm,
+        "blocks": len(rows), "area_ha": totals["area_ha"], "trees": totals["trees"],
+        "kg": totals["kg"], "calculated": bool(doc.get("programme_lines")),
+        "modified": doc.modified,
+    }
+
+
+@frappe.whitelist()
+def get_micro_desk(farm=None):
+    """The Micro-Programme tab: which micro-elements can be planned, and the
+    micro programmes already started."""
+    farm = resolve_farm_scope(frappe.session.user, farm)
+    filters = {"programme_type": "Micro"}
+    if farm:
+        filters["farm"] = farm
+    names = frappe.get_all("Fertilizer Programme", filters=filters, pluck="name",
+                           order_by="modified desc", limit_page_length=50)
+    return {
+        "farm": farm,
+        "products": _micro_products(),
+        "programmes": [_micro_summary(frappe.get_doc("Fertilizer Programme", n)) for n in names],
+        "sections": [s.name for s in frappe.get_all("Section", filters={"farm": farm} if farm else {},
+                                                    order_by="name asc")],
+        "blocks": [b.name for b in frappe.get_all("Farm Block", filters={"farm": farm} if farm else {},
+                                                  order_by="name asc", limit_page_length=500)],
+        "seasons": get_seasons(),
+    }
+
+
+@frappe.whitelist()
+def micro_create_programme(product, rate_kg_ha, month, scope_type="Entire Farm", scope_section=None,
+                           scope_block=None, trees_per_ha=250, method=None, notes=None,
+                           season=None, farm=None):
+    """Start a micro programme: scope it, pull its blocks, load the product.
+    Choosing the Item and calculating are the next two steps on the desk."""
+    from upandecnp.upandecnp.utils.micro_programme import DEFAULT_TREES_PER_HA
+
+    farm = resolve_farm_scope(frappe.session.user, farm)
+    if not farm:
+        frappe.throw("Choose a farm first.")
+    if flt(rate_kg_ha) <= 0:
+        frappe.throw("Enter a rate above 0 kg/ha.")
+    if scope_type not in ("Entire Farm", "Section", "Block"):
+        frappe.throw("Scope must be Entire Farm, Section or Block.")
+
+    if not season:
+        season = (frappe.db.get_value("Fertilizer Programme",
+                  {"farm": farm, "programme_type": ["!=", "Micro"]}, "season", order_by="modified desc")
+                  or (get_seasons() or [None])[0])
+    if not season or season == "All Seasons":
+        frappe.throw("Choose a season.")
+    crop = frappe.db.get_value("Farm Block", {"farm": farm, "crop": ["is", "set"]}, "crop") \
+        or frappe.db.get_value("Crop", {}, "name")
+    if not crop:
+        frappe.throw("No crop is set up for this farm yet.")
+
+    doc = frappe.get_doc({
+        "doctype": "Fertilizer Programme",
+        "programme_type": "Micro", "season": season, "farm": farm, "crop": crop,
+        "scope_type": scope_type, "scope_section": scope_section, "scope_block": scope_block,
+        "micro_rate_kg_ha": flt(rate_kg_ha), "trees_per_ha": cint(trees_per_ha) or DEFAULT_TREES_PER_HA,
+        "micro_month": month, "micro_method": method, "micro_notes": notes,
+    })
+    doc.insert()
+    doc.pull_blocks_from_farm()
+    load_programme_products(doc.name, product)
+    return get_micro_detail(doc.name)
+
+
+@frappe.whitelist()
+def get_micro_detail(programme):
+    """One micro programme as the sheet shows it - header, a row per block,
+    totals - plus what is left to do before it can be submitted."""
+    from upandecnp.upandecnp.utils.micro_programme import sheet_rows
+
+    doc = frappe.get_doc("Fertilizer Programme", programme)
+    doc.check_permission("read")
+    if doc.get("programme_type") != "Micro":
+        frappe.throw(f"{programme} is not a micro-element programme.")
+    rows, totals = sheet_rows(doc)
+    sel = next(iter(doc.get("product_selections") or []), None)
+    out = _micro_summary(doc)
+    out.update({
+        "trees_per_ha": doc.trees_per_ha, "method": doc.micro_method, "notes": doc.micro_notes,
+        "item": sel.fertilizer_item if sel else None,
+        "item_name": sel.item_name if sel else None,
+        "available": flt(sel.available_qty) if sel else 0,
+        "shortfall": flt(sel.shortfall) if sel else 0,
+        "rows": rows, "totals": totals,
+        "actions": _programme_actions(doc),
+    })
+    return out
+
+
+@frappe.whitelist()
+def export_micro_excel(programme):
+    """The micro programme as the agronomist's own sheet."""
+    from upandecnp.upandecnp.utils.excel_export import build_micro_workbook
+
+    doc = frappe.get_doc("Fertilizer Programme", programme)
+    doc.check_permission("read")
+    if doc.get("programme_type") != "Micro":
+        frappe.throw(f"{programme} is not a micro-element programme.")
+    frappe.response.filename = f"Micro - {doc.single_product or 'programme'} - {programme.replace('/', '-')}.xlsx"
+    frappe.response.filecontent = build_micro_workbook(doc)
+    frappe.response.type = "download"

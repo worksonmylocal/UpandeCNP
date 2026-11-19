@@ -8,6 +8,7 @@ from upandecnp.upandecnp.utils.farm_permissions import resolve_farm_scope
 class FertilizerProgramme(Document):
 
 	def validate(self):
+		self.validate_micro()
 		self.validate_period()
 		self.validate_scope()
 		self.warn_on_stock_shortfall()
@@ -88,6 +89,21 @@ class FertilizerProgramme(Document):
 				"Choose an Item for: <b>" + "</b>, <b>".join(missing) + "</b>.<br>"
 				"Use the Choose button on each row - it shows what is in stock."
 			)
+
+	def validate_micro(self):
+		"""A micro programme covers one product in one month, so its period is
+		that month - which keeps every list, label and report that shows a
+		programme's period reading correctly without knowing it is a micro one."""
+		if self.get("programme_type") != "Micro":
+			return
+		if flt(self.micro_rate_kg_ha) < 0:
+			frappe.throw("The rate cannot be negative.")
+		if not self.trees_per_ha or self.trees_per_ha <= 0:
+			self.trees_per_ha = 250
+		if self.micro_month:
+			self.period_type = "Custom Period"
+			self.start_month = self.micro_month
+			self.end_month = self.micro_month
 
 	def validate_period(self):
 		if self.period_type != "Custom Period":

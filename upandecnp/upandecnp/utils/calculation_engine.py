@@ -274,6 +274,10 @@ def calculate_programme(programme_name):
 	if programme.docstatus == 1:
 		frappe.throw("Cannot recalculate a submitted programme.")
 
+	if programme.get("programme_type") == "Micro":
+		from upandecnp.upandecnp.utils.micro_programme import calculate_micro_programme
+		return calculate_micro_programme(programme)
+
 	unchosen = [
 		row.product for row in programme.get("product_selections", [])
 		if not row.fertilizer_item

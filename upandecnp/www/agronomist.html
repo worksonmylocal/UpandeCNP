@@ -50,6 +50,7 @@
 
   <div class="tabs">
     <button class="tab on" data-tab="programme">Programme</button>
+    <button class="tab" data-tab="micro" style="display:none">Micro-Programme</button>
     <button class="tab" data-tab="plans">Plans</button>
     <button class="tab" data-tab="requests">Store Requests</button>
     <button class="tab" data-tab="applications">Applications</button>
@@ -74,6 +75,18 @@
       <div class="card__head"><h3>All programmes</h3>
         <button class="btn btn--ink" data-new="programme">New programme</button></div>
       <div class="queue" id="prog-list"><div class="skel"></div></div>
+    </div>
+  </div>
+
+  <div class="tabpanel" id="tab-micro">
+    <div class="card">
+      <div class="card__head"><h3>Micro-elements</h3>
+        <span class="meta">Pick one to plan it — scope, product and kg/ha</span></div>
+      <div class="opengrid" id="micro-products"><div class="skel"></div></div>
+    </div>
+    <div class="card">
+      <div class="card__head"><h3>Micro programmes</h3><span class="meta" id="micro-meta"></span></div>
+      <div class="queue" id="micro-list"><div class="skel"></div></div>
     </div>
   </div>
 

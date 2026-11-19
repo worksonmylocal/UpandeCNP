@@ -17,6 +17,13 @@
   "crop",
   "production_calendar",
   "section_break_products",
+  "programme_type",
+  "micro_section",
+  "micro_rate_kg_ha",
+  "trees_per_ha",
+  "micro_month",
+  "micro_method",
+  "micro_notes",
   "single_product",
   "product_selections",
   "period_type",
@@ -149,7 +156,7 @@
    "fieldtype": "Link",
    "label": "Production Calendar",
    "options": "Production Calendar",
-   "reqd": 1
+   "mandatory_depends_on": "eval:doc.programme_type!='Micro'"
   },
   {
    "default": "Full Year",
@@ -182,7 +189,54 @@
    "label": "Fertilizer Products"
   },
   {
-   "description": "Leave blank to plan every product on the crop's nutrient rules. Pick one to generate the programme for just that product. Set with Load Products.",
+   "fieldname": "programme_type",
+   "fieldtype": "Select",
+   "label": "Programme Type",
+   "options": "Standard\nMicro",
+   "default": "Standard",
+   "read_only": 1,
+   "in_list_view": 0,
+   "description": "Micro = a micro-element programme (e.g. Borax), planned per tree from a single kg/ha rate."
+  },
+  {
+   "fieldname": "micro_section",
+   "fieldtype": "Section Break",
+   "label": "Micro-Element Rate",
+   "depends_on": "eval:doc.programme_type=='Micro'"
+  },
+  {
+   "fieldname": "micro_rate_kg_ha",
+   "fieldtype": "Float",
+   "label": "Rate (kg/ha)",
+   "mandatory_depends_on": "eval:doc.programme_type=='Micro'"
+  },
+  {
+   "fieldname": "trees_per_ha",
+   "fieldtype": "Int",
+   "label": "Trees per ha",
+   "default": "250",
+   "description": "Standard planting density used to turn kg/ha into kg per tree."
+  },
+  {
+   "fieldname": "micro_month",
+   "fieldtype": "Select",
+   "label": "Application Month",
+   "options": "January\nFebruary\nMarch\nApril\nMay\nJune\nJuly\nAugust\nSeptember\nOctober\nNovember\nDecember",
+   "mandatory_depends_on": "eval:doc.programme_type=='Micro'"
+  },
+  {
+   "fieldname": "micro_method",
+   "fieldtype": "Select",
+   "label": "Method of Application",
+   "options": "Hand\nMechanical spreader\nFertigation\nFoliar Spray\nOther"
+  },
+  {
+   "fieldname": "micro_notes",
+   "fieldtype": "Small Text",
+   "label": "Special Instructions"
+  },
+  {
+   "description": "Set with Load Products. Blank = every product on the crop's nutrient rules; one = the programme covers only that product.",
    "fieldname": "single_product",
    "fieldtype": "Link",
    "label": "Calculate For (one product)",
