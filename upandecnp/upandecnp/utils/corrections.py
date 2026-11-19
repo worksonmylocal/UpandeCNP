@@ -111,7 +111,63 @@ def create_request(request_type, reference, corrected_quantity, reason, requeste
 		"client_request_id": client_request_id,
 	})
 	cr.insert(ignore_permissions=True)
+	notify_approvers(cr)
 	return cr
+
+
+def approver_emails():
+	"""Enabled users holding the approver role who have an email address."""
+	users = frappe.get_all("Has Role", filters={"role": APPROVER_ROLE, "parenttype": "User"}, pluck="parent")
+	if not users:
+		return []
+	rows = frappe.get_all("User", filters={"name": ["in", users], "enabled": 1}, fields=["name", "email"])
+	return sorted({r.email or r.name for r in rows if (r.email or "@" in r.name)})
+
+
+def notify_approvers(cr):
+	"""Tell the approver(s) a correction is waiting - by email, and in the
+	desk's notification bell. These need a quick decision, so a failure to
+	notify must never stop the request being saved: it is logged and the
+	request stands, visible in the Corrections tab either way."""
+	try:
+		recipients = approver_emails()
+		if not recipients:
+			frappe.log_error(
+				title="Correction request: no approver to notify",
+				message=f"{cr.name} was created but nobody holds the {APPROVER_ROLE} role.")
+			return
+		delta = flt(cr.corrected_quantity) - flt(cr.original_quantity)
+		url = frappe.utils.get_url("/agronomist")
+		what = "application" if cr.request_type == "Application" else "store request"
+		product = frappe.db.get_value("Item", cr.fertilizer_product, "item_name") if cr.fertilizer_product else ""
+		frappe.sendmail(
+			recipients=recipients,
+			subject=f"Correction needed: {cr.requester_name} - {cr.block or what} ({flt(cr.original_quantity):g} -> {flt(cr.corrected_quantity):g} kg)",
+			message=f"""
+				<p><b>{frappe.utils.escape_html(cr.requester_name or cr.requested_by)}</b> has asked to correct a
+				submitted {what}.</p>
+				<table cellpadding="4">
+					<tr><td>Block</td><td><b>{frappe.utils.escape_html(cr.block or "-")}</b></td></tr>
+					<tr><td>Product</td><td>{frappe.utils.escape_html(product or cr.fertilizer_product or "-")}</td></tr>
+					<tr><td>Record</td><td>{frappe.utils.escape_html(cr.reference)}</td></tr>
+					<tr><td>Recorded</td><td>{flt(cr.original_quantity):g} kg</td></tr>
+					<tr><td>Corrected to</td><td><b>{flt(cr.corrected_quantity):g} kg</b> ({delta:+g} kg)</td></tr>
+					<tr><td>Reason</td><td>{frappe.utils.escape_html(cr.reason)}</td></tr>
+				</table>
+				<p><a href="{url}">Open the Agronomist Desk</a> and go to the Corrections tab to approve or reject it.</p>
+			""",
+			reference_doctype="Correction Request",
+			reference_name=cr.name,
+		)
+		for user in frappe.get_all("Has Role", filters={"role": APPROVER_ROLE, "parenttype": "User"}, pluck="parent"):
+			if frappe.db.get_value("User", user, "enabled"):
+				frappe.get_doc({
+					"doctype": "Notification Log", "for_user": user, "type": "Alert",
+					"subject": f"Correction request from {cr.requester_name}: {flt(cr.original_quantity):g} -> {flt(cr.corrected_quantity):g} kg on {cr.block or what}",
+					"document_type": "Correction Request", "document_name": cr.name,
+				}).insert(ignore_permissions=True)
+	except Exception:
+		frappe.log_error(title="Correction request: notifying approvers failed", message=frappe.get_traceback())
 
 
 # -------------------------------------------------------------------- decision
