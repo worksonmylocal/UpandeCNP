@@ -2094,6 +2094,20 @@ def load_programme_products(programme, product=None):
 
 
 @frappe.whitelist()
+def get_programme_product_options(programme):
+    """The products a programme's crop can be planned with, for the "load one
+    product or all of them" choice - and which one it is currently set to."""
+    doc = frappe.get_doc("Fertilizer Programme", programme)
+    doc.check_permission("read")
+    crop = frappe.get_doc("Crop", doc.crop)
+    products = []
+    for rule in crop.get("nutrient_rules", []):
+        if rule.product and rule.product not in products:
+            products.append(rule.product)
+    return {"products": products, "single": doc.get("single_product")}
+
+
+@frappe.whitelist()
 def get_product_choices(programme, product):
     """Everything needed to choose an Item for one product: the candidates
     with their stock, and the nutrient rule the engine will apply to

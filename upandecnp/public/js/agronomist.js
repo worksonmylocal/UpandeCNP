@@ -1675,6 +1675,33 @@
   }
 
   // --------------------------------------------------------------------- actions
+
+  /** Load Products: every product on the crop's nutrient rules, or just one. */
+  async function loadProductsChoice(c) {
+    let opts;
+    try { opts = await call("get_programme_product_options", { programme: c.name }); } catch (e) { return; }
+    const products = opts.products || [];
+    const run = async (product) => {
+      const r = await call("load_programme_products", { programme: c.name, product: product || "" });
+      toast(r.single
+        ? `Programme will be generated for ${r.products[0]} only. Choose its item.`
+        : `${(r.products || []).length} products listed. Choose an item for each.`, "good");
+      await load();
+    };
+    if (products.length <= 1) return run(products[0] || "");
+    const wrap = document.createElement("div");
+    wrap.innerHTML = `<div class="field"><label>Products</label>
+      <select data-lp>${["", ...products].map((p) =>
+        `<option value="${esc(p)}"${p === (opts.single || "") ? " selected" : ""}>${p ? esc(p) + " only" : "All products (" + products.length + ")"}</option>`).join("")}</select>
+      <small>Pick one product to generate the programme for just that product.</small></div>`;
+    modal({
+      title: "Load products", body: wrap,
+      foot: [{ label: "Cancel" }, { label: "Load", cls: "btn--ink", onClick: async (h) => {
+        const v = $("[data-lp]", wrap).value; h.close(); await run(v);
+      } }],
+    });
+  }
+
   async function act(button) {
     const kind = button.dataset.act;
     if (kind === "export_apps") { downloadApplicationsExcel(); return; }
@@ -1698,8 +1725,10 @@
         const r = await call("desk_pull_blocks", { programme: c.name });
         toast(`${r.blocks} blocks pulled.`, "good");
       } else if (kind === "load_products") {
-        const r = await call("load_programme_products", { programme: c.name });
-        toast(`${(r.products || []).length} products listed. Choose an item for each.`, "good");
+        // One product or all of them: asked first, so a programme for a single
+        // product never has to carry (or choose Items for) the rest.
+        button.disabled = false; button.textContent = label;
+        return loadProductsChoice(c);
       } else if (kind === "calculate") {
         const r = await call("desk_calculate", { programme: c.name });
         toast(`${r.lines} programme lines generated.`, "good");
