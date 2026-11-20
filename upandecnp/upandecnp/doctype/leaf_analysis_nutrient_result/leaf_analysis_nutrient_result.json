@@ -24,7 +24,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Nutrients",
-   "options": "N\nP\nK\nCa\nMg\nS\nMn\nB\nMo\nZn",
+   "options": "N\nP\nK\nCa\nMg\nS\nMn\nB\nMo\nZn\nNa\nFe\nCu",
    "reqd": 1
   },
   {

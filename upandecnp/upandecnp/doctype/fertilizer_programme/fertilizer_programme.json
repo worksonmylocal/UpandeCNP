@@ -129,7 +129,7 @@
    "fieldtype": "Small Text",
    "label": "Leaf Analysis Warning",
    "read_only": 1,
-   "description": "Blocks with no leaf analysis for this season were calculated with no leaf adjustment."
+   "description": "Blocks with no leaf analysis for this season were calculated from yield alone, with no leaf build-up."
   },
   {
    "fieldname": "programme_lines",

@@ -1,0 +1,2978 @@
+{
+ "season": "2025/2026",
+ "farm": "Lokitela",
+ "sampling_date": "2026-11-20",
+ "laboratory": "LeafAnalysis.ods (Lokitela leaf analysis, per block)",
+ "blocks": {
+  "BLOCK BLK 1": {
+   "N": {
+    "value": 1.58,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.72,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.27,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.79,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.25,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 85.3,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 198.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 813.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 69.2,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.69,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 3.44,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 40.6,
+    "unit": "ppm"
+   }
+  },
+  "BLOCK BLK 2": {
+   "N": {
+    "value": 1.31,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.1,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.9,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.32,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.76,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.22,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 87.8,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 238.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 1010.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 48.3,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.66,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 2.9,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 37.1,
+    "unit": "ppm"
+   }
+  },
+  "BLOCK BLK 3": {
+   "N": {
+    "value": 1.31,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.1,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.9,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.32,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.76,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.22,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 87.8,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 238.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 1010.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 48.3,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.66,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 2.9,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 37.1,
+    "unit": "ppm"
+   }
+  },
+  "BLOCK BLK 4": {
+   "N": {
+    "value": 1.58,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.72,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.27,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.79,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.25,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 85.3,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 198.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 813.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 69.2,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.69,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 3.44,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 40.6,
+    "unit": "ppm"
+   }
+  },
+  "BLOCK BLK 5": {
+   "N": {
+    "value": 1.58,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.72,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.27,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.79,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.25,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 85.3,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 198.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 813.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 69.2,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.69,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 3.44,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 40.6,
+    "unit": "ppm"
+   }
+  },
+  "BLOCK BLK 6": {
+   "N": {
+    "value": 1.58,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.72,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.27,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.79,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.25,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 85.3,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 198.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 813.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 69.2,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.69,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 3.44,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 40.6,
+    "unit": "ppm"
+   }
+  },
+  "BLOCK BLK 7": {
+   "N": {
+    "value": 1.31,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.1,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.9,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.32,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.76,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.22,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 87.8,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 238.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 1010.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 48.3,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.66,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 2.9,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 37.1,
+    "unit": "ppm"
+   }
+  },
+  "BLOCK BLK 8": {
+   "N": {
+    "value": 1.31,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.1,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.9,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.32,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.76,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.22,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 87.8,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 238.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 1010.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 48.3,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.66,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 2.9,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 37.1,
+    "unit": "ppm"
+   }
+  },
+  "BLOCK BLK 9": {
+   "N": {
+    "value": 1.58,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.72,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.27,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.79,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.25,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 85.3,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 198.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 813.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 69.2,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.69,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 3.44,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 40.6,
+    "unit": "ppm"
+   }
+  },
+  "BLOCK BLK 10": {
+   "N": {
+    "value": 1.58,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.72,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.27,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.79,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.25,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 85.3,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 198.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 813.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 69.2,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.69,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 3.44,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 40.6,
+    "unit": "ppm"
+   }
+  },
+  "BLOCK BLK 11": {
+   "N": {
+    "value": 1.31,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.1,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.9,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.32,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.76,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.22,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 87.8,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 238.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 1010.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 48.3,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.66,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 2.9,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 37.1,
+    "unit": "ppm"
+   }
+  },
+  "BLOCK BLK 12": {
+   "N": {
+    "value": 1.31,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.1,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.9,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.32,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.76,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.22,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 87.8,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 238.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 1010.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 48.3,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.66,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 2.9,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 37.1,
+    "unit": "ppm"
+   }
+  },
+  "BONDENI BLK 1": {
+   "N": {
+    "value": 1.73,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.55,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.14,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.71,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.2,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 48.3,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 155.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 852.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 43.8,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.85,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.94,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 13.9,
+    "unit": "ppm"
+   }
+  },
+  "BONDENI BLK 2": {
+   "N": {
+    "value": 1.79,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.54,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.18,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.71,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.21,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 73.3,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 154.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 676.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 44.0,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.79,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.86,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 22.6,
+    "unit": "ppm"
+   }
+  },
+  "BONDENI BLK 3": {
+   "N": {
+    "value": 1.79,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.54,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.18,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.71,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.21,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 73.3,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 154.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 676.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 44.0,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.79,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.86,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 22.6,
+    "unit": "ppm"
+   }
+  },
+  "BONDENI BLK 4": {
+   "N": {
+    "value": 1.82,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.98,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 1.85,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.67,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.19,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 48.6,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 142.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 761.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 37.4,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.92,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.11,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 16.2,
+    "unit": "ppm"
+   }
+  },
+  "BONDENI BLK 5": {
+   "N": {
+    "value": 1.82,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.98,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 1.85,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.67,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.19,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 48.6,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 142.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 761.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 37.4,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.92,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.11,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 16.2,
+    "unit": "ppm"
+   }
+  },
+  "BONDENI BLK 6": {
+   "N": {
+    "value": 1.82,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.98,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 1.85,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.67,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.19,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 48.6,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 142.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 761.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 37.4,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.92,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.11,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 16.2,
+    "unit": "ppm"
+   }
+  },
+  "BONDENI BLK 7": {
+   "N": {
+    "value": 1.79,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.54,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.18,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.71,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.21,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 73.3,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 154.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 676.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 44.0,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.79,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.86,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 22.6,
+    "unit": "ppm"
+   }
+  },
+  "BONDENI BLK 8": {
+   "N": {
+    "value": 1.79,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.54,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.18,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.71,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.21,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 73.3,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 154.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 676.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 44.0,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.79,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.86,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 22.6,
+    "unit": "ppm"
+   }
+  },
+  "WESA BLK 1": {
+   "N": {
+    "value": 1.73,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.55,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.14,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.71,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.2,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 48.3,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 155.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 852.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 43.8,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.85,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.94,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 13.9,
+    "unit": "ppm"
+   }
+  },
+  "WESA BLK 2": {
+   "N": {
+    "value": 1.73,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.55,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.14,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.71,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.2,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 48.3,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 155.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 852.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 43.8,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.85,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.94,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 13.9,
+    "unit": "ppm"
+   }
+  },
+  "WESA BLK 3": {
+   "N": {
+    "value": 1.73,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.55,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.14,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.71,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.2,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 48.3,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 155.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 852.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 43.8,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.85,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.94,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 13.9,
+    "unit": "ppm"
+   }
+  },
+  "WESA BLK 4": {
+   "N": {
+    "value": 1.74,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.57,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 1.93,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.68,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.19,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 49.4,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 115.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 767.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 63.2,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.91,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.14,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 16.7,
+    "unit": "ppm"
+   }
+  },
+  "WESA BLK 5": {
+   "N": {
+    "value": 1.74,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.57,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 1.93,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.68,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.19,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 49.4,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 115.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 767.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 63.2,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.91,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.14,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 16.7,
+    "unit": "ppm"
+   }
+  },
+  "WESA BLK 6": {
+   "N": {
+    "value": 1.74,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.57,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 1.93,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.68,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.19,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 49.4,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 115.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 767.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 63.2,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.91,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.14,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 16.7,
+    "unit": "ppm"
+   }
+  },
+  "WESA BLK 7": {
+   "N": {
+    "value": 1.74,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.57,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 1.93,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.68,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.19,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 49.4,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 115.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 767.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 63.2,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.91,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.14,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 16.7,
+    "unit": "ppm"
+   }
+  },
+  "WESA BLK 8": {
+   "N": {
+    "value": 2.09,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.14,
+    "unit": "%"
+   },
+   "K": {
+    "value": 1.09,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 1.81,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.64,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.22,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 56.3,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 178.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 800.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 84.2,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 7.21,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.32,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 23.1,
+    "unit": "ppm"
+   }
+  },
+  "WESA BLK 9": {
+   "N": {
+    "value": 1.69,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.11,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.78,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.03,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.65,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.18,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 47.4,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 111.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 686.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 50.9,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 5.11,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.36,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 16.3,
+    "unit": "ppm"
+   }
+  },
+  "WESA BLK 10": {
+   "N": {
+    "value": 1.69,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.11,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.78,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.03,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.65,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.18,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 47.4,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 111.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 686.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 50.9,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 5.11,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.36,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 16.3,
+    "unit": "ppm"
+   }
+  },
+  "WESA BLK 11": {
+   "N": {
+    "value": 1.69,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.11,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.78,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.03,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.65,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.18,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 47.4,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 111.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 686.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 50.9,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 5.11,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.36,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 16.3,
+    "unit": "ppm"
+   }
+  },
+  "KINYORO BLK 1": {
+   "N": {
+    "value": 2.09,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.14,
+    "unit": "%"
+   },
+   "K": {
+    "value": 1.09,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 1.81,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.64,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.22,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 56.3,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 178.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 800.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 84.2,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 7.21,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.32,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 23.1,
+    "unit": "ppm"
+   }
+  },
+  "KINYORO BLK 2": {
+   "N": {
+    "value": 2.09,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.14,
+    "unit": "%"
+   },
+   "K": {
+    "value": 1.09,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 1.81,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.64,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.22,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 56.3,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 178.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 800.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 84.2,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 7.21,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.32,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 23.1,
+    "unit": "ppm"
+   }
+  },
+  "KINYORO BLK 3": {
+   "N": {
+    "value": 2.09,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.14,
+    "unit": "%"
+   },
+   "K": {
+    "value": 1.09,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 1.81,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.64,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.22,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 56.3,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 178.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 800.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 84.2,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 7.21,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.32,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 23.1,
+    "unit": "ppm"
+   }
+  },
+  "KINYORO BLK 4": {
+   "N": {
+    "value": 2.09,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.14,
+    "unit": "%"
+   },
+   "K": {
+    "value": 1.09,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 1.81,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.64,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.22,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 56.3,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 178.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 800.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 84.2,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 7.21,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.32,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 23.1,
+    "unit": "ppm"
+   }
+  },
+  "DAIRY BLK 1": {
+   "N": {
+    "value": 1.73,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 1.1,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.25,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.71,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.18,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 50.4,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 142.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 1170.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 47.5,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 5.95,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.32,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 16.3,
+    "unit": "ppm"
+   }
+  },
+  "DAIRY BLK 2": {
+   "N": {
+    "value": 1.73,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 1.1,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.25,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.71,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.18,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 50.4,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 142.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 1170.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 47.5,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 5.95,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.32,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 16.3,
+    "unit": "ppm"
+   }
+  },
+  "DAIRY BLK 3": {
+   "N": {
+    "value": 1.73,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 1.1,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.25,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.71,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.18,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 50.4,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 142.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 1170.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 47.5,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 5.95,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.32,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 16.3,
+    "unit": "ppm"
+   }
+  },
+  "DAIRY BLK 4": {
+   "N": {
+    "value": 1.73,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 1.1,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.25,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.71,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.18,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 50.4,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 142.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 1170.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 47.5,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 5.95,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.32,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 16.3,
+    "unit": "ppm"
+   }
+  },
+  "MLIMA BLK 1": {
+   "N": {
+    "value": 1.68,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.77,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.1,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.69,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.19,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 39.5,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 116.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 773.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 62.8,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 7.08,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 0.86,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 18.5,
+    "unit": "ppm"
+   }
+  },
+  "MLIMA BLK 2": {
+   "N": {
+    "value": 1.68,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.77,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.1,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.69,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.19,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 39.5,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 116.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 773.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 62.8,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 7.08,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 0.86,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 18.5,
+    "unit": "ppm"
+   }
+  },
+  "MLIMA BLK 3": {
+   "N": {
+    "value": 1.68,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.77,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.1,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.69,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.19,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 39.5,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 116.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 773.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 62.8,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 7.08,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 0.86,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 18.5,
+    "unit": "ppm"
+   }
+  },
+  "MUHAMMED BLK 1": {
+   "N": {
+    "value": 1.92,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.14,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.81,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.08,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.69,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.21,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 43.3,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 146.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 842.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 39.4,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 9.26,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 0.96,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 19.2,
+    "unit": "ppm"
+   }
+  },
+  "MUHAMMED BLK 2": {
+   "N": {
+    "value": 1.92,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.14,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.81,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.08,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.69,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.21,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 43.3,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 146.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 842.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 39.4,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 9.26,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 0.96,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 19.2,
+    "unit": "ppm"
+   }
+  },
+  "MUHAMMED BLK 3": {
+   "N": {
+    "value": 1.92,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.14,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.81,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.08,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.69,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.21,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 43.3,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 146.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 842.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 39.4,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 9.26,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 0.96,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 19.2,
+    "unit": "ppm"
+   }
+  },
+  "MUHAMMED BLK 4": {
+   "N": {
+    "value": 1.92,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.14,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.81,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.08,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.69,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.21,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 43.3,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 146.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 842.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 39.4,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 9.26,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 0.96,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 19.2,
+    "unit": "ppm"
+   }
+  },
+  "MUHAMMED BLK 5": {
+   "N": {
+    "value": 1.92,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.14,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.81,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.08,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.69,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.21,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 43.3,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 146.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 842.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 39.4,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 9.26,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 0.96,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 19.2,
+    "unit": "ppm"
+   }
+  },
+  "MIMA BLK 1": {
+   "N": {
+    "value": 1.69,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.68,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.07,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.69,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.19,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 43.6,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 143.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 965.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 55.7,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 8.05,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.22,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 18.7,
+    "unit": "ppm"
+   }
+  },
+  "MIMA BLK 2": {
+   "N": {
+    "value": 1.69,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.68,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.07,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.69,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.19,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 43.6,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 143.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 965.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 55.7,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 8.05,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.22,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 18.7,
+    "unit": "ppm"
+   }
+  },
+  "MIMA BLK 3": {
+   "N": {
+    "value": 1.69,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.68,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.07,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.69,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.19,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 43.6,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 143.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 965.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 55.7,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 8.05,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.22,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 18.7,
+    "unit": "ppm"
+   }
+  },
+  "MIMA BLK 4": {
+   "N": {
+    "value": 1.69,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.12,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.68,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 2.07,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.69,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.19,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 43.6,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 143.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 965.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 55.7,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 8.05,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.22,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 18.7,
+    "unit": "ppm"
+   }
+  },
+  "MIMA BLK 5": {
+   "N": {
+    "value": 1.79,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.13,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.86,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 1.67,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.63,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.19,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 38.9,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 139.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 800.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 65.8,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.97,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.27,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 15.0,
+    "unit": "ppm"
+   }
+  },
+  "MIMA BLK 6": {
+   "N": {
+    "value": 1.79,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.13,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.86,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 1.67,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.63,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.19,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 38.9,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 139.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 800.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 65.8,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.97,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.27,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 15.0,
+    "unit": "ppm"
+   }
+  },
+  "MIMA BLK 7": {
+   "N": {
+    "value": 1.79,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.13,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.86,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 1.67,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.63,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.19,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 38.9,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 139.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 800.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 65.8,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.97,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.27,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 15.0,
+    "unit": "ppm"
+   }
+  },
+  "MIMA BLK 8": {
+   "N": {
+    "value": 1.79,
+    "unit": "%"
+   },
+   "P": {
+    "value": 0.13,
+    "unit": "%"
+   },
+   "K": {
+    "value": 0.86,
+    "unit": "%"
+   },
+   "Ca": {
+    "value": 1.67,
+    "unit": "%"
+   },
+   "Mg": {
+    "value": 0.63,
+    "unit": "%"
+   },
+   "S": {
+    "value": 0.19,
+    "unit": "%"
+   },
+   "Na": {
+    "value": 38.9,
+    "unit": "ppm"
+   },
+   "Fe": {
+    "value": 139.0,
+    "unit": "ppm"
+   },
+   "Mn": {
+    "value": 800.0,
+    "unit": "ppm"
+   },
+   "B": {
+    "value": 65.8,
+    "unit": "ppm"
+   },
+   "Cu": {
+    "value": 6.97,
+    "unit": "ppm"
+   },
+   "Mo": {
+    "value": 1.27,
+    "unit": "ppm"
+   },
+   "Zn": {
+    "value": 15.0,
+    "unit": "ppm"
+   }
+  }
+ }
+}

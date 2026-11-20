@@ -385,8 +385,8 @@ def leaf_warning_text(missing, season):
 	if not missing:
 		return None
 	shown = ", ".join(missing[:15]) + (f" and {len(missing) - 15} more" if len(missing) > 15 else "")
-	return (f"{len(missing)} block(s) have no leaf analysis for {season}, so they were calculated "
-	        f"with no leaf adjustment: {shown}.")
+	return (f"{len(missing)} block(s) have no leaf analysis for {season}, so no leaf build-up "
+	        f"was applied to them - they are calculated from yield alone: {shown}.")
 
 
 def update_product_requirements(programme, monthly_lines):
