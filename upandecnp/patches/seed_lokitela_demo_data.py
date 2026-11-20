@@ -35,7 +35,6 @@ def execute():
     _seed_sections(data["sections"])
     _restore_blocks(data["blocks"])
     _seed_production_calendar(data["production_calendar"])
-    _seed_leaf_analyses(data["leaf_analyses"])
 
     frappe.db.commit()
 
@@ -101,24 +100,3 @@ def _seed_production_calendar(pc):
         "fertilizer_schedule": schedule,
         "calendar_events": pc["calendar_events"],
     }).insert(ignore_permissions=True)
-
-
-def _seed_leaf_analyses(leaf_analyses):
-    for la in leaf_analyses:
-        if not (frappe.db.exists("Section", la["section"]) and frappe.db.exists("Crop", la["crop"])):
-            continue
-        if frappe.db.exists("Leaf Analysis", {
-            "section": la["section"], "yield_tier": la["yield_tier"], "farm": la["farm"],
-        }):
-            continue
-        frappe.get_doc({
-            "doctype": "Leaf Analysis",
-            "section": la["section"],
-            "yield_tier": la["yield_tier"],
-            "farm": la["farm"],
-            "crop": la["crop"],
-            "season": la["season"],
-            "sampling_date": la["sampling_date"],
-            "laboratory": "Simulated - placeholder pending real lab submission",
-            "nutrient_results": la["nutrient_results"],
-        }).insert(ignore_permissions=True)

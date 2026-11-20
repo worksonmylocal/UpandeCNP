@@ -15,3 +15,4 @@ upandecnp.patches.sync_programme_workflow_state
 upandecnp.patches.scope_cnp_to_lokitela
 upandecnp.patches.seed_micro_fertilizer_products
 upandecnp.patches.create_correction_support
+upandecnp.patches.erase_section_tier_leaf_analyses

@@ -32,6 +32,7 @@
   "section_break_byd",
   "block_yield_data",
   "section_break_lines",
+  "leaf_warning",
   "programme_lines",
   "section_break_approval",
   "approved_by_elvis_koskey",
@@ -122,6 +123,13 @@
    "fieldname": "section_break_lines",
    "fieldtype": "Section Break",
    "label": "Programme Lines"
+  },
+  {
+   "fieldname": "leaf_warning",
+   "fieldtype": "Small Text",
+   "label": "Leaf Analysis Warning",
+   "read_only": 1,
+   "description": "Blocks with no leaf analysis for this season were calculated with no leaf adjustment."
   },
   {
    "fieldname": "programme_lines",

@@ -531,15 +531,14 @@
     leaf: {
       doctype: "Leaf Analysis", title: "Leaf Analysis", icon: "🍃",
       tint: "rgba(34,197,94,.13)", colour: "#16a34a",
-      sub: "Lab results per section, which adjust the calculated rates.",
-      list: ["name", "section", "sampling_date", "yield_tier"],
+      sub: "One lab analysis per block per season, which adjusts that block's rates.",
+      list: ["name", "block", "section", "season", "sampling_date"],
       fields: [
-        { name: "section", label: "Section", type: "link", doctype: "Section", reqd: 1 },
-        { name: "farm", label: "Farm", type: "link", doctype: "CNP Farm" },
+        { name: "block", label: "Block", type: "link", doctype: "Farm Block", reqd: 1 },
+        { name: "season", label: "Season", reqd: 1, help: "e.g. 2025/2026 - must match the programme's season." },
         { name: "crop", label: "Crop", type: "link", doctype: "Crop" },
-        { name: "block", label: "Block", type: "link", doctype: "Farm Block" },
         { name: "sampling_date", label: "Sampling Date", type: "date" },
-        { name: "season", label: "Season" },
+        { name: "laboratory", label: "Laboratory" },
       ],
       tables: [
         { name: "nutrient_results", label: "Nutrient Results", fields: [
@@ -885,6 +884,7 @@
       </div>
       <div class="steps">${steps}</div>
       ${a.blocked ? `<div class="none">${esc(a.blocked)}</div>` : ""}
+      ${c.leaf_warning ? `<div class="none" style="text-align:left;color:var(--bad);padding:10px 0">⚠ ${esc(c.leaf_warning)}</div>` : ""}
       ${a.sign_off ? `
       <div class="card__head" style="margin:18px 0 10px"><h3>Approved</h3></div>
       <div class="signoff">
@@ -1732,6 +1732,7 @@
       } else if (kind === "calculate") {
         const r = await call("desk_calculate", { programme: c.name });
         toast(`${r.lines} programme lines generated.`, "good");
+        if (r.leaf_warning) toast(r.leaf_warning, "bad");
       } else if (kind === "delete_draft") {
         await call("desk_delete_draft", { programme: c.name });
         toast(`${c.name} deleted.`, "good");

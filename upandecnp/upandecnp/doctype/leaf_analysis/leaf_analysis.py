@@ -7,22 +7,45 @@ from frappe.utils import flt
 
 
 class LeafAnalysis(Document):
+	"""One lab analysis per block per season. A block's own result adjusts that
+	block's rate in the programme calculation - there is no sharing between
+	blocks, and the yield tier plays no part here (tiers belong to the yield
+	calculation, not to what the lab found)."""
+
+	def before_naming(self):
+		# The name is built from block and season, so a second analysis for the
+		# same pair would collide in the database before validate() ever ran.
+		self.validate_one_per_block_per_season()
 
 	def validate(self):
-		self.set_farm()
+		self.set_from_block()
+		self.validate_one_per_block_per_season()
 		self.populate_norms_and_status()
 
 	def on_submit(self):
 		self.approved_by = frappe.session.user
 		self.approval_date = frappe.utils.today()
 
-	def set_farm(self):
-		if self.section:
-			self.farm = frappe.db.get_value("Section", self.section, "farm")
-		elif self.block:
-			# Section master data isn't populated yet on this site, so fall back
-			# to the block -> farm chain the other Farm Block scoped doctypes use.
-			self.farm = frappe.db.get_value("Farm Block", self.block, "farm")
+	def set_from_block(self):
+		block = frappe.db.get_value("Farm Block", self.block, ["section", "farm", "crop"], as_dict=True)
+		if not block:
+			frappe.throw(f"Block {self.block} was not found.")
+		self.section = block.section
+		self.farm = block.farm
+		if not self.crop:
+			self.crop = block.crop
+
+	def validate_one_per_block_per_season(self):
+		existing = frappe.db.get_value(
+			"Leaf Analysis",
+			{"block": self.block, "season": self.season, "docstatus": ["<", 2], "name": ["!=", self.name or ""]},
+			"name",
+		)
+		if existing:
+			frappe.throw(
+				f"{self.block} already has a leaf analysis for {self.season} ({existing}). "
+				"There is one per block per season - amend that one instead."
+			)
 
 	def populate_norms_and_status(self):
 		norms = {

@@ -1,21 +1,20 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:LA-{section}-{yield_tier}",
+ "autoname": "format:LA-{block}-{season}",
  "creation": "2026-06-22 16:46:06.108065",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "section_break_tyyt",
   "amended_from",
-  "section",
-  "yield_tier",
+  "block",
+  "season",
   "crop",
+  "section",
   "farm",
   "company",
-  "block",
   "sampling_date",
-  "season",
   "laboratory",
   "report_reference",
   "overall_assessment",
@@ -44,15 +43,8 @@
    "in_list_view": 1,
    "label": "Section",
    "options": "Section",
-   "reqd": 1
-  },
-  {
-   "fieldname": "yield_tier",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "label": "Yield Tier",
-   "options": "15T\n18T\n20T\n24T",
-   "reqd": 1
+   "read_only": 1,
+   "fetch_from": "block.section"
   },
   {
    "fieldname": "crop",
@@ -60,7 +52,7 @@
    "in_list_view": 1,
    "label": "Crop",
    "options": "Crop",
-   "reqd": 1
+   "fetch_from": "block.crop"
   },
   {
    "fieldname": "farm",
@@ -77,11 +69,13 @@
    "read_only": 1
   },
   {
-   "description": "Informational only - which physical block(s) the sample was drawn from. Not used for calculation; the (Section, Yield Tier) pair above is the actual identity.",
+   "description": "One analysis per block per season.",
    "fieldname": "block",
    "fieldtype": "Link",
-   "label": "Block Sampled (optional)",
-   "options": "Farm Block"
+   "label": "Block",
+   "options": "Farm Block",
+   "reqd": 1,
+   "in_list_view": 1
   },
   {
    "fieldname": "sampling_date",
@@ -93,7 +87,10 @@
   {
    "fieldname": "season",
    "fieldtype": "Data",
-   "label": "Season"
+   "label": "Season",
+   "reqd": 1,
+   "in_list_view": 1,
+   "description": "e.g. 2025/2026. Must match the programme's season for the result to be used."
   },
   {
    "fieldname": "laboratory",
@@ -136,7 +133,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-10-02 20:00:00.000000",
+ "modified": "2026-11-20 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "UpandeCNP",
  "name": "Leaf Analysis",
@@ -195,5 +192,5 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "title_field": "yield_tier"
+ "title_field": "block"
 }

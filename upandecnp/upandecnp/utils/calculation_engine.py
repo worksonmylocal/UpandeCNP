@@ -108,25 +108,40 @@ def group_blocks_by_section_tier(programme, crop_doc):
 	return groups
 
 
-def get_leaf_adjustment_pct(crop_doc, norm, section, yield_tier):
-	"""Leaf Analysis is keyed 1:1 by (Section, Yield Tier) - looked up directly,
-	no manual selection step. Returns +leaf_adjustment_pct if the norm's
-	nutrient result is below midpoint, -leaf_adjustment_pct if strictly above
-	the high bound (no midpoint buffer on that side), else 0."""
-	leaf_analysis = frappe.db.get_value(
-		"Leaf Analysis", {"section": section, "yield_tier": yield_tier}, "name"
-	)
-	if not leaf_analysis:
-		frappe.throw(f"No Leaf Analysis found for Section {section} / Tier {yield_tier}.")
+def leaf_results_by_block(programme):
+	"""{block: {nutrient: result}} from each block's own submitted Leaf Analysis
+	for the programme's season, and the blocks that have none. There is one
+	analysis per block per season; a block without one is not an error - it is
+	calculated with no leaf adjustment and reported, so one missing sample never
+	stops the rest of the farm being planned."""
+	blocks = [r.block for r in programme.get("block_yield_data", []) if r.block]
+	analyses = {
+		a.block: a.name for a in frappe.get_all(
+			"Leaf Analysis",
+			filters={"block": ["in", blocks], "season": programme.season, "docstatus": 1},
+			fields=["name", "block"],
+		)
+	} if blocks else {}
 
-	result_value = frappe.db.get_value(
-		"Leaf Analysis Nutrient Result",
-		{"parent": leaf_analysis, "nutrient": norm.nutrient},
-		"result_value",
-	)
-	if result_value is None:
+	results = {}
+	if analyses:
+		for r in frappe.get_all(
+			"Leaf Analysis Nutrient Result",
+			filters={"parent": ["in", list(analyses.values())]},
+			fields=["parent", "nutrient", "result_value"],
+		):
+			block = next(b for b, n in analyses.items() if n == r.parent)
+			results.setdefault(block, {})[r.nutrient] = r.result_value
+	missing = [b for b in dict.fromkeys(blocks) if b not in analyses]
+	return results, missing
+
+
+def get_leaf_adjustment_pct(crop_doc, norm, result_value):
+	"""+leaf_adjustment_pct if the block's result is below the norm's midpoint,
+	-leaf_adjustment_pct if strictly above the high bound (no midpoint buffer on
+	that side), else 0. No result (no analysis, or that nutrient not tested) is 0."""
+	if not norm or result_value is None:
 		return 0
-
 	adjustment = flt(crop_doc.leaf_adjustment_pct)
 	if flt(result_value) < flt(norm.midpoint):
 		return adjustment
@@ -305,22 +320,32 @@ def calculate_programme(programme_name):
 
 	annual_lines = []
 
-	for (section, tier_label), group in groups.items():
-		for rule in rules:
-			norm = norms.get(rule.nutrient)
-			leaf_pct = (
-				get_leaf_adjustment_pct(crop_doc, norm, section, tier_label)
-				if norm else 0
-			)
-			result = calculate_product_for_group(
-				rule, group["tier_tonnage"], group["total_area_ha"], leaf_pct, crop_doc
-			)
+	leaf_results, missing_leaf = leaf_results_by_block(programme)
 
-			lines = distribute_to_blocks(
-				group["blocks"], result["final_product_kg_per_ha"],
-				item_for_rule(rule, chosen), tier_label, section,
-				product=rule.get("product"),
-			)
+	for (section, tier_label), group in groups.items():
+		order = {b["block"]: i for i, b in enumerate(group["blocks"])}
+		for rule in crop_doc.get("nutrient_rules", []):
+			norm = norms.get(rule.nutrient)
+
+			# Each block carries its own leaf result, so blocks in the same
+			# section and tier can need different adjustments. Blocks with the
+			# same adjustment are still calculated together, which keeps the
+			# group's whole-kilogram rounding exactly as before.
+			by_adjustment = {}
+			for blk in group["blocks"]:
+				pct = get_leaf_adjustment_pct(crop_doc, norm, leaf_results.get(blk["block"], {}).get(rule.nutrient))
+				by_adjustment.setdefault(pct, []).append(blk)
+
+			lines = []
+			for leaf_pct, blocks in by_adjustment.items():
+				area = sum(b["area_ha"] for b in blocks)
+				result = calculate_product_for_group(rule, group["tier_tonnage"], area, leaf_pct, crop_doc)
+				lines += distribute_to_blocks(
+					blocks, result["final_product_kg_per_ha"],
+					item_for_rule(rule, chosen), tier_label, section,
+					product=rule.get("product"),
+				)
+			lines.sort(key=lambda l: order[l["block"]])
 			for line in lines:
 				line["nutrient"] = rule.nutrient
 				# Remember the Item the rule names, so apply_monthly_schedule
@@ -349,8 +374,19 @@ def calculate_programme(programme_name):
 
 	update_product_requirements(programme, monthly_lines)
 
+	programme.leaf_warning = leaf_warning_text(missing_leaf, programme.season)
 	programme.save()
+	if missing_leaf:
+		frappe.msgprint(programme.leaf_warning, title="Leaf analysis missing", indicator="orange")
 	return len(monthly_lines)
+
+
+def leaf_warning_text(missing, season):
+	if not missing:
+		return None
+	shown = ", ".join(missing[:15]) + (f" and {len(missing) - 15} more" if len(missing) > 15 else "")
+	return (f"{len(missing)} block(s) have no leaf analysis for {season}, so they were calculated "
+	        f"with no leaf adjustment: {shown}.")
 
 
 def update_product_requirements(programme, monthly_lines):

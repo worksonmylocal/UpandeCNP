@@ -94,7 +94,7 @@
   <!-- FIELD & LEAF -->
   <div class="tabpanel" id="tab-field">
     <div class="card">
-      <div class="card__head"><h3>Leaf Nutrient Status by Section/Tier</h3></div>
+      <div class="card__head"><h3>Leaf Nutrient Status by Block</h3></div>
       <div id="leaf-grid" style="overflow-x:auto;"><div class="skel"></div></div>
     </div>
     <div class="row-2-eq">
@@ -373,10 +373,10 @@ async function loadLeafGrid() {
     const short = s => s === "Deficient" ? "Low" : s === "Adequate" ? "OK" : s === "Excess" ? "High" : "—";
     document.getElementById("leaf-grid").innerHTML = `
         <table class="dtable">
-            <tr><th>Section</th><th>Tier</th>${d.nutrients.map(n => `<th class="num">${n}</th>`).join("")}</tr>
+            <tr><th>Section</th><th>Block</th>${d.nutrients.map(n => `<th class="num">${n}</th>`).join("")}</tr>
             ${d.grid.map(r => `<tr>
                 <td style="font-weight:600;color:var(--ink);">${r.section}</td>
-                <td>${r.yield_tier}</td>
+                <td>${r.block}</td>
                 ${d.nutrients.map(n => {
                     const s = r.cells[n] || "—";
                     return `<td class="num"><span class="pill ${cls(s)}">${short(s)}</span></td>`;

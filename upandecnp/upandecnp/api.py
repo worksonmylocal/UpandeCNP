@@ -1373,9 +1373,8 @@ def get_upcoming_and_overdue(farm=None, programme=None):
 
 @frappe.whitelist()
 def get_leaf_deficiency_grid(season=None, farm=None):
-    """Grid of section/tier groups x nutrients showing status (Deficient/
-    Adequate/Excess). Leaf Analysis is keyed by (Section, Yield Tier), not
-    by block - see leaf_analysis.json."""
+    """Grid of blocks x nutrients showing status (Deficient/Adequate/Excess),
+    one row per block's own leaf analysis, grouped by section."""
     farm = resolve_farm_scope(frappe.session.user, farm)
     filters = {"docstatus": 1}
     if season and season != "All Seasons":
@@ -1383,19 +1382,19 @@ def get_leaf_deficiency_grid(season=None, farm=None):
     if farm:
         filters["farm"] = farm
 
-    analyses = frappe.get_all("Leaf Analysis", filters=filters, fields=["name", "section", "yield_tier"])
+    analyses = frappe.get_all("Leaf Analysis", filters=filters, fields=["name", "section", "block", "season"])
 
     nutrients = ["N", "P", "K", "Ca", "Mg", "S", "Zn", "B"]
     grid = []
     for a in analyses:
         doc = frappe.get_doc("Leaf Analysis", a.name)
-        row = {"section": a.section, "yield_tier": a.yield_tier, "cells": {}}
+        row = {"section": a.section, "block": a.block, "season": a.season, "cells": {}}
         for r in doc.get("nutrient_results", []):
             if r.nutrient in nutrients:
                 row["cells"][r.nutrient] = r.status or "—"
         grid.append(row)
 
-    grid.sort(key=lambda r: (r["section"] or "", r["yield_tier"] or ""))
+    grid.sort(key=lambda r: (r["section"] or "", r["block"] or ""))
     return {"nutrients": nutrients, "grid": grid}
 
 
@@ -2337,6 +2336,7 @@ def _build_programme_detail(programme_name):
         "start_month": doc.start_month,
         "end_month": doc.end_month,
         "production_calendar": doc.production_calendar,
+        "leaf_warning": doc.get("leaf_warning"),
         "blocks": len(doc.get("block_yield_data") or []),
         "lines": len(doc.get("programme_lines") or []),
         "sections": sorted({b.section for b in doc.get("block_yield_data") or [] if b.section}),
@@ -2428,7 +2428,8 @@ def desk_pull_blocks(programme):
 def desk_calculate(programme):
     """Run the calculation engine from the desk."""
     from upandecnp.upandecnp.utils.calculation_engine import calculate_programme
-    return {"lines": calculate_programme(programme)}
+    lines = calculate_programme(programme)
+    return {"lines": lines, "leaf_warning": frappe.db.get_value("Fertilizer Programme", programme, "leaf_warning")}
 
 
 @frappe.whitelist()
